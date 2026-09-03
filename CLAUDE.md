@@ -2,183 +2,180 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Commandes
+## Commands
 
-Le gestionnaire de paquets est **npm** (`.cta.json`, `package-lock.json`).
+The package manager is **npm** (`.cta.json`, `package-lock.json`).
 
 ```bash
-npm run dev              # dev server sur le port 3000
-npm run build            # build de production (Vite + Nitro)
-npm run preview          # sert le build
-npm run generate-routes  # régénère src/routeTree.gen.ts depuis src/routes/
+npm run dev              # dev server on port 3000
+npm run build            # production build (Vite + Nitro)
+npm run preview          # serve the build
+npm run generate-routes  # regenerate src/routeTree.gen.ts from src/routes/
 npm run lint             # ESLint
-npm run format           # prettier --write . puis eslint --fix
-npm run check            # prettier --check . (ne modifie rien)
-npx tsc --noEmit         # typecheck — il n'existe pas de script npm pour ça
+npm run format           # prettier --write . then eslint --fix
+npm run check            # prettier --check . (changes nothing)
+npx tsc --noEmit         # typecheck — there is no npm script for this
 ```
 
-**Aucun framework de test n'est configuré** (pas de Vitest, pas de script `test`). Si des
-tests deviennent nécessaires, la stack Vite appelle Vitest — à installer et à documenter ici.
+**No test framework is configured** (no Vitest, no `test` script). If tests become
+necessary, the Vite stack calls for Vitest — install it and document it here.
 
-Ajouter un composant shadcn/ui :
+Add a shadcn/ui component:
 
 ```bash
 npx shadcn@latest add dialog
 ```
 
-`.cursorrules` donne cette commande en `pnpm dlx` : c'est un reliquat du template, le projet
-est en npm.
+`.cursorrules` gives this command as `pnpm dlx`: that's a leftover from the template, the
+project uses npm.
 
 ## Architecture
 
-### Chaîne de démarrage
+### Startup chain
 
-L'app est une application **TanStack Start** avec SSR. Le point d'entrée logique est
-`src/router.tsx` → `getRouter()`, qui :
+The app is a **TanStack Start** application with SSR. The logical entry point is
+`src/router.tsx` → `getRouter()`, which:
 
-1. construit le contexte via `getContext()` (`src/integrations/tanstack-query/root-provider.tsx`) — un `QueryClient` neuf par requête ;
-2. crée le router avec `routeTree` (généré), `defaultPreload: 'intent'` et `scrollRestoration` ;
-3. branche `setupRouterSsrQueryIntegration` pour déshydrater le cache Query côté client ;
-4. déclare le type du router dans `declare module '@tanstack/react-router'`, ce qui rend `Link`/`useNavigate` typés globalement.
+1. builds the context via `getContext()` (`src/integrations/tanstack-query/root-provider.tsx`) — a fresh `QueryClient` per request;
+2. creates the router with `routeTree` (generated), `defaultPreload: 'intent'` and `scrollRestoration`;
+3. wires up `setupRouterSsrQueryIntegration` to dehydrate the Query cache on the client;
+4. declares the router type in `declare module '@tanstack/react-router'`, which makes `Link`/`useNavigate` globally typed.
 
-Le contexte est typé à la racine via `createRootRouteWithContext<MyRouterContext>` dans
-`src/routes/__root.tsx`, donc `context.queryClient` est accessible dans les `loader` de route
-— c'est le mécanisme à utiliser pour précharger des données côté serveur plutôt que de
-fetcher dans les composants.
+The context is typed at the root via `createRootRouteWithContext<MyRouterContext>` in
+`src/routes/__root.tsx`, so `context.queryClient` is available in route `loader`s — that's the
+mechanism to use for preloading data server-side rather than fetching inside components.
 
-`src/routes/__root.tsx` fait office de shell HTML complet (`<html>`, `<head>`, `<body>`) via
-`shellComponent`, et monte `TanStackDevtools` en bas à droite en dev.
+`src/routes/__root.tsx` acts as the full HTML shell (`<html>`, `<head>`, `<body>`) via
+`shellComponent`, and mounts `TanStackDevtools` in the bottom right in dev.
 
 ### Routing
 
-Routing par fichiers dans `src/routes/`. **`src/routeTree.gen.ts` est généré** — ne jamais
-l'éditer (`.vscode/settings.json` le marque readonly, l'exclut de la recherche et du
-file-watcher). Le plugin Vite le régénère à chaud ; `npm run generate-routes` sert pour un
-build à froid ou après un renommage massif.
+File-based routing in `src/routes/`. **`src/routeTree.gen.ts` is generated** — never edit it
+(`.vscode/settings.json` marks it readonly and excludes it from search and the file watcher).
+The Vite plugin regenerates it on the fly; `npm run generate-routes` is for a cold build or
+after a mass rename.
 
-### Alias d'import
+### Import aliases
 
-`tsconfig.json` mappe **`#/*` et `@/*`** vers `./src/*`, mais seul `#/*` est déclaré dans le
-champ `imports` de `package.json` (subpath import Node standard). `components.json` de shadcn
-utilise `#/`. **Utiliser `#/`** — `@/` ne résout que par les tsconfig paths.
+`tsconfig.json` maps **`#/*` and `@/*`** to `./src/*`, but only `#/*` is declared in the
+`imports` field of `package.json` (standard Node subpath import). shadcn's `components.json`
+uses `#/`. **Use `#/`** — `@/` only resolves through the tsconfig paths.
 
-### Variables d'environnement
+### Environment variables
 
-`src/env.ts` valide l'environnement au démarrage avec `@t3-oss/env-core` + Zod. Le préfixe
-client est `VITE_`, `emptyStringAsUndefined: true`, et `runtimeEnv` est `import.meta.env`.
-Une variable manquante ou mal typée fait **échouer le démarrage**, pas silencieusement passer.
-Toute nouvelle variable doit être ajoutée au schéma (`server` ou `client`) — la lire
-directement via `import.meta.env` contourne la validation.
+`src/env.ts` validates the environment at startup with `@t3-oss/env-core` + Zod. The client
+prefix is `VITE_`, `emptyStringAsUndefined: true`, and `runtimeEnv` is `import.meta.env`.
+A missing or mistyped variable makes **startup fail**, rather than silently passing through.
+Every new variable must be added to the schema (`server` or `client`) — reading it directly
+via `import.meta.env` bypasses validation.
 
-`SERVER_URL` est un placeholder optionnel : la persistance des données n'est pas encore
-choisie.
+`SERVER_URL` is an optional placeholder: data persistence hasn't been chosen yet.
 
-### Build et serveur
+### Build and server
 
-`vite.config.ts` — **l'ordre des plugins compte** : `devtools()`, `nitro()`, `tailwindcss()`,
-`tanstackStart()`, `viteReact()`. Nitro sert d'adapter serveur générique ; son
-`rollupConfig` externalise `/^@sentry\//`. La cible de déploiement documentée est Vercel, mais
-le build Nitro tourne sur tout hôte Node (`node .output/server/index.mjs`).
+`vite.config.ts` — **plugin order matters**: `devtools()`, `nitro()`, `tailwindcss()`,
+`tanstackStart()`, `viteReact()`. Nitro acts as a generic server adapter; its `rollupConfig`
+externalizes `/^@sentry\//`. The documented deployment target is Vercel, but the Nitro build
+runs on any Node host (`node .output/server/index.mjs`).
 
 ## Styles
 
-`src/styles.css` (347 lignes) est le seul fichier de style et contient **deux jeux de tokens
-parallèles** — c'est le piège principal du projet :
+`src/styles.css` (347 lines) is the only style file and contains **two parallel token sets** —
+this is the project's main trap:
 
-1. **Tokens shadcn** (`--background`, `--primary`, `--border`… en `oklch`, base zinc) définis
-   dans `:root`, redéfinis dans `.dark`, puis exposés à Tailwind via `@theme inline`. Ils
-   s'utilisent comme utilitaires : `bg-background`, `text-muted-foreground`, `rounded-lg`.
-2. **Palette maison « côtière »** (`--sea-ink`, `--lagoon`, `--lagoon-deep`, `--palm`,
-   `--sand`, `--foam`, `--surface`, `--line`, `--hero-a`…) en hex/rgba brut. Elle n'est **pas**
-   mappée dans `@theme`, donc pas d'utilitaire Tailwind : il faut `var(--lagoon)` en CSS ou
-   une valeur arbitraire type `bg-[var(--lagoon)]`. Elle n'a **pas de variante dark** — seuls
-   les tokens shadcn basculent.
+1. **shadcn tokens** (`--background`, `--primary`, `--border`… in `oklch`, zinc base) defined
+   in `:root`, redefined in `.dark`, then exposed to Tailwind via `@theme inline`. They are
+   used as utilities: `bg-background`, `text-muted-foreground`, `rounded-lg`.
+2. **In-house "coastal" palette** (`--sea-ink`, `--lagoon`, `--lagoon-deep`, `--palm`,
+   `--sand`, `--foam`, `--surface`, `--line`, `--hero-a`…) in raw hex/rgba. It is **not**
+   mapped in `@theme`, so there is no Tailwind utility: use `var(--lagoon)` in CSS or an
+   arbitrary value like `bg-[var(--lagoon)]`. It has **no dark variant** — only the shadcn
+   tokens switch.
 
-Le dark mode est **piloté par classe** : `@custom-variant dark (&:is(.dark *))`. Il faut donc
-un `.dark` sur un ancêtre (rien ne le pose pour l'instant — pas de theme provider).
+Dark mode is **class-driven**: `@custom-variant dark (&:is(.dark *))`. So a `.dark` is needed
+on an ancestor (nothing sets it for now — no theme provider).
 
-Polices : **Manrope** en `--font-sans`, **Fraunces** pour les titres display, chargées par un
-`@import` Google Fonts en tête de `styles.css`.
+Fonts: **Manrope** as `--font-sans`, **Fraunces** for display titles, loaded by a Google Fonts
+`@import` at the top of `styles.css`.
 
-Un vocabulaire visuel est **déjà écrit mais encore inutilisé** dans le code : `.page-wrap`,
+A visual vocabulary is **already written but still unused** in the code: `.page-wrap`,
 `.display-title`, `.island-shell`, `.feature-card`, `.island-kicker`, `.nav-link`, `.rise-in`,
-`.site-footer`, plus les décors `body::before`/`body::after` et l'animation `rise-in`. Réutiliser
-ces classes avant d'en inventer de nouvelles.
+`.site-footer`, plus the `body::before`/`body::after` decorations and the `rise-in` animation.
+Reuse these classes before inventing new ones.
 
 ## Conventions
 
-- **Prettier** : pas de point-virgule, quotes simples, virgules finales partout. Lancer
-  `npm run format` avant de committer. Attention : `npm run check` signale déjà 13 fichiers
-  préexistants non formatés issus du scaffold (composants shadcn, `src/styles.css`,
-  `tsconfig.json`, `components.json`, `AGENTS.md`) — un `npm run format` global les
-  réécrirait tous et gonflerait le diff. Formater seulement les fichiers touchés.
-- **ESLint** : `@tanstack/eslint-config`, avec `import/order`, `sort-imports`,
-  `import/no-cycle`, `@typescript-eslint/array-type` et `require-await` **désactivés**. Ne pas
-  réordonner des imports « pour faire propre ».
-- **TypeScript strict** avec `noUnusedLocals` et `noUnusedParameters` : une variable ou un
-  paramètre non utilisé casse le typecheck. `verbatimModuleSyntax` est actif → les imports de
-  types doivent passer par `import type`.
+- **Prettier**: no semicolons, single quotes, trailing commas everywhere. Run `npm run format`
+  before committing. Careful: `npm run check` already flags 13 pre-existing unformatted files
+  from the scaffold (shadcn components, `src/styles.css`, `tsconfig.json`, `components.json`,
+  `AGENTS.md`) — a global `npm run format` would rewrite them all and bloat the diff. Only
+  format the files you touch.
+- **ESLint**: `@tanstack/eslint-config`, with `import/order`, `sort-imports`,
+  `import/no-cycle`, `@typescript-eslint/array-type` and `require-await` **disabled**. Don't
+  reorder imports "to make it clean".
+- **Strict TypeScript** with `noUnusedLocals` and `noUnusedParameters`: an unused variable or
+  parameter breaks the typecheck. `verbatimModuleSyntax` is on → type imports must go through
+  `import type`.
 
-## État du projet
+## Project status
 
-Scaffold fraîchement initialisé. `src/routes/index.tsx` est encore la page du template
-TanStack, et le `<title>` de `__root.tsx` est toujours « TanStack Start Starter ».
+Freshly initialized scaffold. `src/routes/index.tsx` is still the TanStack template page, and
+the `<title>` in `__root.tsx` is still "TanStack Start Starter".
 
-Le `README.md` décrit le produit **visé** — carte digitale scannable par QR code côté client,
-back-office CRUD côté gérant, multi-établissements, i18n et thème clair/sombre — et non
-l'existant. Sa section Roadmap est la source de vérité sur ce qui reste à faire : seul le socle
-technique y est coché. Ne pas supposer qu'une fonctionnalité listée existe.
+`README.md` describes the **intended** product — QR-code-scannable digital menu on the
+customer side, CRUD back office on the manager side, multi-venue, i18n and light/dark theme —
+not what exists. Its Roadmap section is the source of truth on what's left to do: only the
+technical foundation is checked off there. Don't assume a listed feature exists.
 
-Le dépôt est volontairement **sans licence** (choix explicite du propriétaire, ne pas
-réintroduire de fichier `LICENSE`).
+The repository is deliberately **unlicensed** (an explicit choice by the owner, don't
+reintroduce a `LICENSE` file).
 
-## Skills TanStack Intent
+## TanStack Intent skills
 
-`AGENTS.md` impose ceci avant toute modification substantielle :
+`AGENTS.md` requires this before any substantial change:
 
 ```bash
-npx @tanstack/intent@latest list                    # lister les skills disponibles
-npx @tanstack/intent@latest load <package>#<skill>   # charger celui qui correspond
+npx @tanstack/intent@latest list                    # list the available skills
+npx @tanstack/intent@latest load <package>#<skill>   # load the matching one
 ```
 
-Suivre le `SKILL.md` chargé pendant la modification. En cas de plusieurs correspondances,
-préférer le skill local le plus spécifique au périmètre touché.
+Follow the loaded `SKILL.md` throughout the change. When several match, prefer the local skill
+most specific to the area being touched.
 
-## Skills tiers (skills-lock.json)
+## Third-party skills (skills-lock.json)
 
-Des skills externes sont installés dans le projet. Ils suivent un modèle type npm :
+External skills are installed in the project. They follow an npm-like model:
 
-| Élément            | Rôle                                             | Versionné       |
-| ------------------ | ------------------------------------------------ | --------------- |
-| `skills-lock.json` | Manifeste : source GitHub + hash de chaque skill | **oui**         |
-| `.agents/skills/`  | Contenu téléchargé                               | non (gitignore) |
-| `.claude/skills/`  | Symlinks relatifs vers `.agents/skills/`         | non (gitignore) |
+| Item               | Role                                         | Versioned       |
+| ------------------ | -------------------------------------------- | --------------- |
+| `skills-lock.json` | Manifest: GitHub source + hash of each skill | **yes**         |
+| `.agents/skills/`  | Downloaded content                           | no (gitignored) |
+| `.claude/skills/`  | Relative symlinks into `.agents/skills/`     | no (gitignored) |
 
-`skills-lock.json` est la source de vérité ; les deux dossiers sont dérivés et régénérables.
-Ne pas committer `.agents/` ni `.claude/skills/` — ce dernier ne contient que des liens
-symboliques, qui arriveraient cassés chez les autres. En revanche `.claude/` n'est **pas**
-ignoré en bloc : un futur `settings.json` (permissions, hooks, slash commands) s'y ajoute et
-se partage normalement. Le fichier personnel à ignorer le jour où il apparaît est
-`.claude/settings.local.json`.
+`skills-lock.json` is the source of truth; both directories are derived and regenerable.
+Don't commit `.agents/` or `.claude/skills/` — the latter only holds symlinks, which would
+arrive broken for everyone else. `.claude/` itself, however, is **not** ignored wholesale: a
+future `settings.json` (permissions, hooks, slash commands) belongs there and is shared
+normally. The personal file to ignore the day it appears is `.claude/settings.local.json`.
 
-### Règle : designer l'UI avec les skills Emil Kowalski
+### Rule: design the UI with Emil Kowalski's skills
 
-**Toute création ou refonte d'interface — nouvelle page, nouveau composant, nouvelle fonctionnalité visible —
-charge d'abord le skill pertinent et suit son `SKILL.md`.** Ce n'est pas optionnel et ça
-s'ajoute (sans le remplacer) au flux `npx @tanstack/intent` décrit plus haut.
+**Every UI creation or redesign — new page, new component, new user-visible feature — loads
+the relevant skill first and follows its `SKILL.md`.** This is not optional, and it adds to
+(does not replace) the `npx @tanstack/intent` flow described above.
 
-| Situation                                              | Skill                          |
-| ------------------------------------------------------ | ------------------------------ |
-| Nouvelle UI, nouveau composant, polish visuel          | `emil-design-eng` (par défaut) |
-| Choisir une librairie de composants / d'interaction    | `pick-ui-library`              |
-| Écrire une animation ou une transition                 | `animate`                      |
-| Gestes, springs, matières, transitions interruptibles  | `apple-design`                 |
-| Toasts / notifications                                 | `ask-sonner`                   |
-| Maquette jetable pour valider une direction            | `prototype`                    |
-| Relire une animation existante (diff)                  | `review-animations`            |
-| Auditer la motion de tout le projet                    | `improve-animations`           |
-| Chercher où ajouter du mouvement                       | `find-animation-opportunities` |
-| Nommer un effet dont on ne connaît pas le terme        | `animation-vocabulary`         |
+| Situation                                          | Skill                          |
+| -------------------------------------------------- | ------------------------------ |
+| New UI, new component, visual polish               | `emil-design-eng` (default)    |
+| Choosing a component / interaction library         | `pick-ui-library`              |
+| Writing an animation or a transition               | `animate`                      |
+| Gestures, springs, materials, interruptible motion | `apple-design`                 |
+| Toasts / notifications                             | `ask-sonner`                   |
+| Throwaway mockup to validate a direction           | `prototype`                    |
+| Reviewing an existing animation (diff)             | `review-animations`            |
+| Auditing the whole project's motion                | `improve-animations`           |
+| Looking for places to add movement                 | `find-animation-opportunities` |
+| Naming an effect whose term you don't know         | `animation-vocabulary`         |
 
-`animate-expo` et `write-swift` ne concernent pas ce projet (web). En cas de recouvrement,
-`emil-design-eng` cadre la décision de design, le skill spécialisé cadre l'implémentation.
+`animate-expo` and `write-swift` don't apply to this project (web). When they overlap,
+`emil-design-eng` frames the design decision, the specialized skill frames the implementation.
