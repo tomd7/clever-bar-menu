@@ -1,235 +1,142 @@
-Welcome to your new TanStack Start app!
+# Clever Bar Menu
 
-# Getting Started
+Une carte digitale pour les bars et cafés : les clients scannent un QR code posé sur la table
+et consultent la carte à jour depuis leur téléphone, sans application à installer. Le gérant
+gère ses catégories, ses produits et ses prix depuis un back-office.
 
-To run this application:
+![Status](https://img.shields.io/badge/status-work%20in%20progress-orange)
+
+> [!WARNING]
+> **Projet en cours de démarrage.** Les bases techniques sont posées, mais les
+> fonctionnalités décrites ci-dessous sont encore en développement. Le schéma de données
+> et les URLs ne sont pas figés : n'utilisez pas encore ce projet en production.
+
+## Fonctionnalités
+
+- **Carte publique via QR code** — chaque table renvoie vers la carte de l'établissement,
+  consultable sur mobile, sans installation ni compte.
+- **Back-office de gestion** — création et édition des catégories, produits, prix,
+  descriptions et photos ; un produit en rupture peut être masqué en un clic.
+- **Multi-établissements** — un même déploiement héberge plusieurs bars, chacun avec sa
+  carte et ses accès.
+- **Multilingue et thème clair/sombre** — carte traduisible et apparence personnalisable
+  par établissement.
+
+## Stack technique
+
+| Domaine     | Choix                                                                                  |
+| ----------- | -------------------------------------------------------------------------------------- |
+| Framework   | [TanStack Start](https://tanstack.com/start) (SSR) + [React 19](https://react.dev)     |
+| Routing     | [TanStack Router](https://tanstack.com/router) (routes générées depuis `src/routes/`)  |
+| Données     | [TanStack Query](https://tanstack.com/query)                                           |
+| Formulaires | [TanStack Form](https://tanstack.com/form) + [Zod](https://zod.dev)                    |
+| UI          | [Tailwind CSS 4](https://tailwindcss.com) + [shadcn/ui](https://ui.shadcn.com) (Radix) |
+| Build       | [Vite 8](https://vite.dev)                                                             |
+| Serveur     | [Nitro](https://nitro.build)                                                           |
+| Langage     | TypeScript                                                                             |
+
+> [!NOTE]
+> La persistance des données n'est pas encore arrêtée (base de données ou API dédiée).
+> `src/env.ts` prévoit une variable `SERVER_URL` en attendant cette décision.
+
+## Démarrage
+
+Prérequis : **Node.js 22+**.
 
 ```bash
+git clone https://github.com/tomd7/clever-bar-menu.git
+cd clever-bar-menu
 npm install
 npm run dev
 ```
 
-# Building For Production
+L'application est servie sur http://localhost:3000.
 
-To build this application for production:
+### Variables d'environnement
+
+Les variables sont validées au démarrage par [`@t3-oss/env-core`](https://env.t3.gg) dans
+[`src/env.ts`](src/env.ts) — un démarrage échoue plutôt que de laisser passer une
+configuration incomplète. Créez un fichier `.env` à la racine :
+
+```bash
+# Côté serveur
+SERVER_URL=              # optionnel : URL de l'API de données
+
+# Côté client (préfixe VITE_ obligatoire)
+VITE_APP_TITLE=          # optionnel : titre affiché dans l'application
+```
+
+## Scripts
+
+| Commande                  | Rôle                                                 |
+| ------------------------- | ---------------------------------------------------- |
+| `npm run dev`             | Serveur de développement sur le port 3000            |
+| `npm run build`           | Build de production                                  |
+| `npm run preview`         | Prévisualisation du build                            |
+| `npm run generate-routes` | Régénère `src/routeTree.gen.ts` depuis `src/routes/` |
+| `npm run lint`            | ESLint                                               |
+| `npm run format`          | Prettier `--write` puis `eslint --fix`               |
+| `npm run check`           | Vérifie le formatage sans modifier les fichiers      |
+
+## Structure du projet
+
+```
+src/
+├── routes/          # Routes fichier-système (TanStack Router)
+│   ├── __root.tsx   # Shell HTML, providers et devtools
+│   └── index.tsx    # Page d'accueil
+├── components/ui/   # Composants shadcn/ui
+├── integrations/    # Providers (TanStack Query)
+├── lib/utils.ts     # Utilitaires (`cn`)
+├── env.ts           # Schéma des variables d'environnement
+├── router.tsx       # Configuration du router
+├── routeTree.gen.ts # Généré — ne pas éditer à la main
+└── styles.css       # Tailwind et thème
+```
+
+L'alias `#/*` pointe vers `./src/*` : préférez `import { cn } from '#/lib/utils'` aux
+chemins relatifs.
+
+### Ajouter un composant UI
+
+```bash
+npx shadcn@latest add dialog
+```
+
+## Déploiement
+
+Le projet cible **Vercel**. Poussez le dépôt, importez-le dans Vercel et laissez la
+détection automatique faire le reste — pensez à renseigner les variables d'environnement
+dans les réglages du projet.
+
+Nitro sert d'adapter serveur, donc un déploiement sur tout hôte compatible Node reste
+possible :
 
 ```bash
 npm run build
+node .output/server/index.mjs
 ```
 
-## Styling
-
-This project uses [Tailwind CSS](https://tailwindcss.com/) for styling.
-
-### Removing Tailwind CSS
-
-If you prefer not to use Tailwind CSS:
-
-1. Remove the demo pages in `src/routes/demo/`
-2. Replace the Tailwind import in `src/styles.css` with your own styles
-3. Remove `tailwindcss()` from the plugins array in `vite.config.ts`
-4. Remove `@tailwindcss/vite` and `tailwindcss` from `package.json`
-
-## Linting & Formatting
-
-
-This project uses [eslint](https://eslint.org/) and [prettier](https://prettier.io/) for linting and formatting. Eslint is configured using [tanstack/eslint-config](https://tanstack.com/config/latest/docs/eslint). The following scripts are available:
-
-```bash
-npm run lint
-npm run format
-npm run check
-```
-
-
-## Deploy with Nitro
-
-This project uses Nitro as a generic server adapter, so it can run on any Node-compatible host.
-
-```bash
-npm run build
-node dist/server/index.mjs
-```
-
-The build output is a self-contained Node server. To deploy, push the `dist/` directory to your host (Render, Fly.io, your own VPS, etc.) and run the server command above.
-
-For host-specific presets (Vercel, Netlify, Cloudflare, AWS Lambda, etc.) and tuning, see https://v3.nitro.build/deploy.
-
-
-## Shadcn
-
-Add components using the latest version of [Shadcn](https://ui.shadcn.com/).
-
-```bash
-pnpm dlx shadcn@latest add button
-```
-
-
-## T3Env
-
-- You can use T3Env to add type safety to your environment variables.
-- Add Environment variables to the `src/env.mjs` file.
-- Use the environment variables in your code.
-
-### Usage
-
-```ts
-import { env } from "#/env";
-
-console.log(env.VITE_APP_TITLE);
-```
-
-
-
-
-
-
-## Routing
-
-This project uses [TanStack Router](https://tanstack.com/router) with file-based routing. Routes are managed as files in `src/routes`.
-
-### Adding A Route
-
-To add a new route to your application just add a new file in the `./src/routes` directory.
-
-TanStack will automatically generate the content of the route file for you.
-
-Now that you have two routes you can use a `Link` component to navigate between them.
-
-### Adding Links
-
-To use SPA (Single Page Application) navigation you will need to import the `Link` component from `@tanstack/react-router`.
-
-```tsx
-import { Link } from "@tanstack/react-router";
-```
-
-Then anywhere in your JSX you can use it like so:
-
-```tsx
-<Link to="/about">About</Link>
-```
-
-This will create a link that will navigate to the `/about` route.
-
-More information on the `Link` component can be found in the [Link documentation](https://tanstack.com/router/v1/docs/framework/react/api/router/linkComponent).
-
-### Using A Layout
-
-In the File Based Routing setup the layout is located in `src/routes/__root.tsx`. Anything you add to the root route will appear in all the routes. The route content will appear in the JSX where you render `{children}` in the `shellComponent`.
-
-Here is an example layout that includes a header:
-
-```tsx
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
-
-export const Route = createRootRoute({
-  head: () => ({
-    meta: [
-      { charSet: 'utf-8' },
-      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'My App' },
-    ],
-  }),
-  shellComponent: ({ children }) => (
-    <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        <header>
-          <nav>
-            <Link to="/">Home</Link>
-            <Link to="/about">About</Link>
-          </nav>
-        </header>
-        {children}
-        <Scripts />
-      </body>
-    </html>
-  ),
-})
-```
-
-More information on layouts can be found in the [Layouts documentation](https://tanstack.com/router/latest/docs/framework/react/guide/routing-concepts#layouts).
-
-## Server Functions
-
-TanStack Start provides server functions that allow you to write server-side code that seamlessly integrates with your client components.
-
-```tsx
-import { createServerFn } from '@tanstack/react-start'
-
-const getServerTime = createServerFn({
-  method: 'GET',
-}).handler(async () => {
-  return new Date().toISOString()
-})
-
-// Use in a component
-function MyComponent() {
-  const [time, setTime] = useState('')
-  
-  useEffect(() => {
-    getServerTime().then(setTime)
-  }, [])
-  
-  return <div>Server time: {time}</div>
-}
-```
-
-## API Routes
-
-You can create API routes by using the `server` property in your route definitions:
-
-```tsx
-import { createFileRoute } from '@tanstack/react-router'
-import { json } from '@tanstack/react-start'
-
-export const Route = createFileRoute('/api/hello')({
-  server: {
-    handlers: {
-      GET: () => json({ message: 'Hello, World!' }),
-    },
-  },
-})
-```
-
-## Data Fetching
-
-There are multiple ways to fetch data in your application. You can use TanStack Query to fetch data from a server. But you can also use the `loader` functionality built into TanStack Router to load the data for a route before it's rendered.
-
-For example:
-
-```tsx
-import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/people')({
-  loader: async () => {
-    const response = await fetch('https://swapi.dev/api/people')
-    return response.json()
-  },
-  component: PeopleComponent,
-})
-
-function PeopleComponent() {
-  const data = Route.useLoaderData()
-  return (
-    <ul>
-      {data.results.map((person) => (
-        <li key={person.name}>{person.name}</li>
-      ))}
-    </ul>
-  )
-}
-```
-
-Loaders simplify your data fetching logic dramatically. Check out more information in the [Loader documentation](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#loader-parameters).
-
-
-
-# Learn More
-
-You can learn more about all of the offerings from TanStack in the [TanStack documentation](https://tanstack.com).
-
-For TanStack Start specific documentation, visit [TanStack Start](https://tanstack.com/start).
+## Roadmap
+
+- [x] Socle technique : TanStack Start, Tailwind, shadcn/ui, validation d'environnement
+- [ ] Choix et mise en place de la persistance des données
+- [ ] Modèle de données : établissement, catégorie, produit
+- [ ] Carte publique responsive
+- [ ] Génération des QR codes par table
+- [ ] Authentification du back-office
+- [ ] CRUD de la carte (catégories, produits, prix, photos)
+- [ ] Gestion des ruptures de stock
+- [ ] Multi-établissements
+- [ ] Internationalisation
+- [ ] Thème clair/sombre et personnalisation par établissement
+
+## Contribuer
+
+Les contributions sont bienvenues. Ouvrez une issue avant d'attaquer un chantier
+important, puis :
+
+1. Créez une branche depuis `main`.
+2. Faites vos modifications.
+3. Lancez `npm run format` et `npm run lint` avant de committer.
+4. Ouvrez une pull request en décrivant le changement.
