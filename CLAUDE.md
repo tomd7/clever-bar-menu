@@ -160,3 +160,25 @@ symboliques, qui arriveraient cassés chez les autres. En revanche `.claude/` n'
 ignoré en bloc : un futur `settings.json` (permissions, hooks, slash commands) s'y ajoute et
 se partage normalement. Le fichier personnel à ignorer le jour où il apparaît est
 `.claude/settings.local.json`.
+
+### Règle : designer l'UI avec les skills Emil Kowalski
+
+**Toute création ou refonte d'interface — nouvelle page, nouveau composant, nouvelle fonctionnalité visible —
+charge d'abord le skill pertinent et suit son `SKILL.md`.** Ce n'est pas optionnel et ça
+s'ajoute (sans le remplacer) au flux `npx @tanstack/intent` décrit plus haut.
+
+| Situation                                              | Skill                          |
+| ------------------------------------------------------ | ------------------------------ |
+| Nouvelle UI, nouveau composant, polish visuel          | `emil-design-eng` (par défaut) |
+| Choisir une librairie de composants / d'interaction    | `pick-ui-library`              |
+| Écrire une animation ou une transition                 | `animate`                      |
+| Gestes, springs, matières, transitions interruptibles  | `apple-design`                 |
+| Toasts / notifications                                 | `ask-sonner`                   |
+| Maquette jetable pour valider une direction            | `prototype`                    |
+| Relire une animation existante (diff)                  | `review-animations`            |
+| Auditer la motion de tout le projet                    | `improve-animations`           |
+| Chercher où ajouter du mouvement                       | `find-animation-opportunities` |
+| Nommer un effet dont on ne connaît pas le terme        | `animation-vocabulary`         |
+
+`animate-expo` et `write-swift` ne concernent pas ce projet (web). En cas de recouvrement,
+`emil-design-eng` cadre la décision de design, le skill spécialisé cadre l'implémentation.
