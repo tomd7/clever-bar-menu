@@ -117,6 +117,47 @@ Reuse these classes before inventing new ones.
   parameter breaks the typecheck. `verbatimModuleSyntax` is on → type imports must go through
   `import type`.
 
+## UI rules
+
+### Mobile-first
+
+**Every interface is designed and written mobile-first.** Base styles target the smallest
+viewport; breakpoints (`sm:`, `md:`, `lg:`) only ever add. Never write the desktop layout
+first and walk it back with `max-*` variants.
+
+- **Customer-facing menu**: the phone _is_ the device — the menu is reached by scanning a QR
+  code at the table. Desktop must stay usable, but it doesn't need a layout of its own.
+- **Back office**: authored mobile-first too (a manager updates a price standing behind the
+  bar), but it must **also** get a real desktop layout from `lg:` up — not a phone column
+  stretched to 1400px. That means multi-column forms, persistent sidebar navigation, tables
+  that use the available width, denser spacing, and keyboard affordances.
+- Touch targets stay at least 44×44px, primary actions within thumb reach, and nothing is
+  reachable by hover only.
+- Check the small viewport first when verifying a change; a layout that only works at `lg:` is
+  unfinished.
+
+### Rule: design the UI with Emil Kowalski's skills
+
+**Every UI creation or redesign — new page, new component, new user-visible feature — loads
+the relevant skill first and follows its `SKILL.md`.** This is not optional, and it adds to
+(does not replace) the `npx @tanstack/intent` flow described above.
+
+| Situation                                          | Skill                          |
+| -------------------------------------------------- | ------------------------------ |
+| New UI, new component, visual polish               | `emil-design-eng` (default)    |
+| Choosing a component / interaction library         | `pick-ui-library`              |
+| Writing an animation or a transition               | `animate`                      |
+| Gestures, springs, materials, interruptible motion | `apple-design`                 |
+| Toasts / notifications                             | `ask-sonner`                   |
+| Throwaway mockup to validate a direction           | `prototype`                    |
+| Reviewing an existing animation (diff)             | `review-animations`            |
+| Auditing the whole project's motion                | `improve-animations`           |
+| Looking for places to add movement                 | `find-animation-opportunities` |
+| Naming an effect whose term you don't know         | `animation-vocabulary`         |
+
+`animate-expo` and `write-swift` don't apply to this project (web). When they overlap,
+`emil-design-eng` frames the design decision, the specialized skill frames the implementation.
+
 ## Project status
 
 Freshly initialized scaffold. `src/routes/index.tsx` is still the TanStack template page, and
@@ -157,25 +198,3 @@ Don't commit `.agents/` or `.claude/skills/` — the latter only holds symlinks,
 arrive broken for everyone else. `.claude/` itself, however, is **not** ignored wholesale: a
 future `settings.json` (permissions, hooks, slash commands) belongs there and is shared
 normally. The personal file to ignore the day it appears is `.claude/settings.local.json`.
-
-### Rule: design the UI with Emil Kowalski's skills
-
-**Every UI creation or redesign — new page, new component, new user-visible feature — loads
-the relevant skill first and follows its `SKILL.md`.** This is not optional, and it adds to
-(does not replace) the `npx @tanstack/intent` flow described above.
-
-| Situation                                          | Skill                          |
-| -------------------------------------------------- | ------------------------------ |
-| New UI, new component, visual polish               | `emil-design-eng` (default)    |
-| Choosing a component / interaction library         | `pick-ui-library`              |
-| Writing an animation or a transition               | `animate`                      |
-| Gestures, springs, materials, interruptible motion | `apple-design`                 |
-| Toasts / notifications                             | `ask-sonner`                   |
-| Throwaway mockup to validate a direction           | `prototype`                    |
-| Reviewing an existing animation (diff)             | `review-animations`            |
-| Auditing the whole project's motion                | `improve-animations`           |
-| Looking for places to add movement                 | `find-animation-opportunities` |
-| Naming an effect whose term you don't know         | `animation-vocabulary`         |
-
-`animate-expo` and `write-swift` don't apply to this project (web). When they overlap,
-`emil-design-eng` frames the design decision, the specialized skill frames the implementation.
