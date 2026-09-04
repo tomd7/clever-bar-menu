@@ -156,14 +156,15 @@ RLS qui garantit qu'un gérant ne voit que ses établissements.
 
 Les routes du back-office sont en `ssr: false` : la session Supabase est conservée dans le
 navigateur, donc l'évaluer pendant le rendu serveur conclurait « non connecté » à chaque
-requête. La carte publique, elle, restera en SSR — c'est une page scannée au QR code, sa
-vitesse de premier affichage compte.
+requête. La carte publique, elle, est en SSR — c'est une page scannée au QR code, sa vitesse de
+premier affichage compte.
 
 | Route               | Rôle                                                       |
 | ------------------- | ---------------------------------------------------------- |
 | `/login`            | Connexion                                                  |
 | `/admin`            | Liste des établissements du gérant, et création            |
 | `/admin/$venueSlug` | Édition de la carte : catégories, produits, prix, ruptures |
+| `/m/$venueSlug`     | **Carte publique** — la page que vise le QR code           |
 
 Les prix sont saisis en euros et stockés en **centimes entiers**
 ([`src/features/menu/price.ts`](src/features/menu/price.ts)) : la saisie accepte la virgule comme le point, et
@@ -204,6 +205,23 @@ connecter).
 > ```
 >
 > `disable_signup` doit valoir `true`.
+
+## Carte publique
+
+`/m/<slug>` est la page destinée aux clients : elle s'ouvre en scannant le QR code posé sur
+la table, sans compte ni installation. Elle est **rendue au serveur** — le HTML part complet
+et la carte est lisible avant même que le JavaScript n'ait été évalué, ce qui compte sur le
+réseau mobile d'un client attablé.
+
+Trois comportements à connaître :
+
+- **Les produits en rupture sont écartés dans la requête**, pas à l'affichage : ils ne
+  quittent jamais le serveur. Une catégorie dont tous les produits sont en rupture disparaît
+  également.
+- **Un produit sans prix n'affiche rien** — pas « Prix non renseigné », qui est un message
+  destiné au gérant. C'est ce que fait une carte imprimée pour un plat du jour.
+- **Une adresse inconnue répond un vrai 404**, et non une page d'erreur en 200 : ces URL sont
+  imprimées sur des QR codes.
 
 ## Structure du projet
 
@@ -264,7 +282,7 @@ node .output/server/index.mjs
 - [x] Socle technique : TanStack Start, Tailwind, shadcn/ui, validation d'environnement
 - [x] Choix et mise en place de la persistance des données (Supabase + Drizzle)
 - [x] Modèle de données : établissement, catégorie, produit
-- [ ] Carte publique responsive
+- [x] Carte publique responsive
 - [ ] Génération des QR codes par table
 - [x] Authentification du back-office (Supabase Auth, comptes créés par l'administrateur)
 - [x] CRUD de la carte (catégories, produits, prix, photos)

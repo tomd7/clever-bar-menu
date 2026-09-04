@@ -117,9 +117,15 @@ export type Product = ProductRow
  * `src/db/schema.ts`. Toute requête partant d'ici est donc exécutée avec les
  * droits de l'utilisateur connecté, jamais plus.
  *
- * Les routes du back-office sont en `ssr: false`, si bien que ce module n'est
- * évalué que dans le navigateur — là où `localStorage` existe pour conserver
- * la session entre deux visites.
+ * Ce module est évalué **des deux côtés**. Le back-office est en `ssr: false`
+ * et ne s'exécute que dans le navigateur, où `localStorage` conserve la session
+ * entre deux visites ; la carte publique, elle, est rendue au serveur.
+ *
+ * Ce client est un singleton partagé par toutes les requêtes du serveur, ce qui
+ * serait dangereux s'il portait une session : l'identité d'un visiteur pourrait
+ * fuir vers le suivant. Ce n'est pas le cas — la carte publique ne lit qu'en
+ * `anon`, sans jamais s'authentifier, et personne ne se connecte côté serveur.
+ * Ouvrir une session serveur imposerait de créer un client par requête.
  */
 export const supabase = createClient<Database>(
   env.VITE_SUPABASE_URL,

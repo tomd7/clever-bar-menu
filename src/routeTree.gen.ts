@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as MVenueSlugRouteImport } from './routes/m.$venueSlug'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as AuthenticatedAdminVenueSlugRouteImport } from './routes/_authenticated/admin.$venueSlug'
 
@@ -29,6 +30,11 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MVenueSlugRoute = MVenueSlugRouteImport.update({
+  id: '/m/$venueSlug',
+  path: '/m/$venueSlug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   id: '/admin/',
   path: '/admin/',
@@ -44,12 +50,14 @@ const AuthenticatedAdminVenueSlugRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/m/$venueSlug': typeof MVenueSlugRoute
   '/admin/$venueSlug': typeof AuthenticatedAdminVenueSlugRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/m/$venueSlug': typeof MVenueSlugRoute
   '/admin/$venueSlug': typeof AuthenticatedAdminVenueSlugRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
 }
@@ -58,19 +66,21 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/login': typeof LoginRoute
+  '/m/$venueSlug': typeof MVenueSlugRoute
   '/_authenticated/admin/$venueSlug': typeof AuthenticatedAdminVenueSlugRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/admin/$venueSlug' | '/admin/'
+  fullPaths: '/' | '/login' | '/m/$venueSlug' | '/admin/$venueSlug' | '/admin/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/admin/$venueSlug' | '/admin'
+  to: '/' | '/login' | '/m/$venueSlug' | '/admin/$venueSlug' | '/admin'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/login'
+    | '/m/$venueSlug'
     | '/_authenticated/admin/$venueSlug'
     | '/_authenticated/admin/'
   fileRoutesById: FileRoutesById
@@ -79,6 +89,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   LoginRoute: typeof LoginRoute
+  MVenueSlugRoute: typeof MVenueSlugRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -102,6 +113,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/m/$venueSlug': {
+      id: '/m/$venueSlug'
+      path: '/m/$venueSlug'
+      fullPath: '/m/$venueSlug'
+      preLoaderRoute: typeof MVenueSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin/': {
@@ -139,6 +157,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   LoginRoute: LoginRoute,
+  MVenueSlugRoute: MVenueSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

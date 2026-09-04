@@ -493,6 +493,28 @@ both guards and provides the shell. Constraints that are easy to get wrong:
 - **Storage has no cascade.** Deleting a product removes its file after the row; deleting a
   category collects its products' paths _before_ the DB cascade wipes them. Order matters: an
   orphan file is invisible, a row pointing at a deleted file shows a broken image to a customer.
+
+### Public menu
+
+`/m/$venueSlug` is the customer-facing page, and the **only SSR'd route with data** — the
+back office is `ssr: false`. Consequences worth keeping in mind:
+
+- `src/lib/supabase.ts` is therefore evaluated **on the server too**, and it is a singleton
+  shared across requests. Safe only because this page reads as `anon` and never authenticates.
+  Opening a server-side session would require a per-request client.
+- The route loads through `context.queryClient.ensureQueryData(publicMenuQueryOptions(...))`,
+  so the query dehydrates to the client instead of being refetched on hydration.
+- `fetchPublicMenu` (`src/features/menu/public-api.ts`) is deliberately **not** `fetchMenu`:
+  it filters `is_available` **in the query** — a hidden product must never reach the browser —
+  and drops categories left empty. It lives in `features/menu` because a separate feature
+  would have to import `VenueNotFoundError` and `CategoryWithProducts` from it, which the
+  no-cross-feature-imports rule forbids.
+- An unknown slug throws `notFound()` so the response is a real **404**: these URLs are printed
+  on QR codes.
+- A null price renders **nothing** here, where the back office writes "Prix non renseigné".
+  That label is addressed to the manager; showing it to a customer would expose an omission.
+- **Nothing animates on entry.** The content is already in the SSR'd HTML; fading it in would
+  only delay a reading the customer asked for by scanning.
 - Auth is **email + password, sign-in only**. There is deliberately no sign-up form: accounts
   are provisioned by the platform administrator (Supabase dashboard → Authentication → Users
   → Add user, with _Auto Confirm User_). **Don't add a sign-up screen back** without being
