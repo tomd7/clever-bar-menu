@@ -1,12 +1,10 @@
-import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { AddButton } from '#/components/buttons/add-button'
 import { ErrorNote } from '#/components/error-note'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
 import { nextPosition } from '#/features/menu/api'
-import { describeError } from '#/lib/postgrest-error'
-import { supabase } from '#/lib/supabase'
+import { useCreateCategory } from '#/features/menu/mutations'
 
 import type { FormEvent } from 'react'
 import type { CategoryWithProducts } from '#/features/menu/api'
@@ -20,36 +18,20 @@ import type { CategoryWithProducts } from '#/features/menu/api'
 export function AddCategoryForm({
   venueId,
   categories,
-  onDone,
 }: {
   venueId: string
   categories: Array<CategoryWithProducts>
-  onDone: () => Promise<void>
 }) {
   const [name, setName] = useState('')
-  const [error, setError] = useState<string | null>(null)
 
-  const create = useMutation({
-    mutationFn: async () => {
-      const { error: insertError } = await supabase.from('categories').insert({
-        venue_id: venueId,
-        name: name.trim(),
-        position: nextPosition(categories),
-      })
-      if (insertError) throw new Error(describeError(insertError))
-    },
-    onSuccess: async () => {
-      setName('')
-      setError(null)
-      await onDone()
-    },
-    onError: (cause: Error) => setError(cause.message),
-  })
+  const create = useCreateCategory()
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    setError(null)
-    create.mutate()
+    create.mutate(
+      { venueId, name: name.trim(), position: nextPosition(categories) },
+      { onSuccess: () => setName('') },
+    )
   }
 
   return (
@@ -77,7 +59,7 @@ export function AddCategoryForm({
           disabled={!name.trim()}
         />
       </form>
-      {error ? <ErrorNote>{error}</ErrorNote> : null}
+      {create.error ? <ErrorNote>{create.error.message}</ErrorNote> : null}
     </section>
   )
 }

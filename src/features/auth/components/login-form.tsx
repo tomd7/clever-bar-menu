@@ -4,8 +4,7 @@ import { ActionButton } from '#/components/buttons/action-button'
 import { ErrorNote } from '#/components/error-note'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
-import { supabase } from '#/lib/supabase'
-import { translateAuthError } from '#/features/auth/errors'
+import { useSignIn } from '#/features/auth/mutations'
 
 import type { FormEvent } from 'react'
 
@@ -20,31 +19,18 @@ import type { FormEvent } from 'react'
  * réglage **Allow new users to sign up** du projet Supabase.
  *
  * `onSignedIn` est laissé à l'appelant : la navigation qui suit dépend de la
- * route, pas du formulaire.
+ * route, pas du formulaire. L'invalidation du routeur, elle, appartient à la
+ * connexion et vit dans `useSignIn`.
  */
-export function LoginForm({ onSignedIn }: { onSignedIn: () => Promise<void> }) {
+export function LoginForm({ onSignedIn }: { onSignedIn: () => void }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [pending, setPending] = useState(false)
 
-  async function handleSubmit(event: FormEvent) {
+  const signIn = useSignIn()
+
+  function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    setError(null)
-    setPending(true)
-
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-
-    if (signInError) {
-      setError(translateAuthError(signInError.code))
-      setPending(false)
-      return
-    }
-
-    await onSignedIn()
+    signIn.mutate({ email, password }, { onSuccess: onSignedIn })
   }
 
   return (
@@ -77,15 +63,17 @@ export function LoginForm({ onSignedIn }: { onSignedIn: () => Promise<void> }) {
         />
       </div>
 
-      {error ? <ErrorNote className="mt-0">{error}</ErrorNote> : null}
+      {signIn.error ? (
+        <ErrorNote className="mt-0">{signIn.error.message}</ErrorNote>
+      ) : null}
 
       <ActionButton
         type="submit"
         surface="page"
-        disabled={pending}
+        disabled={signIn.isPending}
         className="w-full"
       >
-        {pending ? 'Un instant…' : 'Se connecter'}
+        {signIn.isPending ? 'Un instant…' : 'Se connecter'}
       </ActionButton>
     </form>
   )

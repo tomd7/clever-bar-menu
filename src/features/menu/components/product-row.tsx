@@ -1,4 +1,3 @@
-import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { DeleteButton } from '#/components/buttons/delete-button'
 import { EditButton } from '#/components/buttons/edit-button'
@@ -6,9 +5,11 @@ import { ErrorNote } from '#/components/error-note'
 import { MoveButtons } from '#/components/buttons/move-buttons'
 import { ProductForm } from '#/features/menu/components/product-form'
 import { Switch } from '#/components/ui/switch'
-import { describeError } from '#/lib/postgrest-error'
+import {
+  useDeleteProduct,
+  useSetProductAvailability,
+} from '#/features/menu/mutations'
 import { formatPrice } from '#/features/menu/price'
-import { supabase } from '#/lib/supabase'
 
 import type { Product } from '#/lib/supabase'
 
@@ -19,41 +20,19 @@ export function ProductRow({
   isFirst,
   isLast,
   onMove,
-  onDone,
 }: {
   product: Product
   currency: string
   isFirst: boolean
   isLast: boolean
-  onMove: (direction: -1 | 1) => Promise<void>
-  onDone: () => Promise<void>
+  onMove: (direction: -1 | 1) => void
 }) {
   const [isEditing, setIsEditing] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
-  const setAvailability = useMutation({
-    mutationFn: async (isAvailable: boolean) => {
-      const { error: updateError } = await supabase
-        .from('products')
-        .update({ is_available: isAvailable })
-        .eq('id', product.id)
-      if (updateError) throw new Error(describeError(updateError))
-    },
-    onSuccess: onDone,
-    onError: (cause: Error) => setError(cause.message),
-  })
+  const setAvailability = useSetProductAvailability()
+  const remove = useDeleteProduct()
 
-  const remove = useMutation({
-    mutationFn: async () => {
-      const { error: deleteError } = await supabase
-        .from('products')
-        .delete()
-        .eq('id', product.id)
-      if (deleteError) throw new Error(describeError(deleteError))
-    },
-    onSuccess: onDone,
-    onError: (cause: Error) => setError(cause.message),
-  })
+  const error = setAvailability.error ?? remove.error
 
   if (isEditing) {
     return (
@@ -63,10 +42,7 @@ export function ProductRow({
           categoryId={product.category_id}
           position={product.position}
           onCancel={() => setIsEditing(false)}
-          onDone={async () => {
-            setIsEditing(false)
-            await onDone()
-          }}
+          onSaved={() => setIsEditing(false)}
         />
       </li>
     )
@@ -109,7 +85,12 @@ export function ProductRow({
           <Switch
             checked={product.is_available}
             disabled={setAvailability.isPending}
-            onCheckedChange={(checked) => setAvailability.mutate(checked)}
+            onCheckedChange={(checked) =>
+              setAvailability.mutate({
+                productId: product.id,
+                isAvailable: checked,
+              })
+            }
             aria-label={
               product.is_available
                 ? 'Marquer en rupture'
@@ -136,13 +117,13 @@ export function ProductRow({
           label="Supprimer le produit"
           question={`Supprimer « ${product.name} » ?`}
           pending={remove.isPending}
-          onConfirm={() => remove.mutate()}
+          onConfirm={() => remove.mutate(product.id)}
         />
       </div>
 
       {error ? (
         <div className="w-full">
-          <ErrorNote>{error}</ErrorNote>
+          <ErrorNote>{error.message}</ErrorNote>
         </div>
       ) : null}
     </li>

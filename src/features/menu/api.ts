@@ -116,17 +116,12 @@ export async function swapPositions(
   a: { id: string; position: number },
   b: { id: string; position: number },
 ): Promise<void> {
-  const first = await supabase
-    .from(table)
-    .update({ position: b.position })
-    .eq('id', a.id)
-  if (first.error) throw new Error(describeError(first.error))
-
-  const second = await supabase
-    .from(table)
-    .update({ position: a.position })
-    .eq('id', b.id)
-  if (second.error) throw new Error(describeError(second.error))
+  await write(
+    supabase.from(table).update({ position: b.position }).eq('id', a.id),
+  )
+  await write(
+    supabase.from(table).update({ position: a.position }).eq('id', b.id),
+  )
 }
 
 /**
@@ -137,9 +132,114 @@ export async function swapPositions(
  * l'invalidation après mutation ne peut plus viser une clé légèrement
  * différente de celle qui a servi à lire.
  */
+export const MENU_QUERY_KEY = ['menu'] as const
+
 export function menuQueryOptions(venueSlug: string) {
   return queryOptions({
-    queryKey: ['menu', venueSlug],
+    queryKey: [...MENU_QUERY_KEY, venueSlug],
     queryFn: () => fetchMenu(venueSlug),
   })
+}
+
+/**
+ * Exécute une écriture et traduit son échec.
+ *
+ * Toutes les mutations de la carte partageaient les deux mêmes lignes — lire
+ * `error`, lever `describeError(error)`. Les regrouper évite qu'une écriture
+ * ajoutée plus tard oublie la traduction et remonte un message PostgREST brut
+ * en anglais dans l'interface.
+ */
+async function write(
+  query: PromiseLike<{ error: { code?: string; message: string } | null }>,
+): Promise<void> {
+  const { error } = await query
+  if (error) throw new Error(describeError(error))
+}
+
+/**
+ * Écritures de la carte.
+ *
+ * Les composants passent par ici plutôt que d'appeler `supabase` eux-mêmes :
+ * une ligne de produit n'a pas à savoir qu'un produit est une ligne de table,
+ * ni que l'API parle `snake_case` là où le reste du code est en `camelCase`.
+ * C'est cette frontière qui rend le remplacement de PostgREST envisageable
+ * sans toucher à un seul composant.
+ */
+
+export async function createCategory(input: {
+  venueId: string
+  name: string
+  position: number
+}): Promise<void> {
+  await write(
+    supabase.from('categories').insert({
+      venue_id: input.venueId,
+      name: input.name,
+      position: input.position,
+    }),
+  )
+}
+
+export async function renameCategory(
+  categoryId: string,
+  name: string,
+): Promise<void> {
+  await write(supabase.from('categories').update({ name }).eq('id', categoryId))
+}
+
+/** La cascade est déclarée en base : les produits de la catégorie partent avec. */
+export async function deleteCategory(categoryId: string): Promise<void> {
+  await write(supabase.from('categories').delete().eq('id', categoryId))
+}
+
+/** Champs d'un produit tels que le formulaire les tient, prix déjà en centimes. */
+export type ProductDraft = {
+  name: string
+  description: string | null
+  priceCents: number | null
+}
+
+function toProductRow(draft: ProductDraft) {
+  return {
+    name: draft.name,
+    description: draft.description,
+    price_cents: draft.priceCents,
+  }
+}
+
+export async function createProduct(
+  input: { categoryId: string; position: number } & ProductDraft,
+): Promise<void> {
+  await write(
+    supabase.from('products').insert({
+      ...toProductRow(input),
+      category_id: input.categoryId,
+      position: input.position,
+    }),
+  )
+}
+
+export async function updateProduct(
+  productId: string,
+  draft: ProductDraft,
+): Promise<void> {
+  await write(
+    supabase.from('products').update(toProductRow(draft)).eq('id', productId),
+  )
+}
+
+export async function deleteProduct(productId: string): Promise<void> {
+  await write(supabase.from('products').delete().eq('id', productId))
+}
+
+export async function setProductAvailability(
+  productId: string,
+  isAvailable: boolean,
+): Promise<void> {
+  await write(
+    supabase
+      .from('products')
+      .update({ is_available: isAvailable })
+      .eq('id', productId),
+  )
 }

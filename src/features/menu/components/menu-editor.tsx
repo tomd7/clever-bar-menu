@@ -1,28 +1,24 @@
 import { Link } from '@tanstack/react-router'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft } from 'lucide-react'
 
 import { AddCategoryForm } from '#/features/menu/components/add-category-form'
 import { CategorySection } from '#/features/menu/components/category-section'
 import { EmptyState } from '#/components/empty-state'
-import { menuQueryOptions, swapPositions } from '#/features/menu/api'
+import { menuQueryOptions } from '#/features/menu/api'
+import { useMoveItem } from '#/features/menu/mutations'
 
 /**
  * Éditeur de la carte d'un établissement.
  *
- * Chaque mutation d'une sous-partie remonte ici par `onDone` pour invalider la
- * requête : la carte se recharge d'un bloc plutôt que chaque composant ne tienne
- * sa propre copie locale, ce qui garantit que les positions affichées sont bien
- * celles de la base après un déplacement.
+ * Chaque écriture invalide la requête depuis son propre hook de mutation : la
+ * carte se recharge d'un bloc plutôt que chaque composant ne tienne sa propre
+ * copie locale, ce qui garantit que les positions affichées sont bien celles de
+ * la base après un déplacement.
  */
 export function MenuEditor({ venueSlug }: { venueSlug: string }) {
-  const queryClient = useQueryClient()
-  const options = menuQueryOptions(venueSlug)
-
-  const menuQuery = useQuery(options)
-
-  const refresh = () =>
-    queryClient.invalidateQueries({ queryKey: options.queryKey })
+  const menuQuery = useQuery(menuQueryOptions(venueSlug))
+  const moveCategory = useMoveItem()
 
   if (menuQuery.isPending) {
     return <p className="text-sm text-ink-soft">Chargement…</p>
@@ -64,11 +60,7 @@ export function MenuEditor({ venueSlug }: { venueSlug: string }) {
         </p>
       </header>
 
-      <AddCategoryForm
-        venueId={venue.id}
-        categories={categories}
-        onDone={refresh}
-      />
+      <AddCategoryForm venueId={venue.id} categories={categories} />
 
       {categories.length === 0 ? (
         <EmptyState title="Carte vide" className="mt-6">
@@ -84,12 +76,13 @@ export function MenuEditor({ venueSlug }: { venueSlug: string }) {
               currency={venue.currency}
               isFirst={index === 0}
               isLast={index === categories.length - 1}
-              onMove={async (direction) => {
-                const neighbour = categories[index + direction]
-                await swapPositions('categories', category, neighbour)
-                await refresh()
-              }}
-              onDone={refresh}
+              onMove={(direction) =>
+                moveCategory.mutate({
+                  table: 'categories',
+                  a: category,
+                  b: categories[index + direction],
+                })
+              }
             />
           ))}
         </div>

@@ -22,10 +22,12 @@ export function slugify(value: string): string {
     .slice(0, 60)
 }
 
+export const VENUES_QUERY_KEY = ['venues'] as const
+
 /** Les établissements d'un gérant, du plus ancien au plus récent. */
 export function venuesQueryOptions(ownerId: string) {
   return queryOptions({
-    queryKey: ['venues', ownerId],
+    queryKey: [...VENUES_QUERY_KEY, ownerId],
     queryFn: async (): Promise<Array<Venue>> => {
       /**
        * Le filtre sur `owner_id` est explicite alors que le RLS autorise la

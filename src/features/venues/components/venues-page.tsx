@@ -1,18 +1,8 @@
-import { useQueryClient } from '@tanstack/react-query'
-
 import { AddVenueForm } from '#/features/venues/components/add-venue-form'
 import { VenueList } from '#/features/venues/components/venue-list'
-import { venuesQueryOptions } from '#/features/venues/api'
 
 /** Écran d'accueil du back-office : les établissements du gérant connecté. */
 export function VenuesPage({ ownerId }: { ownerId: string }) {
-  const queryClient = useQueryClient()
-
-  const refresh = () =>
-    queryClient.invalidateQueries({
-      queryKey: venuesQueryOptions(ownerId).queryKey,
-    })
-
   return (
     <div className="page-wrap px-0">
       <header>
@@ -26,7 +16,7 @@ export function VenuesPage({ ownerId }: { ownerId: string }) {
         </p>
       </header>
 
-      <AddVenueForm onDone={refresh} />
+      <AddVenueForm />
 
       <section className="mt-6">
         <VenueList ownerId={ownerId} />

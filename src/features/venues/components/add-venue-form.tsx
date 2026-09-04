@@ -1,10 +1,10 @@
-import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { AddButton } from '#/components/buttons/add-button'
 import { ErrorNote } from '#/components/error-note'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
-import { createVenue, slugify } from '#/features/venues/api'
+import { slugify } from '#/features/venues/api'
+import { useCreateVenue } from '#/features/venues/mutations'
 
 import type { FormEvent } from 'react'
 
@@ -15,24 +15,14 @@ import type { FormEvent } from 'react'
  * en aperçu pendant la saisie. Le gérant voit ce que le QR code encodera sans
  * avoir à comprendre ce qu'est un slug.
  */
-export function AddVenueForm({ onDone }: { onDone: () => Promise<void> }) {
+export function AddVenueForm() {
   const [name, setName] = useState('')
-  const [error, setError] = useState<string | null>(null)
 
-  const create = useMutation({
-    mutationFn: createVenue,
-    onSuccess: async () => {
-      setName('')
-      setError(null)
-      await onDone()
-    },
-    onError: (cause: Error) => setError(cause.message),
-  })
+  const create = useCreateVenue()
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    setError(null)
-    create.mutate(name)
+    create.mutate(name, { onSuccess: () => setName('') })
   }
 
   const preview = slugify(name)
@@ -70,7 +60,9 @@ export function AddVenueForm({ onDone }: { onDone: () => Promise<void> }) {
         />
       </form>
 
-      {error ? <ErrorNote className="mt-3">{error}</ErrorNote> : null}
+      {create.error ? (
+        <ErrorNote className="mt-3">{create.error.message}</ErrorNote>
+      ) : null}
     </section>
   )
 }

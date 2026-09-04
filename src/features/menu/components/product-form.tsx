@@ -1,4 +1,3 @@
-import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 
 import { CancelButton } from '#/components/buttons/cancel-button'
@@ -7,13 +6,8 @@ import { ErrorNote } from '#/components/error-note'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
 import { Textarea } from '#/components/ui/textarea'
-import { describeError } from '#/lib/postgrest-error'
-import {
-  PriceFormatError,
-  centsToInput,
-  parseOptionalEurosToCents,
-} from '#/features/menu/price'
-import { supabase } from '#/lib/supabase'
+import { centsToInput } from '#/features/menu/price'
+import { useSaveProduct } from '#/features/menu/mutations'
 
 import type { FormEvent } from 'react'
 import type { Product } from '#/lib/supabase'
@@ -30,54 +24,34 @@ export function ProductForm({
   categoryId,
   position,
   onCancel,
-  onDone,
+  onSaved,
 }: {
   product?: Product
   categoryId: string
   position: number
   onCancel: () => void
-  onDone: () => Promise<void>
+  onSaved: () => void
 }) {
   const [name, setName] = useState(product?.name ?? '')
   const [description, setDescription] = useState(product?.description ?? '')
   const [price, setPrice] = useState(
     product ? centsToInput(product.price_cents) : '',
   )
-  const [error, setError] = useState<string | null>(null)
-
-  const save = useMutation({
-    mutationFn: async () => {
-      let priceCents: number | null
-      try {
-        priceCents = parseOptionalEurosToCents(price)
-      } catch (cause) {
-        throw cause instanceof PriceFormatError
-          ? cause
-          : new Error('Prix invalide.')
-      }
-
-      const fields = {
-        name: name.trim(),
-        description: description.trim() || null,
-        price_cents: priceCents,
-      }
-
-      const result = product
-        ? await supabase.from('products').update(fields).eq('id', product.id)
-        : await supabase
-            .from('products')
-            .insert({ ...fields, category_id: categoryId, position })
-
-      if (result.error) throw new Error(describeError(result.error))
-    },
-    onSuccess: onDone,
-    onError: (cause: Error) => setError(cause.message),
-  })
+  const save = useSaveProduct()
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    setError(null)
-    save.mutate()
+    save.mutate(
+      {
+        productId: product?.id,
+        categoryId,
+        position,
+        name,
+        description,
+        price,
+      },
+      { onSuccess: onSaved },
+    )
   }
 
   const fieldId = product
@@ -140,7 +114,7 @@ export function ProductForm({
         />
       </div>
 
-      {error ? <ErrorNote>{error}</ErrorNote> : null}
+      {save.error ? <ErrorNote>{save.error.message}</ErrorNote> : null}
 
       <div className="mt-3 flex gap-2">
         <SaveButton pending={save.isPending} disabled={!name.trim()} />

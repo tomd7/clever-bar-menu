@@ -21,7 +21,7 @@ export function MoveButtons({
   downLabel: string
   isFirst: boolean
   isLast: boolean
-  onMove: (direction: -1 | 1) => Promise<void>
+  onMove: (direction: -1 | 1) => void
 }) {
   return (
     <>

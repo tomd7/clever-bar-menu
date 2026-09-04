@@ -32,15 +32,12 @@ function LoginRoute() {
   const router = useRouter()
   const search = Route.useSearch()
 
-  async function handleSignedIn() {
-    /**
-     * Les gardes de route ont déjà évalué la session : sans invalidation,
-     * `beforeLoad` conserverait son verdict « non connecté » et renverrait
-     * aussitôt ici.
-     */
-    await router.invalidate()
-    await router.navigate({ href: search.redirect ?? DEFAULT_REDIRECT })
-  }
-
-  return <LoginScreen onSignedIn={handleSignedIn} />
+  /* `useSignIn` a déjà invalidé le routeur : il ne reste que la destination. */
+  return (
+    <LoginScreen
+      onSignedIn={() =>
+        router.navigate({ href: search.redirect ?? DEFAULT_REDIRECT })
+      }
+    />
+  )
 }

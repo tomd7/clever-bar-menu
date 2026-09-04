@@ -3,7 +3,8 @@ import { AddButton } from '#/components/buttons/add-button'
 import { CategoryHeader } from '#/features/menu/components/category-header'
 import { ProductForm } from '#/features/menu/components/product-form'
 import { ProductRow } from '#/features/menu/components/product-row'
-import { nextPosition, swapPositions } from '#/features/menu/api'
+import { nextPosition } from '#/features/menu/api'
+import { useMoveItem } from '#/features/menu/mutations'
 
 import type { CategoryWithProducts } from '#/features/menu/api'
 
@@ -14,16 +15,15 @@ export function CategorySection({
   isFirst,
   isLast,
   onMove,
-  onDone,
 }: {
   category: CategoryWithProducts
   currency: string
   isFirst: boolean
   isLast: boolean
-  onMove: (direction: -1 | 1) => Promise<void>
-  onDone: () => Promise<void>
+  onMove: (direction: -1 | 1) => void
 }) {
   const [isAdding, setIsAdding] = useState(false)
+  const moveProduct = useMoveItem()
   const productCount = category.products.length
 
   return (
@@ -33,7 +33,6 @@ export function CategorySection({
         isFirst={isFirst}
         isLast={isLast}
         onMove={onMove}
-        onDone={onDone}
       />
 
       {productCount > 0 ? (
@@ -45,15 +44,13 @@ export function CategorySection({
               currency={currency}
               isFirst={index === 0}
               isLast={index === productCount - 1}
-              onMove={async (direction) => {
-                await swapPositions(
-                  'products',
-                  product,
-                  category.products[index + direction],
-                )
-                await onDone()
-              }}
-              onDone={onDone}
+              onMove={(direction) =>
+                moveProduct.mutate({
+                  table: 'products',
+                  a: product,
+                  b: category.products[index + direction],
+                })
+              }
             />
           ))}
         </ul>
@@ -64,10 +61,7 @@ export function CategorySection({
           categoryId={category.id}
           position={nextPosition(category.products)}
           onCancel={() => setIsAdding(false)}
-          onDone={async () => {
-            setIsAdding(false)
-            await onDone()
-          }}
+          onSaved={() => setIsAdding(false)}
         />
       ) : (
         <AddButton

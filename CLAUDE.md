@@ -85,6 +85,20 @@ Rules that keep the layout honest:
 - **Only business domains are features.** `back-office/` (the shell) and `home/` (the landing
   page) stay in `src/components/`: they carry no data and no domain rule, and a directory
   holding one presentational file is a folder, not a feature.
+- **A component never calls `supabase` directly.** Every read and write goes through the
+  feature's `api.ts`, which is also where `camelCase` meets the API's `snake_case`
+  (`priceCents` → `price_cents`). A product row has no business knowing a product is a table
+  row. Route files are the exception the rule allows: `_authenticated.tsx` and `login.tsx`
+  read the session in `beforeLoad`, which is a routing concern, not a screen's.
+- **Mutations live in the feature's `mutations.ts`, and invalidate their own query.** A
+  component calls `useRenameCategory()`, never `useMutation` on a raw API function. This is
+  what removed the `onDone` callback that used to be drilled from the editor down to every
+  button just to trigger a refetch. The hooks invalidate the key _prefix_
+  (`MENU_QUERY_KEY = ['menu']`, not `['menu', venueSlug]`) precisely so no component needs to
+  know the slug — threading it back down would rebuild the chain that was cut.
+- **Read `mutation.error`, don't mirror it into `useState`.** React Query already holds the
+  error, clears it when the next mutation starts, and exposes `reset()` for a cancel button.
+  Six components used to keep a parallel `useState<string | null>` in sync by hand.
 - **No cross-feature imports.** `features/menu` must not reach into `features/venues`.
   Anything two features need is not a feature concern — it moves down to `src/components/` or
   `src/lib/`. That is why `describeError` lives in `src/lib/postgrest-error.ts`: PostgREST
@@ -368,8 +382,11 @@ both guards and provides the shell. Constraints that are easy to get wrong:
   reached by scanning a QR code.
 - **A `beforeLoad` guard protects the screen, not the data.** Under the RLS design the real
   boundary is Postgres; bypassing the guard grants nothing.
-- **Call `router.invalidate()` after sign-in and sign-out**, otherwise `beforeLoad` keeps its
-  previous verdict and bounces the user straight back.
+- **`router.invalidate()` must follow sign-in and sign-out**, otherwise `beforeLoad` keeps its
+  previous verdict and bounces the user straight back. For sign-in it lives inside `useSignIn`
+  rather than in the route: React Query awaits the hook's `onSuccess` before the per-call one,
+  so the invalidation is guaranteed to finish before the route navigates. Sign-out still does
+  it by hand in `_authenticated.tsx`, which also navigates.
 - **`/login`'s `redirect` search param is optional and sanitized** (internal paths only,
   rejecting `//host`). Keeping the key always present made the router rewrite `/login` to
   `/login?redirect=%2Fadmin` on every direct visit.
@@ -385,6 +402,9 @@ both guards and provides the shell. Constraints that are easy to get wrong:
   neighbours without rewriting the list. `swapPositions` in `src/features/menu/api.ts` does two
   sequential updates, not a transaction — PostgREST exposes none. A failure between them
   leaves two equal positions, which the `(position, name)` ordering resolves deterministically.
+- **Writes go through `write()` in `src/features/menu/api.ts`**, a one-line helper that reads
+  `error` and raises `describeError(error)`. It exists so a mutation added later can't forget
+  the translation and surface a raw English PostgREST message in the UI.
 - **`fetchMenu` runs three queries instead of one embedded select.** PostgREST can embed
   (`select('*, products(*)')`) but typing that needs relationship metadata our hand-written
   `Database` doesn't carry. Revisit if the menu grows large.
@@ -405,8 +425,9 @@ both guards and provides the shell. Constraints that are easy to get wrong:
   `curl -s "$VITE_SUPABASE_URL/auth/v1/settings" -H "apikey: $VITE_SUPABASE_ANON_KEY"` —
   `disable_signup` must be `true`.
 - Supabase auth errors arrive in English; `translateAuthError` in
-  `src/features/auth/errors.ts` maps
-  `AuthApiError.code` (fed from the API's `error_code`) to French. Keep the credentials
+  `src/features/auth/errors.ts` maps `AuthApiError.code` (fed from the API's `error_code`) to
+  French. It is applied in `features/auth/api.ts`, which throws the message already
+  translated — the auth counterpart of `describeError` for PostgREST. Keep the credentials
   message indistinct between unknown address and wrong password — naming which one failed
   turns the screen into an account-enumeration oracle.
 

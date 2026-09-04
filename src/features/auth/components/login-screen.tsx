@@ -1,11 +1,7 @@
 import { LoginForm } from '#/features/auth/components/login-form'
 
 /** Écran de connexion au back-office. */
-export function LoginScreen({
-  onSignedIn,
-}: {
-  onSignedIn: () => Promise<void>
-}) {
+export function LoginScreen({ onSignedIn }: { onSignedIn: () => void }) {
   return (
     <main className="flex min-h-dvh items-center justify-center px-4 py-10">
       <div className="rise-in w-full max-w-sm">
