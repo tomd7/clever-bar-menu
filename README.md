@@ -209,6 +209,27 @@ connecter).
 >
 > `disable_signup` doit valoir `true`.
 
+## Supprimer un établissement
+
+La suppression est **logique** : la ligne reste en base avec sa carte, ses photos et son
+slug, marquée par une date dans `deleted_at`. L'établissement part dans une **corbeille**
+d'où il peut être restauré tel qu'il était.
+
+Ce que garantit Postgres, et pas seulement le code :
+
+- **La carte publique d'un établissement supprimé ne répond plus** — la policy de lecture
+  publique exige `deleted_at is null`, donc `/m/<slug>` renvoie un 404 même si une requête
+  oubliait le filtre.
+- **Son propriétaire continue de le voir**, grâce à une seconde policy de lecture. Sans elle,
+  supprimer un établissement le rendrait invisible à son propre gérant, donc impossible à
+  restaurer.
+- **Les autres gérants ne le voient pas**, ni ne peuvent le restaurer.
+
+> [!NOTE]
+> Le slug reste réservé tant que l'établissement est à la corbeille : `venues_slug_unique`
+> ignore l'archivage. Une contrainte partielle libérerait l'adresse, au prix d'une
+> restauration qui échouerait si le nom a été repris entre-temps.
+
 ## QR code
 
 `/admin/<slug>/qr` produit le code à imprimer et à poser sur les tables. Il encode l'URL
@@ -313,7 +334,7 @@ node .output/server/index.mjs
 - [x] Multi-établissements : un gérant, plusieurs bars, cloisonnés par le RLS
 - [ ] Accès partagés : plusieurs comptes sur un même établissement, rôles, transfert de
       propriété
-- [ ] Suppression d'un établissement depuis le back-office
+- [x] Suppression d'un établissement (logique, avec corbeille et restauration)
 - [ ] Internationalisation
 - [x] Thème « bar du soir » (nuit chaude et laiton), variantes jour et nuit suivant le système
 - [ ] Personnalisation du thème par établissement

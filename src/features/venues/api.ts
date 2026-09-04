@@ -24,7 +24,15 @@ export function slugify(value: string): string {
 
 export const VENUES_QUERY_KEY = ['venues'] as const
 
-/** Les établissements d'un gérant, du plus ancien au plus récent. */
+/**
+ * Les établissements d'un gérant, du plus ancien au plus récent.
+ *
+ * Les archivés sont **inclus** : c'est l'écran qui les sépare des actifs. Deux
+ * requêtes distinctes doubleraient les allers-retours pour deux listes qui
+ * s'affichent ensemble, et il faudrait invalider les deux à chaque archivage.
+ * La policy `venues_owner_read` est ce qui rend les archivés lisibles ici, là
+ * où un visiteur ne voit que les actifs.
+ */
 export function venuesQueryOptions(ownerId: string) {
   return queryOptions({
     queryKey: [...VENUES_QUERY_KEY, ownerId],
@@ -45,6 +53,32 @@ export function venuesQueryOptions(ownerId: string) {
       return data
     },
   })
+}
+
+/**
+ * Archive un établissement — suppression logique.
+ *
+ * La date vient du client, faute d'un `now()` exprimable via PostgREST sur une
+ * mise à jour. Un décalage d'horloge de quelques secondes est sans conséquence
+ * sur un marqueur d'archivage ; il en aurait sur une date de facturation.
+ */
+export async function archiveVenue(venueId: string): Promise<void> {
+  const { error } = await supabase
+    .from('venues')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', venueId)
+
+  if (error) throw new Error(error.message)
+}
+
+/** Remet un établissement archivé en service, carte et photos comprises. */
+export async function restoreVenue(venueId: string): Promise<void> {
+  const { error } = await supabase
+    .from('venues')
+    .update({ deleted_at: null })
+    .eq('id', venueId)
+
+  if (error) throw new Error(error.message)
 }
 
 /**

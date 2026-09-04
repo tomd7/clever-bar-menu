@@ -124,12 +124,55 @@ export const venues = pgTable(
     /** Code ISO 4217, appliqué à tous les prix de l'établissement. */
     currency: text('currency').notNull().default('EUR'),
 
+    /**
+     * Archivage — suppression logique.
+     *
+     * Une date plutôt qu'un booléen : elle répond à « archivé ? » comme à
+     * « depuis quand ? », ce qu'un drapeau ne sait pas faire. `null` signifie
+     * actif.
+     *
+     * La ligne reste en base avec sa carte, ses photos et son slug. C'est ce
+     * qui rend la restauration possible, et c'est aussi pourquoi le slug reste
+     * réservé : `venues_slug_unique` ne connaît pas l'archivage, donc un
+     * établissement archivé continue d'occuper son adresse. Une contrainte
+     * partielle libérerait le slug, mais ferait échouer une restauration
+     * lorsque le nom a été repris entre-temps — un échec bien plus déroutant.
+     */
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+
     ...timestamps,
   },
   (table) => [
     uniqueIndex('venues_slug_unique').on(table.slug),
     index('venues_owner_id_idx').on(table.ownerId),
-    publicRead('venues_public_read'),
+
+    /**
+     * Lecture publique : les établissements actifs seulement.
+     *
+     * Le filtre est dans la policy et non dans les requêtes : la carte publique
+     * d'un établissement archivé doit disparaître même si un appel oublie la
+     * condition, et c'est Postgres qui doit le garantir.
+     */
+    pgPolicy('venues_public_read', {
+      for: 'select',
+      to: [anonRole, authenticatedRole],
+      using: sql`${table.deletedAt} is null`,
+    }),
+
+    /**
+     * Un propriétaire lit les siens, archivés compris.
+     *
+     * Sans cette seconde policy permissive, archiver un établissement le
+     * rendrait invisible à son propre gérant — donc impossible à restaurer, et
+     * les policies d'écriture des catégories, qui vérifient l'établissement par
+     * sous-requête, cesseraient de le trouver.
+     */
+    pgPolicy('venues_owner_read', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`${authUid} = ${table.ownerId}`,
+    }),
+
     ...ownerWrite('venues', sql`${authUid} = ${table.ownerId}`),
   ],
 )

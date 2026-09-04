@@ -36,6 +36,13 @@
       "when": 1788550956556,
       "tag": "0004_product_photos_storage",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788555475379,
+      "tag": "0005_venue_soft_delete",
+      "breakpoints": true
     }
   ]
 }

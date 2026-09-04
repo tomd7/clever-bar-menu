@@ -494,6 +494,26 @@ both guards and provides the shell. Constraints that are easy to get wrong:
   category collects its products' paths _before_ the DB cascade wipes them. Order matters: an
   orphan file is invisible, a row pointing at a deleted file shows a broken image to a customer.
 
+### Soft-deleting a venue
+
+`venues.deleted_at` (nullable timestamp) marks a venue as binned; the row, its menu, its
+photos and its slug all stay. Migration `0005`.
+
+- **Two permissive SELECT policies on `venues`**, OR'd: `venues_public_read` now requires
+  `deleted_at is null`, and `venues_owner_read` lets an owner see all of theirs. Dropping the
+  second would make a binned venue invisible to its own manager — unrestorable, and the
+  category write policies (which look the venue up by subquery) would stop finding it.
+- The public menu needs **no code change**: SSR reads as `anon`, RLS hides the venue, the
+  lookup returns nothing and the route already throws `notFound()`.
+- **The slug stays reserved while binned.** `venues_slug_unique` ignores `deleted_at`. A
+  partial index would free the address but make a restore fail when the name was reused —
+  a far more confusing failure.
+- `venuesQueryOptions` returns **active and binned together**; `VenueList` splits them. It
+  filters with `Boolean(venue.deleted_at)`, not `!== null`, so a database that hasn't run
+  `0005` yet doesn't dump every venue into the bin.
+- The bin's date comes from the client (`new Date().toISOString()`): PostgREST can't express
+  `now()` in an update. Harmless for an archive marker, not for anything billed.
+
 ### QR code
 
 `/admin/$venueSlug/qr` renders a printable sheet. **One code per venue**, not per table: the

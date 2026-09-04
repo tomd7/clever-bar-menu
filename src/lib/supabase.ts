@@ -21,6 +21,8 @@ type VenueRow = {
   description: string | null
   owner_id: string
   currency: string
+  /** Date d'archivage, ou `null` si l'établissement est actif. */
+  deleted_at: string | null
   created_at: string
   updated_at: string
 }
@@ -72,7 +74,7 @@ export type Database = {
         Row: VenueRow
         Insert: Insert<
           VenueRow,
-          Timestamps | Nullable | 'owner_id' | 'currency'
+          Timestamps | Nullable | 'owner_id' | 'currency' | 'deleted_at'
         >
         Update: Partial<VenueRow>
         Relationships: []
