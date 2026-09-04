@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { LogOut, Store } from 'lucide-react'
 
-import { ActionButton } from '#/components/action-button'
+import { ActionButton } from '#/components/buttons/action-button'
 
 import type { ReactNode } from 'react'
 

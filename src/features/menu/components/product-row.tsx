@@ -1,11 +1,9 @@
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Pencil } from 'lucide-react'
-
-import { ConfirmDelete } from '#/components/confirm-delete'
-import { IconButton } from '#/components/icon-button'
+import { DeleteButton } from '#/components/buttons/delete-button'
+import { EditButton } from '#/components/buttons/edit-button'
 import { ErrorNote } from '#/components/error-note'
-import { MoveButtons } from '#/components/move-buttons'
+import { MoveButtons } from '#/components/buttons/move-buttons'
 import { ProductForm } from '#/features/menu/components/product-form'
 import { Switch } from '#/components/ui/switch'
 import { describeError } from '#/lib/postgrest-error'
@@ -130,12 +128,11 @@ export function ProductRow({
           isLast={isLast}
           onMove={onMove}
         />
-        <IconButton
-          icon={Pencil}
+        <EditButton
           label="Modifier le produit"
           onClick={() => setIsEditing(true)}
         />
-        <ConfirmDelete
+        <DeleteButton
           label="Supprimer le produit"
           question={`Supprimer « ${product.name} » ?`}
           pending={remove.isPending}

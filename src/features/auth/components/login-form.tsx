@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-import { ActionButton } from '#/components/action-button'
+import { ActionButton } from '#/components/buttons/action-button'
 import { ErrorNote } from '#/components/error-note'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'

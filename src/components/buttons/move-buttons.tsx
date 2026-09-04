@@ -1,6 +1,6 @@
 import { ChevronDown, ChevronUp } from 'lucide-react'
 
-import { IconButton } from '#/components/icon-button'
+import { IconButton } from '#/components/buttons/icon-button'
 
 /**
  * Paire de flèches pour déplacer un élément dans sa liste.

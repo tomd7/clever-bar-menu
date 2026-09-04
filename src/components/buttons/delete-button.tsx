@@ -1,8 +1,9 @@
 import { useRef, useState } from 'react'
 import { Trash2 } from 'lucide-react'
 
-import { ActionButton } from '#/components/action-button'
-import { IconButton } from '#/components/icon-button'
+import { ActionButton } from '#/components/buttons/action-button'
+import { CancelButton } from '#/components/buttons/cancel-button'
+import { IconButton } from '#/components/buttons/icon-button'
 import {
   Popover,
   PopoverContent,
@@ -11,7 +12,12 @@ import {
 } from '#/components/ui/popover'
 
 /**
- * Suppression en deux temps, confirmée dans un popover ancré au bouton.
+ * Bouton de suppression — et donc, dans ce projet, suppression en deux temps.
+ *
+ * La confirmation n'est pas une option du composant : il n'existe pas de
+ * chemin qui supprime au premier clic. C'est tout l'intérêt d'un wrapper par
+ * type d'action — la règle tient dans le composant, pas dans la mémoire de
+ * celui qui l'appelle.
  *
  * Le popover ne déplace rien : la question se superpose au lieu de pousser la
  * ligne, ce qui évitait de faire sauter les éléments voisins — le défaut de la
@@ -22,7 +28,7 @@ import {
  * `window.confirm` restait l'autre option, mais il bloque le fil d'exécution et
  * ne se laisse pas mettre en forme.
  */
-export function ConfirmDelete({
+export function DeleteButton({
   label,
   question,
   pending,
@@ -71,15 +77,12 @@ export function ConfirmDelete({
         </PopoverDescription>
 
         <div className="mt-3 flex justify-end gap-2">
-          <ActionButton
+          <CancelButton
             ref={cancelRef}
-            variant="ghost"
             size="sm"
             surface="popover"
             onClick={() => setIsOpen(false)}
-          >
-            Annuler
-          </ActionButton>
+          />
           <ActionButton
             variant="destructive"
             size="sm"

@@ -1,8 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Plus } from 'lucide-react'
-
-import { ActionButton } from '#/components/action-button'
+import { AddButton } from '#/components/buttons/add-button'
 import { ErrorNote } from '#/components/error-note'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
@@ -72,14 +70,12 @@ export function AddCategoryForm({
             className="h-11 lg:h-10"
           />
         </div>
-        <ActionButton
+        <AddButton
           type="submit"
-          icon={Plus}
           surface="page"
-          disabled={create.isPending || !name.trim()}
-        >
-          {create.isPending ? 'Ajout…' : 'Ajouter'}
-        </ActionButton>
+          pending={create.isPending}
+          disabled={!name.trim()}
+        />
       </form>
       {error ? <ErrorNote>{error}</ErrorNote> : null}
     </section>

@@ -1,8 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Plus } from 'lucide-react'
-
-import { ActionButton } from '#/components/action-button'
+import { AddButton } from '#/components/buttons/add-button'
 import { ErrorNote } from '#/components/error-note'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
@@ -63,14 +61,13 @@ export function AddVenueForm({ onDone }: { onDone: () => Promise<void> }) {
           ) : null}
         </div>
 
-        <ActionButton
+        <AddButton
           type="submit"
-          icon={Plus}
           surface="page"
-          disabled={create.isPending || !name.trim()}
-        >
-          {create.isPending ? 'Création…' : 'Ajouter'}
-        </ActionButton>
+          pending={create.isPending}
+          pendingLabel="Création…"
+          disabled={!name.trim()}
+        />
       </form>
 
       {error ? <ErrorNote className="mt-3">{error}</ErrorNote> : null}

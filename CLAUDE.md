@@ -286,19 +286,36 @@ first and walk it back with `max-*` variants.
 - Check the small viewport first when verifying a change; a layout that only works at `lg:` is
   unfinished.
 
-**Don't render a bare `<Button>` in a screen.** Two wrappers own the touch target and the
-press feedback so neither is retyped, and neither drifts:
+**Never render a bare `<Button>` in a screen.** `src/components/buttons/` holds the whole
+family, in two layers. Reach for a **semantic** wrapper first — it names the action, so the
+icon, the wording and the behaviour can't diverge between two screens:
 
-| Component      | For                                               | Owns                                                                                                       |
-| -------------- | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `ActionButton` | Labelled: Ajouter, Enregistrer, Annuler…          | `h-11` on mobile, desktop height from `surface` (`page`/`panel`/`popover`), leading `icon`, press feedback |
-| `IconButton`   | Icon-only: monter, descendre, modifier, supprimer | 44×44 mobile / 36 desktop, **required** `label` → `aria-label`, `tone="destructive"`, press feedback       |
+| Wrapper        | Renders                         | What it owns for you                                                                                                                            |
+| -------------- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AddButton`    | `Plus` + « Ajouter »            | `pending` swaps the label (`pendingLabel`, default « Ajout… ») **and** disables. Pass children only to qualify the add (« Ajouter un produit ») |
+| `SaveButton`   | `Save` + « Enregistrer »        | `type="submit"`, « Enregistrement… » while `pending`, disables                                                                                  |
+| `CancelButton` | « Annuler »                     | `variant="ghost"`, non-overridable — a cancel must never weigh as much as the action                                                            |
+| `EditButton`   | `Pencil`, icon only             | **required** `label`: the icon is shared, what it edits is not                                                                                  |
+| `DeleteButton` | `Trash2` + confirmation popover | There is no path that deletes on the first click. Focus lands on **Annuler**                                                                    |
+| `MoveButtons`  | `ChevronUp`/`ChevronDown` pair  | Both `aria-label`s, `disabled` at the list's ends                                                                                               |
 
-Both live in `src/components/`, both wrap shadcn's `Button` rather than editing it — `ui/` stays
-regenerable. `surface` names where the button sits instead of its height, because only the
-desktop density varies (mobile is always 44px). `ActionButton` defaults `type="button"`: inside
-a form, a missing `type` silently turns a cancel button into a submit. `ConfirmDelete` and
-`MoveButtons` are the semantic layer built on `IconButton` — reach for those first.
+Under them sit the two **shape** primitives, for genuine one-offs only (« Se connecter »,
+« Déconnexion ») — anything recurring deserves a wrapper instead:
+
+| Primitive      | For       | Owns                                                                                                       |
+| -------------- | --------- | ---------------------------------------------------------------------------------------------------------- |
+| `ActionButton` | Labelled  | `h-11` on mobile, desktop height from `surface` (`page`/`panel`/`popover`), leading `icon`, press feedback |
+| `IconButton`   | Icon-only | 44×44 mobile / 36 desktop, **required** `label` → `aria-label`, `tone="destructive"`, press feedback       |
+
+Both wrap shadcn's `Button` rather than editing it — `ui/` stays regenerable. `surface` names
+where the button sits instead of its height, because only the desktop density varies (mobile is
+always 44px). `ActionButton` defaults `type="button"`: inside a form, a missing `type` silently
+turns a cancel button into a submit.
+
+`DeleteButton`'s focus placement is a real invariant, not a detail: the popover opens from the
+keyboard too, and a reflex Enter must not destroy a category. If you touch that component,
+re-check it in a browser — the ref chain that puts focus on **Annuler** crosses three
+components and no type error will tell you it broke.
 
 ### Rule: design the UI with Emil Kowalski's skills
 

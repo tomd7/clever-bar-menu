@@ -1,7 +1,8 @@
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 
-import { ActionButton } from '#/components/action-button'
+import { CancelButton } from '#/components/buttons/cancel-button'
+import { SaveButton } from '#/components/buttons/save-button'
 import { ErrorNote } from '#/components/error-note'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
@@ -142,12 +143,8 @@ export function ProductForm({
       {error ? <ErrorNote>{error}</ErrorNote> : null}
 
       <div className="mt-3 flex gap-2">
-        <ActionButton type="submit" disabled={save.isPending || !name.trim()}>
-          {save.isPending ? 'Enregistrement…' : 'Enregistrer'}
-        </ActionButton>
-        <ActionButton variant="ghost" onClick={onCancel}>
-          Annuler
-        </ActionButton>
+        <SaveButton pending={save.isPending} disabled={!name.trim()} />
+        <CancelButton onClick={onCancel} />
       </div>
     </form>
   )
