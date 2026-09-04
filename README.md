@@ -17,8 +17,11 @@ gère ses catégories, ses produits et ses prix depuis un back-office.
   consultable sur mobile, sans installation ni compte.
 - **Back-office de gestion** — création et édition des catégories, produits, prix,
   descriptions et photos ; un produit en rupture peut être masqué en un clic.
-- **Multi-établissements** — un même déploiement héberge plusieurs bars, chacun avec sa
-  carte et ses accès.
+- **Multi-établissements** — un même déploiement héberge plusieurs bars. Un gérant en
+  possède autant qu'il veut, chacun avec sa carte, son adresse publique et son QR code.
+  L'isolation est portée par Postgres : un gérant ne voit et ne modifie que ses
+  établissements. Un établissement a en revanche **un seul propriétaire** — plusieurs
+  comptes sur un même bar restent à faire.
 - **Multilingue et thème clair/sombre** — carte traduisible et apparence personnalisable
   par établissement. Le thème « bar du soir » est en place : il suit le réglage clair/sombre
   du téléphone qui scanne le QR code, sans interrupteur ni cookie.
@@ -307,7 +310,10 @@ node .output/server/index.mjs
 - [x] Gestion des ruptures de stock
 - [ ] Gestion de l'inventaire : niveaux de stock, décompte à la vente, seuils d'alerte et
       passage automatique en rupture
-- [ ] Multi-établissements
+- [x] Multi-établissements : un gérant, plusieurs bars, cloisonnés par le RLS
+- [ ] Accès partagés : plusieurs comptes sur un même établissement, rôles, transfert de
+      propriété
+- [ ] Suppression d'un établissement depuis le back-office
 - [ ] Internationalisation
 - [x] Thème « bar du soir » (nuit chaude et laiton), variantes jour et nuit suivant le système
 - [ ] Personnalisation du thème par établissement
