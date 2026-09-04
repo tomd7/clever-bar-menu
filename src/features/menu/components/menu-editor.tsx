@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, QrCode } from 'lucide-react'
 
 import { AddCategoryForm } from '#/features/menu/components/add-category-form'
 import { CategorySection } from '#/features/menu/components/category-section'
@@ -54,6 +54,15 @@ export function MenuEditor({ venueSlug }: { venueSlug: string }) {
           <code>/m/{venue.slug}</code> — les produits en rupture sont masqués
           pour les clients.
         </p>
+
+        <NavLink
+          to="/admin/$venueSlug/qr"
+          params={{ venueSlug: venue.slug }}
+          icon={QrCode}
+          className="mt-1 font-medium"
+        >
+          QR code à imprimer
+        </NavLink>
       </header>
 
       <AddCategoryForm venueId={venue.id} categories={categories} />

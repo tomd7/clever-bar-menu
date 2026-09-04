@@ -480,3 +480,33 @@ a {
     maison invisible. La couleur du corps est réglée dans la règle `body`.
   */
 }
+
+/*
+  Impression.
+
+  Une seule page de l'application est destinée au papier : la feuille du QR
+  code. Tout le reste — colonne de navigation, boutons, liens de retour — n'a
+  pas de sens hors écran et disparaît, sans quoi le gérant imprimerait son
+  back-office autour du code.
+
+  Le fond de page est aussi neutralisé : le dégradé du thème est joli à
+  l'écran, coûteux en encre et nuisible au contraste sur lequel s'appuie un
+  lecteur de QR.
+*/
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+  }
+
+  .print-sheet {
+    border: 0 !important;
+    box-shadow: none !important;
+    /* Le code occupe la page, sans dépendre de la largeur de la fenêtre. */
+    margin: 0 auto !important;
+    max-width: 100% !important;
+  }
+}

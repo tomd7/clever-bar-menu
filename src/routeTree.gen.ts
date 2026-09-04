@@ -14,7 +14,8 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MVenueSlugRouteImport } from './routes/m.$venueSlug'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
-import { Route as AuthenticatedAdminVenueSlugRouteImport } from './routes/_authenticated/admin.$venueSlug'
+import { Route as AuthenticatedAdminVenueSlugIndexRouteImport } from './routes/_authenticated/admin.$venueSlug.index'
+import { Route as AuthenticatedAdminVenueSlugQrRouteImport } from './routes/_authenticated/admin.$venueSlug.qr'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -40,10 +41,16 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   path: '/admin/',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedAdminVenueSlugRoute =
-  AuthenticatedAdminVenueSlugRouteImport.update({
-    id: '/admin/$venueSlug',
-    path: '/admin/$venueSlug',
+const AuthenticatedAdminVenueSlugIndexRoute =
+  AuthenticatedAdminVenueSlugIndexRouteImport.update({
+    id: '/admin/$venueSlug/',
+    path: '/admin/$venueSlug/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedAdminVenueSlugQrRoute =
+  AuthenticatedAdminVenueSlugQrRouteImport.update({
+    id: '/admin/$venueSlug/qr',
+    path: '/admin/$venueSlug/qr',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 
@@ -51,15 +58,17 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/m/$venueSlug': typeof MVenueSlugRoute
-  '/admin/$venueSlug': typeof AuthenticatedAdminVenueSlugRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
+  '/admin/$venueSlug/qr': typeof AuthenticatedAdminVenueSlugQrRoute
+  '/admin/$venueSlug/': typeof AuthenticatedAdminVenueSlugIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/m/$venueSlug': typeof MVenueSlugRoute
-  '/admin/$venueSlug': typeof AuthenticatedAdminVenueSlugRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
+  '/admin/$venueSlug/qr': typeof AuthenticatedAdminVenueSlugQrRoute
+  '/admin/$venueSlug': typeof AuthenticatedAdminVenueSlugIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -67,22 +76,36 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/login': typeof LoginRoute
   '/m/$venueSlug': typeof MVenueSlugRoute
-  '/_authenticated/admin/$venueSlug': typeof AuthenticatedAdminVenueSlugRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
+  '/_authenticated/admin/$venueSlug/qr': typeof AuthenticatedAdminVenueSlugQrRoute
+  '/_authenticated/admin/$venueSlug/': typeof AuthenticatedAdminVenueSlugIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/m/$venueSlug' | '/admin/$venueSlug' | '/admin/'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/m/$venueSlug'
+    | '/admin/'
+    | '/admin/$venueSlug/qr'
+    | '/admin/$venueSlug/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/m/$venueSlug' | '/admin/$venueSlug' | '/admin'
+  to:
+    | '/'
+    | '/login'
+    | '/m/$venueSlug'
+    | '/admin'
+    | '/admin/$venueSlug/qr'
+    | '/admin/$venueSlug'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/login'
     | '/m/$venueSlug'
-    | '/_authenticated/admin/$venueSlug'
     | '/_authenticated/admin/'
+    | '/_authenticated/admin/$venueSlug/qr'
+    | '/_authenticated/admin/$venueSlug/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -129,24 +152,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/admin/$venueSlug': {
-      id: '/_authenticated/admin/$venueSlug'
+    '/_authenticated/admin/$venueSlug/': {
+      id: '/_authenticated/admin/$venueSlug/'
       path: '/admin/$venueSlug'
-      fullPath: '/admin/$venueSlug'
-      preLoaderRoute: typeof AuthenticatedAdminVenueSlugRouteImport
+      fullPath: '/admin/$venueSlug/'
+      preLoaderRoute: typeof AuthenticatedAdminVenueSlugIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/admin/$venueSlug/qr': {
+      id: '/_authenticated/admin/$venueSlug/qr'
+      path: '/admin/$venueSlug/qr'
+      fullPath: '/admin/$venueSlug/qr'
+      preLoaderRoute: typeof AuthenticatedAdminVenueSlugQrRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
   }
 }
 
 interface AuthenticatedRouteChildren {
-  AuthenticatedAdminVenueSlugRoute: typeof AuthenticatedAdminVenueSlugRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
+  AuthenticatedAdminVenueSlugQrRoute: typeof AuthenticatedAdminVenueSlugQrRoute
+  AuthenticatedAdminVenueSlugIndexRoute: typeof AuthenticatedAdminVenueSlugIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
-  AuthenticatedAdminVenueSlugRoute: AuthenticatedAdminVenueSlugRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
+  AuthenticatedAdminVenueSlugQrRoute: AuthenticatedAdminVenueSlugQrRoute,
+  AuthenticatedAdminVenueSlugIndexRoute: AuthenticatedAdminVenueSlugIndexRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(

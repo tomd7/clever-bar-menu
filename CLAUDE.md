@@ -494,6 +494,25 @@ both guards and provides the shell. Constraints that are easy to get wrong:
   category collects its products' paths _before_ the DB cascade wipes them. Order matters: an
   orphan file is invisible, a row pointing at a deleted file shows a broken image to a customer.
 
+### QR code
+
+`/admin/$venueSlug/qr` renders a printable sheet. **One code per venue**, not per table: the
+menu is identical everywhere, and a table number would be inert until something reads it.
+
+- **`uqr`** does the encoding (approved dependency: 0 transitive deps, 77 KB, MIT, runtime
+  agnostic). `src/features/venues/qr.ts` is the only place that touches it.
+- **Error correction `Q`, and SVG output.** Measured with Chrome's `BarcodeDetector`: the
+  code survives up to **15 %** of its area covered by a solid blot, failing at 20 % — below
+  the 25 % the spec advertises, because contiguous damage is harder to correct than scattered
+  noise. Don't quote the spec figure; that measurement is the useful one.
+- **`encode()`'s `size` includes the border.** A 37-module code with a 4-module quiet zone
+  reports 45. This cost a wrong test assertion.
+- **`isLocalOrigin` guards against printing a `localhost` code** — visually identical to a
+  valid one, useless once glued to a table.
+- Printing is scoped by `.no-print` (shell, header block, buttons) and `.print-sheet` in
+  `src/styles.css`. The sheet forces black-on-white: a QR reader relies on contrast, and the
+  theme's gradient is both ink-hungry and harmful to it.
+
 ### Public menu
 
 `/m/$venueSlug` is the customer-facing page, and the **only SSR'd route with data** — the

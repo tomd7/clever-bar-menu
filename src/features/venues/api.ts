@@ -47,6 +47,31 @@ export function venuesQueryOptions(ownerId: string) {
   })
 }
 
+/**
+ * Un établissement désigné par son slug.
+ *
+ * Requête distincte de `venuesQueryOptions` : celle-ci sert une page qui ne
+ * connaît que l'adresse, pas le propriétaire. Le filtre sur `owner_id` y serait
+ * inutile — le RLS refuse déjà toute écriture, et la lecture d'un établissement
+ * est publique par conception.
+ */
+export function venueBySlugQueryOptions(venueSlug: string) {
+  return queryOptions({
+    queryKey: [...VENUES_QUERY_KEY, 'by-slug', venueSlug],
+    queryFn: async (): Promise<Venue> => {
+      const { data, error } = await supabase
+        .from('venues')
+        .select('*')
+        .eq('slug', venueSlug)
+        .maybeSingle()
+
+      if (error) throw new Error(error.message)
+      if (!data) throw new Error("Cet établissement n'existe pas.")
+      return data
+    },
+  })
+}
+
 /** Crée un établissement à partir de son seul nom, dont le slug est dérivé. */
 export async function createVenue(name: string): Promise<void> {
   const slug = slugify(name)

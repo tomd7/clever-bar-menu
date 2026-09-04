@@ -27,7 +27,7 @@ export function BackOfficeShell({
 }) {
   return (
     <div className="min-h-dvh lg:flex">
-      <header className="panel sticky top-0 z-10 lg:static lg:z-auto lg:h-dvh lg:w-64 lg:shrink-0 lg:border-y-0 lg:border-l-0">
+      <header className="panel no-print sticky top-0 z-10 lg:static lg:z-auto lg:h-dvh lg:w-64 lg:shrink-0 lg:border-y-0 lg:border-l-0">
         <div className="flex items-center justify-between gap-3 px-4 py-3 lg:h-full lg:flex-col lg:items-stretch lg:px-4 lg:py-6">
           <div className="lg:flex-1">
             <p className="island-kicker">Back-office</p>

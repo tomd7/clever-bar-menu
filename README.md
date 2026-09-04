@@ -206,6 +206,24 @@ connecter).
 >
 > `disable_signup` doit valoir `true`.
 
+## QR code
+
+`/admin/<slug>/qr` produit le code à imprimer et à poser sur les tables. Il encode l'URL
+publique de la carte, et c'est **un seul code pour tout l'établissement** : la carte est
+identique à chaque table, distinguer les tables n'apporterait rien tant qu'aucune
+fonctionnalité ne lit ce numéro.
+
+- **Sortie SVG**, pas PNG : le code finit imprimé à une taille choisie par le gérant, d'un
+  sous-bock à une affiche. Un vecteur reste net partout.
+- **Correction d'erreur `Q`**, un cran au-dessus du défaut, parce que l'objet est physique.
+  Mesuré avec le décodeur de Chrome : le code reste lisible jusqu'à **15 % de sa surface
+  masquée** par une tache opaque, et échoue à 20 %.
+- **Un avertissement s'affiche si l'adresse est `localhost`.** Un code généré en
+  développement encode `localhost` : imprimé et collé sur les tables, il ne mène nulle part,
+  et rien ne le distingue visuellement d'un code valide.
+- `Cmd+P` n'imprime que la feuille : la navigation, les boutons et le fond du thème
+  disparaissent (`.no-print` et `.print-sheet` dans `src/styles.css`).
+
 ## Carte publique
 
 `/m/<slug>` est la page destinée aux clients : elle s'ouvre en scannant le QR code posé sur
@@ -283,7 +301,7 @@ node .output/server/index.mjs
 - [x] Choix et mise en place de la persistance des données (Supabase + Drizzle)
 - [x] Modèle de données : établissement, catégorie, produit
 - [x] Carte publique responsive
-- [ ] Génération des QR codes par table
+- [x] Génération du QR code (un par établissement)
 - [x] Authentification du back-office (Supabase Auth, comptes créés par l'administrateur)
 - [x] CRUD de la carte (catégories, produits, prix, photos)
 - [x] Gestion des ruptures de stock
