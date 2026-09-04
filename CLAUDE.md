@@ -288,7 +288,8 @@ Visual vocabulary — reuse these before inventing new ones:
 | `.page-wrap`     | Centred container, `min(1080px, 100% - 2rem)`                                                                                                                                                                          |
 | `.display-title` | Archivo wide + bold — the theme's signature                                                                                                                                                                            |
 | `.island-kicker` | Small section label in `--bottle-deep`. **Not** all-caps: a tracked-out caps eyebrow above every heading is the commonest generated-design tell, and it mangled a label as long as "Carte digitale pour bars et cafés" |
-| `.nav-link`      | Link with an underline that grows from the left                                                                                                                                                                        |
+| `.nav-link`      | Inline link in the content, underline that grows from the left                                                                                                                                                         |
+| `.rail-link`     | Item in the back-office sidebar: tinted ground + a `--bottle` bar at the left edge when active. **Not** a `.nav-link` — that underline sits 8px _below_ its box and would land inside the next item of a vertical list |
 | `.rise-in`       | Entry animation (stagger via `animationDelay`)                                                                                                                                                                         |
 | `.site-footer`   | Footer                                                                                                                                                                                                                 |
 
@@ -463,6 +464,19 @@ both guards and provides the shell. Constraints that are easy to get wrong:
   running the guard during SSR would conclude "signed out" on every request. Children inherit
   the setting and can only make it more restrictive. The public menu must stay SSR — it is
   reached by scanning a QR code.
+- **The sidebar carries the navigation, from `lg` up.** `BackOfficeShell` takes it as a
+  `nav` prop rather than building it: the shell lives under `src/components/`, which must not
+  import from `#/features/`, and listing venues is the venues domain. `_authenticated.tsx`
+  composes `<VenueNav ownerId activeVenueSlug>`, reading the slug with
+  `useParams({ strict: false })` — the layout route has no `$venueSlug` of its own, and
+  "where are we" is a routing question, which keeps `VenueNav` a function of its props.
+  The tree never repeats a destination: the **open** venue becomes a group label and its two
+  sections (Carte, QR code) carry the links, while the other venues stay plain links. It
+  replaced a column holding a single `/admin` link that every screen already offered as a
+  back link — 256px for a destination the content gave away for free.
+- **The in-page back links are `lg:hidden`, not deleted.** The sidebar only exists from `lg`;
+  below it, `← Établissements` and `← Retour à la carte` are the only way out. Removing them
+  outright would strand every phone.
 - **A `beforeLoad` guard protects the screen, not the data.** Under the RLS design the real
   boundary is Postgres; bypassing the guard grants nothing.
 - **`router.invalidate()` must follow sign-in and sign-out**, otherwise `beforeLoad` keeps its

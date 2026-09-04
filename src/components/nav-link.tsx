@@ -17,8 +17,13 @@ import type { LucideIcon } from 'lucide-react'
  * Volontairement **sans `activeProps` par défaut**. Le routeur considère un
  * lien actif dès que l'URL courante commence par sa cible : un retour vers
  * `/admin` serait donc marqué actif depuis `/admin/le-comptoir`, et resterait
- * souligné en permanence. C'est ce qu'on veut dans une barre latérale, jamais
- * pour un retour. La barre latérale le demande donc explicitement.
+ * souligné en permanence. Un lien de retour n'a jamais à se désigner comme la
+ * page courante ; celui qui le veut le demande explicitement.
+ *
+ * Ce composant est celui des liens **en ligne dans le contenu**. La colonne du
+ * back-office n'en est pas : ses éléments passent par `.rail-link`, parce que
+ * le soulignement posé 8px sous la boîte tomberait dans l'élément suivant
+ * d'une liste verticale.
  */
 function BaseNavLink({
   icon: Icon,

@@ -43,16 +43,21 @@ export function VenueQr({ venue, origin }: { venue: Venue; origin: string }) {
   return (
     <div className="page-wrap px-0">
       <div className="no-print">
+        {/*
+          Masqué à partir de `lg` : la colonne du back-office y donne les deux
+          sections de l'établissement. En dessous, elle n'existe pas et ce lien
+          reste la seule sortie.
+        */}
         <Link
           to="/admin/$venueSlug"
           params={{ venueSlug: venue.slug }}
-          className="nav-link inline-flex min-h-11 items-center gap-1 text-sm no-underline"
+          className="nav-link inline-flex min-h-11 items-center gap-1 text-sm no-underline lg:hidden"
         >
           <ArrowLeft className="size-4" />
           Retour à la carte
         </Link>
 
-        <header className="mt-2">
+        <header className="mt-2 lg:mt-0">
           <p className="island-kicker">QR code</p>
           <h1 className="display-title mt-1 text-2xl leading-tight sm:text-3xl">
             {venue.name}

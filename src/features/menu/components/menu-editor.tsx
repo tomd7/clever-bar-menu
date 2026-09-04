@@ -41,11 +41,17 @@ export function MenuEditor({ venueSlug }: { venueSlug: string }) {
 
   return (
     <div className="page-wrap px-0">
-      <NavLink to="/admin" icon={ArrowLeft}>
+      {/*
+        Masqué à partir de `lg` : la colonne du back-office y porte la même
+        destination, et la répéter en tête de page ferait deux chemins pour un
+        seul mouvement. En dessous, la colonne n'existe pas — ce lien est alors
+        la seule sortie.
+      */}
+      <NavLink to="/admin" icon={ArrowLeft} className="lg:hidden">
         Établissements
       </NavLink>
 
-      <header className="mt-2">
+      <header className="mt-2 lg:mt-0">
         <p className="island-kicker">Carte</p>
         <h1 className="display-title mt-1 text-2xl leading-tight sm:text-3xl">
           {venue.name}
@@ -55,11 +61,12 @@ export function MenuEditor({ venueSlug }: { venueSlug: string }) {
           pour les clients.
         </p>
 
+        {/* Même raison : la section « QR code » est dans la colonne à partir de `lg`. */}
         <NavLink
           to="/admin/$venueSlug/qr"
           params={{ venueSlug: venue.slug }}
           icon={QrCode}
-          className="mt-1 font-medium"
+          className="mt-1 font-medium lg:hidden"
         >
           QR code à imprimer
         </NavLink>

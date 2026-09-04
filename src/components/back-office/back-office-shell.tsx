@@ -1,7 +1,6 @@
-import { LogOut, Store } from 'lucide-react'
+import { LogOut } from 'lucide-react'
 
 import { ActionButton } from '#/components/buttons/action-button'
-import { NavLink } from '#/components/nav-link'
 
 import type { ReactNode } from 'react'
 
@@ -12,16 +11,24 @@ import type { ReactNode } from 'react'
  * Le back-office n'est pas une colonne téléphone étirée — un gérant le
  * consulte aussi bien derrière le comptoir que sur un écran large.
  *
- * Purement présentationnel : la session et la déconnexion restent à la route
- * qui les possède, ce qui rend cette coquille lisible et déplaçable telle
- * quelle.
+ * Purement présentationnel : la session, la déconnexion et le contenu de la
+ * navigation restent à la route qui les possède. `nav` arrive donc en prop —
+ * cette coquille vit sous `src/components/`, où rien ne doit importer de
+ * `#/features/`, et lister les établissements est une affaire du domaine
+ * « venues ».
+ *
+ * La navigation ne s'affiche qu'à partir de `lg` : sur téléphone la barre
+ * supérieure n'a pas la place d'une arborescence, et les écrans y gardent
+ * leurs propres liens de retour.
  */
 export function BackOfficeShell({
   email,
+  nav,
   onSignOut,
   children,
 }: {
   email: string | undefined
+  nav?: ReactNode
   onSignOut: () => void
   children: ReactNode
 }) {
@@ -35,16 +42,7 @@ export function BackOfficeShell({
               Clever Bar Menu
             </p>
 
-            <nav className="mt-6 hidden lg:block">
-              <NavLink
-                to="/admin"
-                icon={Store}
-                className="flex rounded-lg px-2 font-medium"
-                activeProps={{ className: 'is-active' }}
-              >
-                Établissements
-              </NavLink>
-            </nav>
+            <div className="mt-6 hidden lg:block">{nav}</div>
           </div>
 
           <div className="flex items-center gap-2 lg:flex-col lg:items-stretch lg:gap-3">

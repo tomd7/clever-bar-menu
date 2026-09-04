@@ -2,10 +2,12 @@ import {
   Outlet,
   createFileRoute,
   redirect,
+  useParams,
   useRouter,
 } from '@tanstack/react-router'
 
 import { BackOfficeShell } from '#/components/back-office/back-office-shell'
+import { VenueNav } from '#/features/venues/components/venue-nav'
 import { supabase } from '#/lib/supabase'
 
 /**
@@ -43,6 +45,17 @@ function BackOfficeLayout() {
   const router = useRouter()
   const { user } = Route.useRouteContext()
 
+  /*
+    `strict: false` : cette route n'a pas de `$venueSlug` à elle, elle lit
+    celui de la route enfant courante — et `undefined` sur `/admin`, où aucun
+    établissement n'est ouvert. C'est la route qui répond à « où sommes-nous »,
+    pas la barre latérale, qui reste une fonction de ses props.
+  */
+  const venueSlug = useParams({
+    strict: false,
+    select: (params) => params.venueSlug,
+  })
+
   async function handleSignOut() {
     await supabase.auth.signOut()
     await router.invalidate()
@@ -50,7 +63,11 @@ function BackOfficeLayout() {
   }
 
   return (
-    <BackOfficeShell email={user.email} onSignOut={handleSignOut}>
+    <BackOfficeShell
+      email={user.email}
+      onSignOut={handleSignOut}
+      nav={<VenueNav ownerId={user.id} activeVenueSlug={venueSlug} />}
+    >
       <Outlet />
     </BackOfficeShell>
   )

@@ -428,6 +428,56 @@ a {
   transform: scaleX(1);
 }
 
+/*
+  Un élément de la colonne du back-office.
+
+  Ce n'est délibérément pas un `.nav-link`. Un lien de texte se signale par un
+  trait qui pousse depuis la gauche, posé 8px *sous* sa boîte : dans une liste
+  verticale ce trait tombe dans l'élément suivant, et deux items survolés coup
+  sur coup produisent deux traits collés. Dans une colonne, la sélection se lit
+  par un aplat et une barre au bord gauche — c'est ce que fait cette classe.
+
+  Les 44px de `.nav-link` sont conservés bien que la colonne n'apparaisse qu'à
+  partir de `lg` : un écran large n'est pas la garantie d'une souris.
+*/
+.rail-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding-inline: 0.625rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: var(--ink-soft);
+  text-decoration: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .rail-link:hover {
+    background: var(--surface-raised);
+    color: var(--ink);
+  }
+}
+
+.rail-link.is-active {
+  background: var(--surface-raised);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.rail-link.is-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  translate: 0 -50%;
+  width: 2px;
+  height: 1.25rem;
+  border-radius: 1px;
+  background: var(--bottle);
+}
+
 .rise-in {
   animation: rise-in 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
