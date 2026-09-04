@@ -107,13 +107,13 @@ function VenuesPage() {
         <h1 className="display-title mt-1 text-2xl leading-tight sm:text-3xl">
           Établissements
         </h1>
-        <p className="mt-2 max-w-prose text-sm text-[var(--sea-ink-soft)]">
+        <p className="mt-2 max-w-prose text-sm text-ink-soft">
           Chaque établissement porte sa propre carte et sa propre adresse
           publique.
         </p>
       </header>
 
-      <section className="island-shell mt-6 rounded-2xl p-4 sm:p-6">
+      <section className="panel mt-6 rounded-2xl p-4 sm:p-6">
         <form
           onSubmit={handleCreate}
           className="flex flex-col gap-3 lg:flex-row lg:items-end"
@@ -130,7 +130,7 @@ function VenuesPage() {
               className="h-11 lg:h-10"
             />
             {preview ? (
-              <p className="text-xs text-[var(--sea-ink-soft)]">
+              <p className="text-xs text-ink-soft">
                 Adresse publique : <code>/m/{preview}</code>
               </p>
             ) : null}
@@ -158,18 +158,18 @@ function VenuesPage() {
 
       <section className="mt-6">
         {venuesQuery.isPending ? (
-          <p className="text-sm text-[var(--sea-ink-soft)]">Chargement…</p>
+          <p className="text-sm text-ink-soft">Chargement…</p>
         ) : venuesQuery.isError ? (
           <p role="alert" className="text-sm text-destructive">
             {venuesQuery.error.message}
           </p>
         ) : venues.length === 0 ? (
-          <div className="island-shell rounded-2xl px-6 py-12 text-center">
-            <Store className="mx-auto size-8 text-[var(--lagoon-deep)]" />
+          <div className="panel rounded-2xl px-6 py-12 text-center">
+            <Store className="mx-auto size-8 text-brass-deep" />
             <p className="display-title mt-3 text-lg">
               Aucun établissement pour l'instant
             </p>
-            <p className="mx-auto mt-1 max-w-sm text-sm text-[var(--sea-ink-soft)]">
+            <p className="mx-auto mt-1 max-w-sm text-sm text-ink-soft">
               Créez le premier ci-dessus : vous pourrez ensuite y composer vos
               catégories et vos produits.
             </p>
@@ -190,15 +190,15 @@ function VenuesPage() {
                 <Link
                   to="/admin/$venueSlug"
                   params={{ venueSlug: venue.slug }}
-                  className="feature-card flex min-h-24 flex-col rounded-2xl border border-[var(--line)] p-4 no-underline"
+                  className="feature-card flex min-h-24 flex-col rounded-2xl border border-line p-4 no-underline"
                 >
-                  <p className="display-title text-lg leading-tight text-[var(--sea-ink)]">
+                  <p className="display-title text-lg leading-tight text-ink">
                     {venue.name}
                   </p>
-                  <p className="mt-1 text-xs text-[var(--sea-ink-soft)]">
+                  <p className="mt-1 text-xs text-ink-soft">
                     <code>/m/{venue.slug}</code>
                   </p>
-                  <p className="mt-3 flex items-center gap-1 text-xs font-semibold text-[var(--lagoon-deep)]">
+                  <p className="mt-3 flex items-center gap-1 text-xs font-semibold text-brass-deep">
                     Composer la carte
                     <ChevronRight className="size-3" />
                   </p>

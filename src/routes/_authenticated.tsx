@@ -58,7 +58,7 @@ function BackOfficeLayout() {
         Le back-office n'est pas une colonne téléphone étirée — un gérant le
         consulte aussi bien derrière le comptoir que sur un écran large.
       */}
-      <header className="island-shell sticky top-0 z-10 lg:static lg:z-auto lg:h-dvh lg:w-64 lg:shrink-0 lg:border-y-0 lg:border-l-0">
+      <header className="panel sticky top-0 z-10 lg:static lg:z-auto lg:h-dvh lg:w-64 lg:shrink-0 lg:border-y-0 lg:border-l-0">
         <div className="flex items-center justify-between gap-3 px-4 py-3 lg:h-full lg:flex-col lg:items-stretch lg:px-4 lg:py-6">
           <div className="lg:flex-1">
             <p className="island-kicker">Back-office</p>
@@ -79,7 +79,7 @@ function BackOfficeLayout() {
           </div>
 
           <div className="flex items-center gap-2 lg:flex-col lg:items-stretch lg:gap-3">
-            <p className="hidden truncate text-xs text-[var(--sea-ink-soft)] lg:block">
+            <p className="hidden truncate text-xs text-ink-soft lg:block">
               {user.email}
             </p>
             <Button

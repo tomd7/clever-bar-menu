@@ -6,119 +6,179 @@
 
 @custom-variant dark (&:is(.dark *));
 
-:root {
-  --sea-ink: #173a40;
-  --sea-ink-soft: #416166;
-  --lagoon: #4fb8b2;
-  --lagoon-deep: #328f97;
-  --palm: #2f6a4a;
-  --sand: #e7f0e8;
-  --foam: #f3faf5;
-  --surface: rgba(255, 255, 255, 0.74);
-  --surface-strong: rgba(255, 255, 255, 0.9);
-  --line: rgba(23, 58, 64, 0.14);
-  --inset-glint: rgba(255, 255, 255, 0.82);
-  --kicker: rgba(47, 106, 74, 0.9);
-  --bg-base: #e7f3ec;
-  --header-bg: rgba(251, 255, 248, 0.84);
-  --chip-bg: rgba(255, 255, 255, 0.8);
-  --chip-line: rgba(47, 106, 74, 0.18);
-  --link-bg-hover: rgba(255, 255, 255, 0.9);
-  --hero-a: rgba(79, 184, 178, 0.36);
-  --hero-b: rgba(47, 106, 74, 0.2);
+/*
+  Thème « bar du soir » : nuit chaude et laiton.
 
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.141 0.005 285.823);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.141 0.005 285.823);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.141 0.005 285.823);
-  --primary: oklch(0.21 0.006 285.885);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.967 0.001 286.375);
-  --secondary-foreground: oklch(0.21 0.006 285.885);
-  --muted: oklch(0.967 0.001 286.375);
-  --muted-foreground: oklch(0.552 0.016 285.938);
-  --accent: oklch(0.967 0.001 286.375);
-  --accent-foreground: oklch(0.21 0.006 285.885);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.577 0.245 27.325);
-  --border: oklch(0.92 0.004 286.32);
-  --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.871 0.006 286.286);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.141 0.005 285.823);
-  --sidebar-primary: oklch(0.21 0.006 285.885);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.967 0.001 286.375);
-  --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
-  --sidebar-border: oklch(0.92 0.004 286.32);
-  --sidebar-ring: oklch(0.871 0.006 286.286);
+  Un seul jeu de tokens, contrairement à la version précédente qui en portait
+  deux en parallèle (palette maison + tokens shadcn zinc) sans lien entre eux —
+  les composants restaient noirs pendant que la page se voulait colorée. Ici la
+  palette maison est la source, et le contrat shadcn en est *dérivé* plus bas.
+  Changer une couleur se fait donc à un seul endroit.
+
+  Deux températures pour la même identité : `:root` est la version jour (papier
+  chaud, encre espresso), `.dark` la version soir (nuit chaude, ambre) — c'est
+  celle que verra un client qui scanne le QR code à table le soir.
+*/
+:root {
+  color-scheme: light;
+
+  --ink: #241c16;
+  --ink-soft: #6f6053;
+
+  /*
+    Deux ambres, et c'est volontaire : `--brass` est une couleur de *remplissage*
+    (bouton, pastille), `--brass-deep` une couleur de *texte*. L'ambre de
+    remplissage sur fond papier ne dépasse pas 2:1 de contraste — illisible en
+    texte, parfait en aplat sous une encre sombre.
+  */
+  --brass: #d99c2b;
+  --brass-deep: #8a5a12;
+  /* L'encre posée sur l'ambre. Sombre dans les deux thèmes : l'ambre reste clair. */
+  --on-brass: #231a12;
+
+  --paper: #faf4ea;
+  --paper-soft: #fffdf8;
+  --bg-base: #f5ede0;
+
+  --surface: rgba(255, 255, 255, 0.76);
+  --surface-strong: rgba(255, 255, 255, 0.94);
+  --line: rgba(36, 28, 22, 0.14);
+  --inset-glint: rgba(255, 255, 255, 0.85);
+  --kicker: #8a5a12;
+  --header-bg: rgba(255, 253, 248, 0.84);
+  --chip-bg: rgba(255, 255, 255, 0.8);
+  --chip-line: rgba(138, 90, 18, 0.18);
+  --link-bg-hover: rgba(255, 255, 255, 0.9);
+
+  --hero-a: rgba(217, 156, 43, 0.26);
+  --hero-b: rgba(180, 83, 42, 0.16);
+  --hero-c: rgba(217, 156, 43, 0.1);
+  --veil-opacity: 0.28;
+  --grid-line: rgba(255, 255, 255, 0.07);
+
+  --shadow-1: 0 1px 2px rgba(36, 28, 22, 0.06);
+  --shadow-2: 0 6px 18px rgba(36, 28, 22, 0.08);
+  --shadow-3: 0 22px 44px rgba(36, 28, 22, 0.1);
+
+  --tone-raised: #f1e7d7;
+  --tone-hover: #f2e8d6;
+  --danger: #b3391f;
+  --danger-tint: rgba(179, 57, 31, 0.1);
+
+  --radius: 0.75rem;
 }
 
 .dark {
-  --sea-ink: #d7ece8;
-  --sea-ink-soft: #afcdc8;
-  --lagoon: #60d7cf;
-  --lagoon-deep: #8de5db;
-  --palm: #6ec89a;
-  --sand: #0f1a1e;
-  --foam: #101d22;
-  --surface: rgba(16, 30, 34, 0.8);
-  --surface-strong: rgba(15, 27, 31, 0.92);
-  --line: rgba(141, 229, 219, 0.18);
-  --inset-glint: rgba(194, 247, 238, 0.14);
-  --kicker: #b8efe5;
-  --bg-base: #0a1418;
-  --header-bg: rgba(10, 20, 24, 0.8);
-  --chip-bg: rgba(13, 28, 32, 0.9);
-  --chip-line: rgba(141, 229, 219, 0.24);
-  --link-bg-hover: rgba(24, 44, 49, 0.8);
-  --hero-a: rgba(96, 215, 207, 0.18);
-  --hero-b: rgba(110, 200, 154, 0.12);
+  color-scheme: dark;
 
-  --background: oklch(0.141 0.005 285.823);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.141 0.005 285.823);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.141 0.005 285.823);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.21 0.006 285.885);
-  --secondary: oklch(0.274 0.006 286.033);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.274 0.006 286.033);
-  --muted-foreground: oklch(0.705 0.015 286.067);
-  --accent: oklch(0.274 0.006 286.033);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.274 0.006 286.033);
-  --input: oklch(0.274 0.006 286.033);
-  --ring: oklch(0.442 0.017 285.786);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.21 0.006 285.885);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.274 0.006 286.033);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.274 0.006 286.033);
-  --sidebar-ring: oklch(0.442 0.017 285.786);
+  --ink: #f4ebdd;
+  --ink-soft: #a79482;
+
+  --brass: #d9a441;
+  --brass-deep: #e8be6e;
+  --on-brass: #231a12;
+
+  --paper: #14100e;
+  --paper-soft: #1f1916;
+  --bg-base: #14100e;
+
+  --surface: rgba(31, 25, 22, 0.78);
+  --surface-strong: rgba(35, 28, 24, 0.92);
+  --line: rgba(244, 235, 221, 0.14);
+  --inset-glint: rgba(244, 235, 221, 0.07);
+  --kicker: #e8be6e;
+  --header-bg: rgba(20, 16, 14, 0.82);
+  --chip-bg: rgba(31, 25, 22, 0.9);
+  --chip-line: rgba(232, 190, 110, 0.22);
+  --link-bg-hover: rgba(45, 36, 31, 0.8);
+
+  --hero-a: rgba(217, 164, 65, 0.16);
+  --hero-b: rgba(180, 83, 42, 0.12);
+  --hero-c: rgba(217, 164, 65, 0.07);
+  --veil-opacity: 0.5;
+  --grid-line: rgba(244, 235, 221, 0.05);
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 6px 18px rgba(0, 0, 0, 0.45);
+  --shadow-3: 0 22px 44px rgba(0, 0, 0, 0.5);
+
+  --tone-raised: #2a221d;
+  --tone-hover: #2f261f;
+  --danger: #f08c78;
+  --danger-tint: rgba(240, 140, 120, 0.14);
+}
+
+/*
+  Contrat shadcn, dérivé de la palette ci-dessus.
+
+  Écrit une fois pour les deux thèmes : les `var()` se résolvent sur l'élément
+  qui porte les tokens, donc ce bloc suit automatiquement `.dark`. Le sélecteur
+  vise `:root` *et* `.dark` pour que la substitution soit recalculée si `.dark`
+  atterrit un jour sur un sous-arbre plutôt que sur `<html>` — une propriété
+  personnalisée est substituée sur l'élément où elle est déclarée, pas chez ses
+  descendants.
+*/
+:root,
+.dark {
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --card: var(--paper-soft);
+  --card-foreground: var(--ink);
+  /* Opaque, et non `--surface` : un popover translucide laisse lire au travers. */
+  --popover: var(--paper-soft);
+  --popover-foreground: var(--ink);
+  --primary: var(--brass);
+  --primary-foreground: var(--on-brass);
+  --secondary: var(--tone-raised);
+  --secondary-foreground: var(--ink);
+  --muted: var(--tone-raised);
+  --muted-foreground: var(--ink-soft);
+  --accent: var(--tone-hover);
+  --accent-foreground: var(--ink);
+  --destructive: var(--danger);
+  --destructive-foreground: var(--danger);
+  --border: var(--line);
+  --input: var(--line);
+  --ring: var(--brass);
+  --chart-1: var(--brass);
+  --chart-2: #b4532a;
+  --chart-3: #7a8f5c;
+  --chart-4: #c9752f;
+  --chart-5: #8a6a9c;
+  --sidebar: var(--paper-soft);
+  --sidebar-foreground: var(--ink);
+  --sidebar-primary: var(--brass);
+  --sidebar-primary-foreground: var(--on-brass);
+  --sidebar-accent: var(--tone-hover);
+  --sidebar-accent-foreground: var(--ink);
+  --sidebar-border: var(--line);
+  --sidebar-ring: var(--brass);
 }
 
 @theme inline {
   --font-sans: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+
+  /*
+    La palette maison est exposée à Tailwind, ce qui n'était pas le cas avant :
+    `text-ink-soft` et `border-line` remplacent les `text-[var(--sea-ink-soft)]`
+    qui parsemaient les routes.
+  */
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-line: var(--line);
+  --color-brass: var(--brass);
+  --color-brass-deep: var(--brass-deep);
+  --color-on-brass: var(--on-brass);
+  --color-paper: var(--paper);
+  --color-paper-soft: var(--paper-soft);
+  --color-surface: var(--surface);
+  --color-surface-strong: var(--surface-strong);
+  --color-chip: var(--chip-bg);
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -165,30 +225,37 @@ body,
 
 body {
   margin: 0;
-  color: var(--sea-ink);
+  color: var(--ink);
   font-family: var(--font-sans);
   background-color: var(--bg-base);
   background:
     radial-gradient(1100px 620px at -8% -10%, var(--hero-a), transparent 58%),
     radial-gradient(1050px 620px at 112% -12%, var(--hero-b), transparent 62%),
-    radial-gradient(720px 380px at 50% 115%, rgba(79, 184, 178, 0.1), transparent 68%),
-    linear-gradient(180deg, color-mix(in oklab, var(--sand) 68%, white) 0%, var(--foam) 44%, var(--bg-base) 100%);
+    radial-gradient(720px 380px at 50% 115%, var(--hero-c), transparent 68%),
+    linear-gradient(
+      180deg,
+      var(--paper-soft) 0%,
+      var(--paper) 46%,
+      var(--bg-base) 100%
+    );
+  background-attachment: fixed;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Halos chauds : la lumière d'un bar, pas un dégradé de tableau de bord. */
 body::before {
   content: '';
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: -1;
-  opacity: 0.28;
+  opacity: var(--veil-opacity);
   background:
-    radial-gradient(circle at 20% 15%, rgba(255, 255, 255, 0.8), transparent 34%),
-    radial-gradient(circle at 78% 26%, rgba(79, 184, 178, 0.2), transparent 42%),
-    radial-gradient(circle at 42% 82%, rgba(47, 106, 74, 0.14), transparent 36%);
+    radial-gradient(circle at 20% 15%, var(--inset-glint), transparent 34%),
+    radial-gradient(circle at 78% 26%, var(--hero-a), transparent 42%),
+    radial-gradient(circle at 42% 82%, var(--hero-b), transparent 36%);
 }
 
 body::after {
@@ -197,29 +264,33 @@ body::after {
   inset: 0;
   pointer-events: none;
   z-index: -1;
-  opacity: 0.14;
+  opacity: 0.5;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
   background-size: 28px 28px;
   mask-image: radial-gradient(circle at 50% 30%, black, transparent 78%);
 }
 
 a {
-  color: var(--lagoon-deep);
-  text-decoration-color: rgba(50, 143, 151, 0.4);
+  color: var(--brass-deep);
+  text-decoration-color: color-mix(
+    in oklab,
+    var(--brass-deep) 40%,
+    transparent
+  );
   text-decoration-thickness: 1px;
   text-underline-offset: 2px;
 }
 
 a:hover {
-  color: #246f76;
+  color: color-mix(in oklab, var(--brass-deep) 82%, var(--ink));
 }
 
 code {
   font-size: 0.9em;
   border: 1px solid var(--line);
-  background: color-mix(in oklab, var(--surface-strong) 82%, white 18%);
+  background: var(--chip-bg);
   border-radius: 7px;
   padding: 2px 7px;
 }
@@ -236,8 +307,8 @@ pre code {
 .prose pre {
   border: 1px solid var(--line);
   border-radius: 12px;
-  background: #1d2e45;
-  color: #e8efff;
+  background: #1f1916;
+  color: #f4ebdd;
 }
 
 .page-wrap {
@@ -246,37 +317,65 @@ pre code {
 }
 
 .display-title {
-  font-family: 'Fraunces', Georgia, serif;
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+  letter-spacing: -0.01em;
 }
 
+/*
+  `.island-shell` habille les surfaces vitrine — accueil, connexion, carte
+  client. Translucide et posée sur le décor.
+*/
 .island-shell {
   border: 1px solid var(--line);
   background: linear-gradient(165deg, var(--surface-strong), var(--surface));
   box-shadow:
     0 1px 0 var(--inset-glint) inset,
-    0 22px 44px rgba(30, 90, 72, 0.1),
-    0 6px 18px rgba(23, 58, 64, 0.08);
+    var(--shadow-3),
+    var(--shadow-2);
   backdrop-filter: blur(4px);
 }
 
+/*
+  `.panel` habille le back-office. Même palette, application sobre : fond opaque,
+  pas de flou, ombre minimale. Un écran de saisie de prix n'a rien à gagner à
+  scintiller, et le flou coûte cher à repeindre à chaque frappe.
+*/
+.panel {
+  border: 1px solid var(--line);
+  background: var(--paper-soft);
+  box-shadow: var(--shadow-1);
+}
+
 .feature-card {
-  background: linear-gradient(165deg, color-mix(in oklab, var(--surface-strong) 93%, white 7%), var(--surface));
+  background: linear-gradient(165deg, var(--paper-soft), var(--surface));
   box-shadow:
     0 1px 0 var(--inset-glint) inset,
-    0 18px 34px rgba(30, 90, 72, 0.1),
-    0 4px 14px rgba(23, 58, 64, 0.06);
+    var(--shadow-2);
 }
 
-.feature-card:hover {
-  transform: translateY(-2px);
-  border-color: color-mix(in oklab, var(--lagoon-deep) 35%, var(--line));
+/* Le survol reste réservé aux pointeurs fins : sur tactile il se déclenche au tap. */
+@media (hover: hover) and (pointer: fine) {
+  .feature-card:hover {
+    border-color: color-mix(in oklab, var(--brass) 40%, var(--line));
+  }
 }
 
+/*
+  Seules les couleurs transitionnent globalement. `transform` en est exclu :
+  les composants qui veulent un retour au clic déclarent leur propre
+  `active:scale-*`, et une transition globale les rendrait mous.
+*/
 button,
 .island-shell,
+.panel,
+.feature-card,
 a {
-  transition: background-color 180ms ease, color 180ms ease, border-color 180ms ease,
-    transform 180ms ease;
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    border-color 180ms ease,
+    transform 180ms var(--ease-out);
 }
 
 .island-kicker {
@@ -290,7 +389,7 @@ a {
 .nav-link {
   position: relative;
   text-decoration: none;
-  color: var(--sea-ink-soft);
+  color: var(--ink-soft);
 }
 
 .nav-link::after {
@@ -302,13 +401,13 @@ a {
   height: 2px;
   transform: scaleX(0);
   transform-origin: left;
-  background: linear-gradient(90deg, var(--lagoon), #7ed3bf);
-  transition: transform 170ms ease;
+  background: linear-gradient(90deg, var(--brass), var(--brass-deep));
+  transition: transform 170ms var(--ease-out);
 }
 
 .nav-link:hover,
 .nav-link.is-active {
-  color: var(--sea-ink);
+  color: var(--ink);
 }
 
 .nav-link:hover::after,
@@ -333,15 +432,39 @@ a {
 
 .site-footer {
   border-top: 1px solid var(--line);
-  background: color-mix(in oklab, var(--header-bg) 84%, transparent 16%);
+  background: var(--header-bg);
+}
+
+/*
+  Mouvement réduit : on garde les fondus, qui aident à comprendre qu'un élément
+  apparaît, et on retire les déplacements, qui sont ce qui provoque le malaise.
+*/
+@media (prefers-reduced-motion: reduce) {
+  .rise-in {
+    animation: none;
+  }
+
+  .feature-card:hover {
+    transform: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    background-color: var(--background);
-    color: var(--foreground);
-  }
+  /*
+    Pas de `body { background-color }` ici : la règle par défaut de shadcn
+    écrasait le dégradé déclaré plus haut, ce qui rendait toute la palette
+    maison invisible. La couleur du corps est réglée dans la règle `body`.
+  */
 }

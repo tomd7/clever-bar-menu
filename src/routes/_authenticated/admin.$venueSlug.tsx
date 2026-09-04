@@ -56,12 +56,12 @@ function MenuEditor() {
   const refresh = () => queryClient.invalidateQueries({ queryKey })
 
   if (menuQuery.isPending) {
-    return <p className="text-sm text-[var(--sea-ink-soft)]">Chargement…</p>
+    return <p className="text-sm text-ink-soft">Chargement…</p>
   }
 
   if (menuQuery.isError) {
     return (
-      <div className="island-shell rounded-2xl p-6">
+      <div className="panel rounded-2xl p-6">
         <p role="alert" className="text-sm text-destructive">
           {menuQuery.error.message}
         </p>
@@ -89,7 +89,7 @@ function MenuEditor() {
         <h1 className="display-title mt-1 text-2xl leading-tight sm:text-3xl">
           {venue.name}
         </h1>
-        <p className="mt-2 text-sm text-[var(--sea-ink-soft)]">
+        <p className="mt-2 text-sm text-ink-soft">
           <code>/m/{venue.slug}</code> — les produits en rupture sont masqués
           pour les clients.
         </p>
@@ -102,9 +102,9 @@ function MenuEditor() {
       />
 
       {categories.length === 0 ? (
-        <div className="island-shell mt-6 rounded-2xl px-6 py-12 text-center">
+        <div className="panel mt-6 rounded-2xl px-6 py-12 text-center">
           <p className="display-title text-lg">Carte vide</p>
-          <p className="mx-auto mt-1 max-w-sm text-sm text-[var(--sea-ink-soft)]">
+          <p className="mx-auto mt-1 max-w-sm text-sm text-ink-soft">
             Commencez par une catégorie — « Bières pression », « Cocktails » —
             puis ajoutez-y vos produits.
           </p>
@@ -180,7 +180,7 @@ function AddCategoryForm({
   }
 
   return (
-    <section className="island-shell mt-6 rounded-2xl p-4 sm:p-6">
+    <section className="panel mt-6 rounded-2xl p-4 sm:p-6">
       <form
         onSubmit={handleSubmit}
         className="flex flex-col gap-3 lg:flex-row lg:items-end"
@@ -262,7 +262,7 @@ function CategorySection({
   const productCount = category.products.length
 
   return (
-    <section className="island-shell rounded-2xl p-4 sm:p-5">
+    <section className="panel rounded-2xl p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         {isRenaming ? (
           <form
@@ -307,7 +307,7 @@ function CategorySection({
             <h2 className="display-title text-lg leading-tight">
               {category.name}
             </h2>
-            <p className="mt-0.5 text-xs text-[var(--sea-ink-soft)]">
+            <p className="mt-0.5 text-xs text-ink-soft">
               {productCount === 0
                 ? 'Aucun produit'
                 : `${productCount} produit${productCount > 1 ? 's' : ''}`}
@@ -371,7 +371,7 @@ function CategorySection({
       {error ? <ErrorNote>{error}</ErrorNote> : null}
 
       {productCount > 0 ? (
-        <ul className="mt-4 divide-y divide-[var(--line)] border-t border-[var(--line)]">
+        <ul className="mt-4 divide-y divide-line border-t border-line">
           {category.products.map((product, index) => (
             <ProductRow
               key={product.id}
@@ -484,13 +484,13 @@ function ProductRow({
           className={
             product.is_available
               ? 'font-medium'
-              : 'font-medium text-[var(--sea-ink-soft)] line-through'
+              : 'font-medium text-ink-soft line-through'
           }
         >
           {product.name}
         </p>
         {product.description ? (
-          <p className="mt-0.5 line-clamp-2 text-sm text-[var(--sea-ink-soft)]">
+          <p className="mt-0.5 line-clamp-2 text-sm text-ink-soft">
             {product.description}
           </p>
         ) : null}
@@ -502,9 +502,7 @@ function ProductRow({
           gérant de se demander si la ligne est cassée ou s'il a oublié de la
           renseigner.
         */
-        <p className="text-sm text-[var(--sea-ink-soft)] italic">
-          Prix non renseigné
-        </p>
+        <p className="text-sm text-ink-soft italic">Prix non renseigné</p>
       ) : (
         <p className="font-semibold tabular-nums">
           {formatPrice(product.price_cents, currency)}
@@ -512,7 +510,7 @@ function ProductRow({
       )}
 
       <div className="flex items-center gap-1">
-        <label className="flex min-h-11 items-center gap-2 pr-1 text-xs text-[var(--sea-ink-soft)] lg:min-h-9">
+        <label className="flex min-h-11 items-center gap-2 pr-1 text-xs text-ink-soft lg:min-h-9">
           <Switch
             checked={product.is_available}
             disabled={setAvailability.isPending}
@@ -646,7 +644,7 @@ function ProductForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="mt-3 rounded-xl border border-[var(--line)] bg-[var(--chip-bg)] p-3 sm:p-4"
+      className="mt-3 rounded-xl border border-line bg-chip p-3 sm:p-4"
     >
       {/* Deux colonnes dès lg : le back-office doit exploiter la largeur, pas empiler. */}
       <div className="grid gap-3 lg:grid-cols-[2fr_1fr]">
@@ -666,10 +664,7 @@ function ProductForm({
 
         <div className="space-y-2">
           <Label htmlFor={`${fieldId}-price`}>
-            Prix{' '}
-            <span className="font-normal text-[var(--sea-ink-soft)]">
-              (facultatif)
-            </span>
+            Prix <span className="font-normal text-ink-soft">(facultatif)</span>
           </Label>
           <Input
             id={`${fieldId}-price`}
@@ -684,7 +679,7 @@ function ProductForm({
             onChange={(event) => setPrice(event.target.value)}
             className="h-11 tabular-nums lg:h-9"
           />
-          <p className="text-xs text-[var(--sea-ink-soft)]">
+          <p className="text-xs text-ink-soft">
             Laissez vide pour un plat du jour ou un prix selon arrivage.
           </p>
         </div>
@@ -785,7 +780,7 @@ function ConfirmDelete({
           cancelRef.current?.focus()
         }}
       >
-        <PopoverDescription className="text-sm text-[var(--sea-ink)]">
+        <PopoverDescription className="text-sm text-ink">
           {question}
         </PopoverDescription>
 
