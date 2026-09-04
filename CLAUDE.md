@@ -253,8 +253,20 @@ both guards and provides the shell. Constraints that are easy to get wrong:
 - **`/login`'s `redirect` search param is optional and sanitized** (internal paths only,
   rejecting `//host`). Keeping the key always present made the router rewrite `/login` to
   `/login?redirect=%2Fadmin` on every direct visit.
-- Auth is **email + password**. When the Supabase project has "Confirm email" enabled,
-  `signUp` returns no session — the login screen handles that case explicitly.
+- Auth is **email + password, sign-in only**. There is deliberately no sign-up form: accounts
+  are provisioned by the platform administrator (Supabase dashboard → Authentication → Users
+  → Add user, with _Auto Confirm User_). **Don't add a sign-up screen back** without being
+  asked.
+- **The missing sign-up form is not a security control.** `/auth/v1/signup` stays reachable
+  with the publishable key, and the SDK ships `signUp` in the bundle no matter what the app
+  code does. Self-registration is closed only by the project's **Allow new users to sign up**
+  setting. Check it with
+  `curl -s "$VITE_SUPABASE_URL/auth/v1/settings" -H "apikey: $VITE_SUPABASE_ANON_KEY"` —
+  `disable_signup` must be `true`.
+- Supabase auth errors arrive in English; `translateAuthError` in `src/routes/login.tsx` maps
+  `AuthApiError.code` (fed from the API's `error_code`) to French. Keep the credentials
+  message indistinct between unknown address and wrong password — naming which one failed
+  turns the screen into an account-enumeration oracle.
 
 Deliberately left out of the schema until their roadmap item comes up: i18n columns, and
 per-venue theming. `products.image_path` holds a Supabase Storage path, not a URL, but no

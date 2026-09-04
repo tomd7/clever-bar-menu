@@ -27,6 +27,29 @@ function sanitizeRedirect(value: unknown): string | undefined {
   return value
 }
 
+/**
+ * Traduit les erreurs d'authentification Supabase, qui arrivent en anglais.
+ *
+ * « Identifiants incorrects » reste volontairement indistinct entre une adresse
+ * inconnue et un mot de passe erroné : préciser lequel des deux est en cause
+ * transformerait l'écran en outil d'énumération des comptes existants.
+ */
+function translateAuthError(code: string | undefined): string {
+  switch (code) {
+    case 'invalid_credentials':
+      return 'Adresse e-mail ou mot de passe incorrect.'
+    case 'email_not_confirmed':
+      return "Votre adresse e-mail n'a pas encore été confirmée. Consultez le message d'invitation reçu par mail."
+    case 'over_request_rate_limit':
+    case 'over_email_send_rate_limit':
+      return 'Trop de tentatives. Patientez quelques instants avant de réessayer.'
+    case 'user_banned':
+      return 'Cet accès a été suspendu. Contactez votre administrateur.'
+    default:
+      return 'Connexion impossible. Réessayez.'
+  }
+}
+
 export const Route = createFileRoute('/login')({
   /**
    * La session Supabase vit dans le navigateur : la vérifier pendant le rendu
@@ -51,72 +74,49 @@ export const Route = createFileRoute('/login')({
   component: LoginPage,
 })
 
-type Mode = 'signin' | 'signup'
-
+/**
+ * Écran de connexion — connexion seule.
+ *
+ * Les comptes sont créés par l'administrateur de la plateforme, jamais par le
+ * visiteur : il n'y a donc pas de formulaire d'inscription ici. Attention,
+ * cette absence n'est qu'une affaire d'interface. L'endpoint `/auth/v1/signup`
+ * de Supabase reste joignable directement avec la clé publiable, qui est par
+ * conception dans le bundle. Ce qui ferme réellement l'inscription est le
+ * réglage **Allow new users to sign up** du projet Supabase.
+ */
 function LoginPage() {
   const router = useRouter()
   const search = Route.useSearch()
 
-  const [mode, setMode] = useState<Mode>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [notice, setNotice] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setError(null)
-    setNotice(null)
     setPending(true)
 
-    try {
-      if (mode === 'signup') {
-        const { data, error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
-        })
-        if (signUpError) throw signUpError
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
 
-        /**
-         * Si la confirmation d'e-mail est active sur le projet Supabase,
-         * `signUp` réussit sans ouvrir de session. Sans ce cas explicite,
-         * l'écran resterait figé sans rien expliquer.
-         */
-        if (!data.session) {
-          setNotice(
-            'Compte créé. Vérifiez votre boîte mail pour confirmer votre adresse, puis connectez-vous.',
-          )
-          setMode('signin')
-          return
-        }
-      } else {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        })
-        if (signInError) throw signInError
-      }
-
-      /**
-       * Les gardes de route ont déjà évalué la session : sans invalidation,
-       * `beforeLoad` conserverait son verdict « non connecté » et renverrait
-       * aussitôt ici.
-       */
-      await router.invalidate()
-      await router.navigate({ href: search.redirect ?? DEFAULT_REDIRECT })
-    } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : 'Connexion impossible. Réessayez.',
-      )
-    } finally {
+    if (signInError) {
+      setError(translateAuthError(signInError.code))
       setPending(false)
+      return
     }
-  }
 
-  const isSignup = mode === 'signup'
+    /**
+     * Les gardes de route ont déjà évalué la session : sans invalidation,
+     * `beforeLoad` conserverait son verdict « non connecté » et renverrait
+     * aussitôt ici.
+     */
+    await router.invalidate()
+    await router.navigate({ href: search.redirect ?? DEFAULT_REDIRECT })
+  }
 
   return (
     <main className="flex min-h-dvh items-center justify-center px-4 py-10">
@@ -124,12 +124,10 @@ function LoginPage() {
         <div className="island-shell rounded-2xl p-6 sm:p-8">
           <p className="island-kicker">Espace gérant</p>
           <h1 className="display-title mt-2 text-2xl leading-tight sm:text-3xl">
-            {isSignup ? 'Créer un compte' : 'Se connecter'}
+            Se connecter
           </h1>
           <p className="mt-2 text-sm text-[var(--sea-ink-soft)]">
-            {isSignup
-              ? 'Créez votre accès pour gérer la carte de votre établissement.'
-              : 'Accédez au back-office de votre établissement.'}
+            Accédez au back-office de votre établissement.
           </p>
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
@@ -153,18 +151,12 @@ function LoginPage() {
               <Input
                 id="password"
                 type="password"
-                autoComplete={isSignup ? 'new-password' : 'current-password'}
+                autoComplete="current-password"
                 required
-                minLength={isSignup ? 8 : undefined}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 className="h-11 lg:h-10"
               />
-              {isSignup ? (
-                <p className="text-xs text-[var(--sea-ink-soft)]">
-                  8 caractères minimum.
-                </p>
-              ) : null}
             </div>
 
             {error ? (
@@ -176,42 +168,19 @@ function LoginPage() {
               </p>
             ) : null}
 
-            {notice ? (
-              <p
-                role="status"
-                className="animate-in fade-in-0 slide-in-from-top-1 rounded-md border border-[var(--chip-line)] bg-[var(--chip-bg)] px-3 py-2 text-sm duration-200 ease-out"
-              >
-                {notice}
-              </p>
-            ) : null}
-
             <Button
               type="submit"
               disabled={pending}
               /* scale au maintien : la pression doit se voir immédiatement. */
               className="h-11 w-full transition-transform duration-150 ease-out active:scale-[0.97] lg:h-10"
             >
-              {pending
-                ? 'Un instant…'
-                : isSignup
-                  ? 'Créer mon compte'
-                  : 'Se connecter'}
+              {pending ? 'Un instant…' : 'Se connecter'}
             </Button>
           </form>
 
-          <p className="mt-6 text-center text-sm text-[var(--sea-ink-soft)]">
-            {isSignup ? 'Vous avez déjà un compte ?' : 'Pas encore de compte ?'}{' '}
-            <button
-              type="button"
-              onClick={() => {
-                setMode(isSignup ? 'signin' : 'signup')
-                setError(null)
-                setNotice(null)
-              }}
-              className="font-semibold text-[var(--lagoon-deep)] underline underline-offset-2"
-            >
-              {isSignup ? 'Se connecter' : 'Créer un compte'}
-            </button>
+          <p className="mt-6 border-t border-[var(--line)] pt-4 text-center text-sm text-[var(--sea-ink-soft)]">
+            Les accès sont créés par l'administrateur de la plateforme.
+            Contactez-le pour obtenir le vôtre.
           </p>
         </div>
       </div>

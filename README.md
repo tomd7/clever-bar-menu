@@ -160,14 +160,30 @@ vitesse de premier affichage compte.
 
 | Route    | Rôle                                            |
 | -------- | ----------------------------------------------- |
-| `/login` | Connexion et création de compte                 |
+| `/login` | Connexion                                       |
 | `/admin` | Liste des établissements du gérant, et création |
 
-> [!NOTE]
-> Si la confirmation d'e-mail est active sur le projet Supabase (**Authentication → Sign In
-> / Providers → Confirm email**), une inscription ne connecte pas immédiatement : l'écran
-> invite alors à confirmer l'adresse avant de se connecter. Désactivez ce réglage pour
-> itérer plus vite en développement.
+### Création des comptes
+
+**Il n'y a pas d'inscription libre.** Les accès sont créés par l'administrateur de la
+plateforme depuis **Authentication → Users → Add user** dans le tableau de bord Supabase
+(cochez _Auto Confirm User_, sinon le gérant devra confirmer son adresse avant de pouvoir se
+connecter).
+
+> [!IMPORTANT]
+> Retirer le formulaire d'inscription de l'interface ne ferme rien. L'endpoint
+> `/auth/v1/signup` reste joignable directement avec la clé publiable, qui est par
+> conception présente dans le bundle navigateur. Ce qui ferme réellement l'inscription est
+> le réglage **Authentication → Sign In / Providers → Allow new users to sign up**, à
+> désactiver dans le tableau de bord.
+>
+> Pour vérifier l'état réel du projet, sans rien modifier :
+>
+> ```bash
+> curl -s "$VITE_SUPABASE_URL/auth/v1/settings" -H "apikey: $VITE_SUPABASE_ANON_KEY"
+> ```
+>
+> `disable_signup` doit valoir `true`.
 
 ## Structure du projet
 
@@ -230,7 +246,7 @@ node .output/server/index.mjs
 - [x] Modèle de données : établissement, catégorie, produit
 - [ ] Carte publique responsive
 - [ ] Génération des QR codes par table
-- [x] Authentification du back-office (Supabase Auth)
+- [x] Authentification du back-office (Supabase Auth, comptes créés par l'administrateur)
 - [ ] CRUD de la carte (catégories, produits, prix, photos)
 - [ ] Gestion des ruptures de stock
 - [ ] Multi-établissements
