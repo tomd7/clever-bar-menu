@@ -89,12 +89,12 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         */}
         <meta
           name="theme-color"
-          content="#faf4ea"
+          content="#eeefec"
           media="(prefers-color-scheme: light)"
         />
         <meta
           name="theme-color"
-          content="#14100e"
+          content="#1a1e1c"
           media="(prefers-color-scheme: dark)"
         />
         <HeadContent />

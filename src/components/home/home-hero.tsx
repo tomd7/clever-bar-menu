@@ -7,10 +7,16 @@ export function HomeHero() {
   return (
     <section className="rise-in max-w-2xl">
       <p className="island-kicker">Carte digitale pour bars et cafés</p>
-      <h1 className="display-title mt-3 text-4xl leading-[1.08] sm:text-5xl lg:text-6xl">
-        La carte de votre bar,
-        <br />
-        toujours à jour.
+      {/*
+        `text-balance` plutôt qu'un `<br>` en dur : Archivo est plus large que
+        la Fraunces qu'elle remplace, et sur un écran de 390px la première
+        ligne se coupait déjà d'elle-même — la coupure forcée ajoutait une
+        troisième ligne où « bar, » restait seul. Le navigateur répartit les
+        lignes à chaque largeur, ce qu'une coupure écrite à la main ne peut
+        faire que pour une seule.
+      */}
+      <h1 className="display-title mt-3 text-4xl leading-[1.08] text-balance sm:text-5xl lg:text-6xl">
+        La carte de votre bar, toujours à jour.
       </h1>
       <p className="mt-5 max-w-prose text-base leading-relaxed text-ink-soft sm:text-lg">
         Vos clients scannent le QR code posé sur la table et consultent la carte

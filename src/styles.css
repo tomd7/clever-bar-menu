@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap');
 @import 'tailwindcss';
 @plugin '@tailwindcss/typography';
 
@@ -7,105 +7,102 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
-  Thème « bar du soir » : nuit chaude et laiton.
+  Thème « ardoise » : le tableau noir du bar, la craie, et un vert bouteille.
 
-  Un seul jeu de tokens, contrairement à la version précédente qui en portait
-  deux en parallèle (palette maison + tokens shadcn zinc) sans lien entre eux —
-  les composants restaient noirs pendant que la page se voulait colorée. Ici la
-  palette maison est la source, et le contrat shadcn en est *dérivé* plus bas.
-  Changer une couleur se fait donc à un seul endroit.
+  Un seul jeu de tokens : la palette maison est la source, le contrat shadcn en
+  est *dérivé* plus bas. Changer une couleur se fait donc à un seul endroit.
 
-  Deux températures pour la même identité : `:root` est la version jour (papier
-  chaud, encre espresso), `.dark` la version soir (nuit chaude, ambre) — c'est
-  celle que verra un client qui scanne le QR code à table le soir.
+  Deux températures pour la même identité : `:root` est la version jour (pierre
+  claire, encre graphite) — celle du gérant qui corrige un prix derrière son
+  comptoir ; `.dark` la version soir (ardoise, craie) — celle du client qui
+  scanne le QR code à table.
+
+  Ce que cette palette évite délibérément : le fond crème, le titre en serif à
+  fort contraste et l'accent ambre/terracotta qu'elle remplace. La combinaison
+  était devenue un signal « gabarit » plutôt qu'une identité, et l'ambre en
+  aplat de bouton (#d99c2b) est la couleur des états d'avertissement par
+  défaut. Ici le neutre est quasi achromatique — c'est ce qui laisse le vert
+  exister — et le bouton primaire est en encre, pas en couleur.
 */
 :root {
   color-scheme: light;
 
-  --ink: #241c16;
-  --ink-soft: #6f6053;
+  --ink: #171a18;
+  --ink-soft: #5c625e;
+
+  /* Le fond est plein : ni dégradé, ni halo, ni trame. Voir la règle `body`. */
+  --ground: #eeefec;
+  /* La surface opaque posée dessus : carte, panneau, popover. */
+  --surface: #ffffff;
+  /* Un cran au-dessus de la surface : survol, champ creusé, pastille. */
+  --surface-raised: #e5e8e3;
+
+  --line: rgba(23, 26, 24, 0.14);
+  --line-soft: rgba(23, 26, 24, 0.08);
 
   /*
-    Deux ambres, et c'est volontaire : `--brass` est une couleur de *remplissage*
-    (bouton, pastille), `--brass-deep` une couleur de *texte*. L'ambre de
-    remplissage sur fond papier ne dépasse pas 2:1 de contraste — illisible en
-    texte, parfait en aplat sous une encre sombre.
+    Deux verts, comme il y avait deux ambres, mais dans l'autre sens. L'ambre
+    était un aplat *clair* qui demandait une encre sombre ; le vert bouteille
+    est un aplat *sombre* qui demande une encre claire. `--bottle` est donc la
+    couleur de remplissage et `--on-bottle` l'encre qu'on y pose — toutes deux
+    stables d'un thème à l'autre, puisque l'aplat reste sombre. `--bottle-deep`
+    est la version *texte*, la seule qui bascule : un vert sombre sur pierre
+    claire, un vert pâle sur ardoise.
   */
-  --brass: #d99c2b;
-  --brass-deep: #8a5a12;
-  /* L'encre posée sur l'ambre. Sombre dans les deux thèmes : l'ambre reste clair. */
-  --on-brass: #231a12;
+  --bottle: #35604a;
+  --bottle-deep: #2c5540;
+  --on-bottle: #f1f4f0;
 
-  --paper: #faf4ea;
-  --paper-soft: #fffdf8;
-  --bg-base: #f5ede0;
+  /*
+    L'action primaire est en encre, pas en couleur. C'est ce qui distingue
+    cette palette de la précédente : le vert ne remplit jamais un bouton
+    « Enregistrer ». Il signale (lien, focus, libellé de section, soulignement
+    actif), il ne crie pas.
+  */
+  --primary-fill: #222824;
+  --on-primary-fill: #f2f4f1;
 
-  --surface: rgba(255, 255, 255, 0.76);
-  --surface-strong: rgba(255, 255, 255, 0.94);
-  --line: rgba(36, 28, 22, 0.14);
-  --inset-glint: rgba(255, 255, 255, 0.85);
-  --kicker: #8a5a12;
-  --header-bg: rgba(255, 253, 248, 0.84);
-  --chip-bg: rgba(255, 255, 255, 0.8);
-  --chip-line: rgba(138, 90, 18, 0.18);
-  --link-bg-hover: rgba(255, 255, 255, 0.9);
+  --danger: #a83a26;
+  --danger-tint: rgba(168, 58, 38, 0.1);
 
-  --hero-a: rgba(217, 156, 43, 0.26);
-  --hero-b: rgba(180, 83, 42, 0.16);
-  --hero-c: rgba(217, 156, 43, 0.1);
-  --veil-opacity: 0.28;
-  --grid-line: rgba(255, 255, 255, 0.07);
+  /*
+    Deux ombres, courtes. Le relief est porté par les filets d'un pixel, pas
+    par un halo de 44px sous chaque carte — c'était la signature du « kit de
+    cartes SaaS » dont cette refonte sort.
+  */
+  --shadow-1: 0 1px 2px rgba(23, 26, 24, 0.05);
+  --shadow-2:
+    0 2px 4px rgba(23, 26, 24, 0.04), 0 10px 26px rgba(23, 26, 24, 0.06);
 
-  --shadow-1: 0 1px 2px rgba(36, 28, 22, 0.06);
-  --shadow-2: 0 6px 18px rgba(36, 28, 22, 0.08);
-  --shadow-3: 0 22px 44px rgba(36, 28, 22, 0.1);
-
-  --tone-raised: #f1e7d7;
-  --tone-hover: #f2e8d6;
-  --danger: #b3391f;
-  --danger-tint: rgba(179, 57, 31, 0.1);
-
-  --radius: 0.75rem;
+  --radius: 0.625rem;
 }
 
 .dark {
   color-scheme: dark;
 
-  --ink: #f4ebdd;
-  --ink-soft: #a79482;
+  --ink: #e8ebe6;
+  --ink-soft: #8b938d;
 
-  --brass: #d9a441;
-  --brass-deep: #e8be6e;
-  --on-brass: #231a12;
+  --ground: #1a1e1c;
+  --surface: #232825;
+  --surface-raised: #2b312d;
 
-  --paper: #14100e;
-  --paper-soft: #1f1916;
-  --bg-base: #14100e;
+  --line: rgba(232, 235, 230, 0.15);
+  --line-soft: rgba(232, 235, 230, 0.09);
 
-  --surface: rgba(31, 25, 22, 0.78);
-  --surface-strong: rgba(35, 28, 24, 0.92);
-  --line: rgba(244, 235, 221, 0.14);
-  --inset-glint: rgba(244, 235, 221, 0.07);
-  --kicker: #e8be6e;
-  --header-bg: rgba(20, 16, 14, 0.82);
-  --chip-bg: rgba(31, 25, 22, 0.9);
-  --chip-line: rgba(232, 190, 110, 0.22);
-  --link-bg-hover: rgba(45, 36, 31, 0.8);
+  /* Légèrement relevé : le même vert que de jour disparaîtrait dans l'ardoise. */
+  --bottle: #3d6c54;
+  --bottle-deep: #8fbca4;
+  --on-bottle: #f1f4f0;
 
-  --hero-a: rgba(217, 164, 65, 0.16);
-  --hero-b: rgba(180, 83, 42, 0.12);
-  --hero-c: rgba(217, 164, 65, 0.07);
-  --veil-opacity: 0.5;
-  --grid-line: rgba(244, 235, 221, 0.05);
+  --primary-fill: #e8ebe6;
+  --on-primary-fill: #1a1e1c;
 
-  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-2: 0 6px 18px rgba(0, 0, 0, 0.45);
-  --shadow-3: 0 22px 44px rgba(0, 0, 0, 0.5);
+  --danger: #e8836c;
+  --danger-tint: rgba(232, 131, 108, 0.14);
 
-  --tone-raised: #2a221d;
-  --tone-hover: #2f261f;
-  --danger: #f08c78;
-  --danger-tint: rgba(240, 140, 120, 0.14);
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --shadow-2: 0 2px 4px rgba(0, 0, 0, 0.35), 0 10px 26px rgba(0, 0, 0, 0.4);
 }
 
 /*
@@ -120,61 +117,66 @@
 */
 :root,
 .dark {
-  --background: var(--paper);
+  --background: var(--ground);
   --foreground: var(--ink);
-  --card: var(--paper-soft);
+  --card: var(--surface);
   --card-foreground: var(--ink);
-  /* Opaque, et non `--surface` : un popover translucide laisse lire au travers. */
-  --popover: var(--paper-soft);
+  /* Opaque, et c'est le seul point non négociable : on ne lit pas au travers. */
+  --popover: var(--surface);
   --popover-foreground: var(--ink);
-  --primary: var(--brass);
-  --primary-foreground: var(--on-brass);
-  --secondary: var(--tone-raised);
+  --primary: var(--primary-fill);
+  --primary-foreground: var(--on-primary-fill);
+  --secondary: var(--surface-raised);
   --secondary-foreground: var(--ink);
-  --muted: var(--tone-raised);
+  --muted: var(--surface-raised);
   --muted-foreground: var(--ink-soft);
-  --accent: var(--tone-hover);
+  --accent: var(--surface-raised);
   --accent-foreground: var(--ink);
   --destructive: var(--danger);
-  --destructive-foreground: var(--danger);
+  /* `Button variant="destructive"` écrit `text-white` en dur ; ce token ne sert
+     qu'aux composants qui le liraient, et doit rester lisible sur `--danger`. */
+  --destructive-foreground: #ffffff;
   --border: var(--line);
   --input: var(--line);
-  --ring: var(--brass);
-  --chart-1: var(--brass);
-  --chart-2: #b4532a;
-  --chart-3: #7a8f5c;
-  --chart-4: #c9752f;
-  --chart-5: #8a6a9c;
-  --sidebar: var(--paper-soft);
+  --ring: var(--bottle-deep);
+  --chart-1: var(--bottle);
+  --chart-2: #6f8f7c;
+  --chart-3: #4a5b63;
+  --chart-4: #8c7b52;
+  --chart-5: #a8624f;
+  --sidebar: var(--surface);
   --sidebar-foreground: var(--ink);
-  --sidebar-primary: var(--brass);
-  --sidebar-primary-foreground: var(--on-brass);
-  --sidebar-accent: var(--tone-hover);
+  --sidebar-primary: var(--primary-fill);
+  --sidebar-primary-foreground: var(--on-primary-fill);
+  --sidebar-accent: var(--surface-raised);
   --sidebar-accent-foreground: var(--ink);
   --sidebar-border: var(--line);
-  --sidebar-ring: var(--brass);
+  --sidebar-ring: var(--bottle-deep);
 }
 
 @theme inline {
-  --font-sans: 'Manrope', ui-sans-serif, system-ui, sans-serif;
-  --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
-
   /*
-    La palette maison est exposée à Tailwind, ce qui n'était pas le cas avant :
-    `text-ink-soft` et `border-line` remplacent les `text-[var(--sea-ink-soft)]`
-    qui parsemaient les routes.
+    Une seule famille, variable sur deux axes. La distinction entre un titre et
+    un paragraphe ne passe plus par un second caractère (l'ancien duo
+    Fraunces/Manrope) mais par la *largeur* et la graisse d'Archivo — voir
+    `.display-title`. Une police en moins à charger, et une identité qui tient
+    dans un seul fichier de fonte.
   */
+  --font-sans: 'Archivo', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Archivo', ui-sans-serif, system-ui, sans-serif;
+
+  /* La palette maison est exposée à Tailwind : `text-ink-soft`, `border-line`,
+     `bg-surface-raised`, `text-bottle-deep` plutôt que des `text-[var(--x)]`. */
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
   --color-line: var(--line);
-  --color-brass: var(--brass);
-  --color-brass-deep: var(--brass-deep);
-  --color-on-brass: var(--on-brass);
-  --color-paper: var(--paper);
-  --color-paper-soft: var(--paper-soft);
+  --color-line-soft: var(--line-soft);
+  --color-bottle: var(--bottle);
+  --color-bottle-deep: var(--bottle-deep);
+  --color-on-bottle: var(--on-bottle);
+  --color-ground: var(--ground);
   --color-surface: var(--surface);
-  --color-surface-strong: var(--surface-strong);
-  --color-chip: var(--chip-bg);
+  --color-surface-raised: var(--surface-raised);
 
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
@@ -223,75 +225,59 @@ body,
   min-height: 100%;
 }
 
+/*
+  Fond plein.
+
+  La version précédente empilait trois dégradés radiaux, une trame de 28px et
+  un dégradé linéaire. Les halos se voyaient à peine, la trame ne se voyait pas
+  du tout — elle ne faisait que salir le fond — et l'ensemble donnait à un
+  outil de saisie de prix l'habillage d'une page de vente. Une seule couleur
+  laisse les surfaces se détacher par leur filet, ce qui est le sujet de ce
+  thème.
+*/
 body {
   margin: 0;
   color: var(--ink);
+  background-color: var(--ground);
   font-family: var(--font-sans);
-  background-color: var(--bg-base);
-  background:
-    radial-gradient(1100px 620px at -8% -10%, var(--hero-a), transparent 58%),
-    radial-gradient(1050px 620px at 112% -12%, var(--hero-b), transparent 62%),
-    radial-gradient(720px 380px at 50% 115%, var(--hero-c), transparent 68%),
-    linear-gradient(
-      180deg,
-      var(--paper-soft) 0%,
-      var(--paper) 46%,
-      var(--bg-base) 100%
-    );
-  background-attachment: fixed;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Halos chauds : la lumière d'un bar, pas un dégradé de tableau de bord. */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: -1;
-  opacity: var(--veil-opacity);
-  background:
-    radial-gradient(circle at 20% 15%, var(--inset-glint), transparent 34%),
-    radial-gradient(circle at 78% 26%, var(--hero-a), transparent 42%),
-    radial-gradient(circle at 42% 82%, var(--hero-b), transparent 36%);
-}
+/*
+  Les liens sont habillés dans `@layer base`, et c'est structurel.
 
-body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: -1;
-  opacity: 0.5;
-  background-image:
-    linear-gradient(var(--grid-line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
-  background-size: 28px 28px;
-  mask-image: radial-gradient(circle at 50% 30%, black, transparent 78%);
-}
+  Une règle écrite hors calque l'emporte sur *tout* le CSS calqué, quelle que
+  soit sa spécificité — les utilitaires Tailwind vivent dans `@layer utilities`.
+  Écrit hors calque, ce `color` gagnait donc contre le `text-primary-foreground`
+  d'un lien dessiné en bouton : « Espace gérant » s'affichait en vert de lien
+  sur son aplat d'encre, illisible. Dans `base`, l'utilitaire reprend la main.
 
-a {
-  color: var(--brass-deep);
-  text-decoration-color: color-mix(
-    in oklab,
-    var(--brass-deep) 40%,
-    transparent
-  );
-  text-decoration-thickness: 1px;
-  text-underline-offset: 2px;
-}
+  `.nav-link`, lui, reste volontairement hors calque plus bas : il doit gagner.
+*/
+@layer base {
+  a {
+    color: var(--bottle-deep);
+    text-decoration-color: color-mix(
+      in oklab,
+      var(--bottle-deep) 40%,
+      transparent
+    );
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+  }
 
-a:hover {
-  color: color-mix(in oklab, var(--brass-deep) 82%, var(--ink));
+  a:hover {
+    color: color-mix(in oklab, var(--bottle-deep) 82%, var(--ink));
+  }
 }
 
 code {
   font-size: 0.9em;
-  border: 1px solid var(--line);
-  background: var(--chip-bg);
-  border-radius: 7px;
+  border: 1px solid var(--line-soft);
+  background: var(--surface-raised);
+  border-radius: 6px;
   padding: 2px 7px;
 }
 
@@ -306,9 +292,9 @@ pre code {
 
 .prose pre {
   border: 1px solid var(--line);
-  border-radius: 12px;
-  background: #1f1916;
-  color: #f4ebdd;
+  border-radius: 10px;
+  background: #1a1e1c;
+  color: #e8ebe6;
 }
 
 .page-wrap {
@@ -316,48 +302,56 @@ pre code {
   margin-inline: auto;
 }
 
+/*
+  Le titre d'affichage.
+
+  C'est l'endroit unique où ce thème prend un risque : Archivo est une grotesque
+  à axe de largeur, et `font-stretch: 112%` l'élargit franchement. Le nom d'un
+  établissement en haut de sa carte devient un objet graphique plutôt qu'une
+  ligne de texte — et le reste de la page peut rester silencieux.
+
+  L'interlettrage négatif ne vaut que pour les grandes tailles ; `.display-title`
+  s'emploie aussi en `text-lg` sur une carte d'établissement, d'où une valeur
+  modérée que les gros titres resserrent eux-mêmes au point d'appel.
+*/
 .display-title {
   font-family: var(--font-display);
-  font-optical-sizing: auto;
-  letter-spacing: -0.01em;
+  font-weight: 700;
+  font-stretch: 112%;
+  letter-spacing: -0.02em;
 }
 
 /*
   `.island-shell` habille les surfaces vitrine — accueil, connexion, carte
-  client. Translucide et posée sur le décor.
+  client. Opaque, elle aussi : le verre dépoli de la version précédente était
+  un effet, pas une information. Ce qui la distingue de `.panel`, c'est
+  l'élévation : la vitrine se pose *sur* le décor, l'outil est à plat dedans.
 */
 .island-shell {
   border: 1px solid var(--line);
-  background: linear-gradient(165deg, var(--surface-strong), var(--surface));
-  box-shadow:
-    0 1px 0 var(--inset-glint) inset,
-    var(--shadow-3),
-    var(--shadow-2);
-  backdrop-filter: blur(4px);
+  background: var(--surface);
+  box-shadow: var(--shadow-2);
 }
 
 /*
-  `.panel` habille le back-office. Même palette, application sobre : fond opaque,
-  pas de flou, ombre minimale. Un écran de saisie de prix n'a rien à gagner à
-  scintiller, et le flou coûte cher à repeindre à chaque frappe.
+  `.panel` habille le back-office. Même surface, aucune ombre : un écran de
+  saisie de prix n'a rien à gagner à flotter, et vingt panneaux ombrés dans une
+  page produisent une bouillie grise.
 */
 .panel {
   border: 1px solid var(--line);
-  background: var(--paper-soft);
-  box-shadow: var(--shadow-1);
+  background: var(--surface);
 }
 
 .feature-card {
-  background: linear-gradient(165deg, var(--paper-soft), var(--surface));
-  box-shadow:
-    0 1px 0 var(--inset-glint) inset,
-    var(--shadow-2);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
 }
 
 /* Le survol reste réservé aux pointeurs fins : sur tactile il se déclenche au tap. */
 @media (hover: hover) and (pointer: fine) {
   .feature-card:hover {
-    border-color: color-mix(in oklab, var(--brass) 40%, var(--line));
+    border-color: color-mix(in oklab, var(--bottle) 45%, var(--line));
   }
 }
 
@@ -378,12 +372,19 @@ a {
     transform 180ms var(--ease-out);
 }
 
+/*
+  Le libellé de section (« Carte », « Vos établissements », « Back-office »).
+
+  Il n'est plus en capitales espacées : posée au-dessus de chaque titre, cette
+  forme est l'un des tics les plus reconnaissables des maquettes génériques, et
+  elle rendait illisible une chaîne aussi longue que « Carte digitale pour bars
+  et cafés ». Le vert et la graisse suffisent à le détacher du texte courant.
+*/
 .island-kicker {
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  font-weight: 700;
-  font-size: 0.69rem;
-  color: var(--kicker);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--bottle-deep);
 }
 
 .nav-link {
@@ -413,7 +414,7 @@ a {
   height: 2px;
   transform: scaleX(0);
   transform-origin: left;
-  background: linear-gradient(90deg, var(--brass), var(--brass-deep));
+  background: var(--bottle-deep);
   transition: transform 170ms var(--ease-out);
 }
 
@@ -444,7 +445,7 @@ a {
 
 .site-footer {
   border-top: 1px solid var(--line);
-  background: var(--header-bg);
+  background: var(--surface);
 }
 
 /*
@@ -476,7 +477,7 @@ a {
   }
   /*
     Pas de `body { background-color }` ici : la règle par défaut de shadcn
-    écrasait le dégradé déclaré plus haut, ce qui rendait toute la palette
+    écrasait la couleur déclarée plus haut, ce qui rendait toute la palette
     maison invisible. La couleur du corps est réglée dans la règle `body`.
   */
 }
@@ -489,8 +490,8 @@ a {
   pas de sens hors écran et disparaît, sans quoi le gérant imprimerait son
   back-office autour du code.
 
-  Le fond de page est aussi neutralisé : le dégradé du thème est joli à
-  l'écran, coûteux en encre et nuisible au contraste sur lequel s'appuie un
+  Le fond de page est aussi neutralisé : la pierre claire du thème est jolie à
+  l'écran, coûteuse en encre et nuisible au contraste sur lequel s'appuie un
   lecteur de QR.
 */
 @media print {

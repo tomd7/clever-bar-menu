@@ -36,7 +36,7 @@ export function HomeSteps() {
           */
           style={{ animationDelay: `${120 + index * 70}ms` }}
         >
-          <step.icon className="size-5 text-brass-deep" aria-hidden />
+          <step.icon className="size-5 text-bottle-deep" aria-hidden />
           <h2 className="display-title mt-3 text-lg leading-tight">
             {step.title}
           </h2>

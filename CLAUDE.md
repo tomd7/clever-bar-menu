@@ -206,37 +206,61 @@ runs on any Node host (`node .output/server/index.mjs`).
 
 ## Styles
 
-`src/styles.css` is the only style file. It carries the **"bar du soir"** theme — warm night
-and brass — in a **single token set**, which is the structural point to preserve:
+`src/styles.css` is the only style file. It carries the **"ardoise"** theme — the bar's
+slate board, chalk, and a bottle green — in a **single token set**, which is the structural
+point to preserve:
 
-1. **House palette** (`--ink`, `--ink-soft`, `--brass`, `--brass-deep`, `--on-brass`,
-   `--paper`, `--paper-soft`, `--surface`, `--line`, `--hero-a`…) defined in `:root` (day:
-   warm paper, espresso ink) and redefined in `.dark` (night: `#14100e` + amber). This is the
-   **source of truth**.
+1. **House palette** (`--ink`, `--ink-soft`, `--ground`, `--surface`, `--surface-raised`,
+   `--line`, `--line-soft`, `--bottle`, `--bottle-deep`, `--on-bottle`, `--primary-fill`,
+   `--on-primary-fill`, `--danger`…) defined in `:root` (day: light stone, graphite ink) and
+   redefined in `.dark` (night: `#1a1e1c` slate, chalk). This is the **source of truth**.
 2. **shadcn contract** (`--background`, `--primary`, `--border`…) **derived** from it in a
-   `:root, .dark` block: `--primary: var(--brass)`, `--background: var(--paper)`, etc.
+   `:root, .dark` block: `--primary: var(--primary-fill)`, `--background: var(--ground)`, etc.
    Never give a shadcn token a literal colour — change the house token instead, and both
-   themes follow. The old zinc/oklch set is gone; so is the parallel "coastal" palette
-   (`--sea-ink`, `--lagoon`, `--palm`, `--sand`, `--foam`), which no longer exists.
+   themes follow.
+
+It replaced the **"bar du soir"** theme (cream `#faf4ea`, amber `--brass: #d99c2b`, Fraunces
+display) on 2026-09-04. That combination — warm cream ground, high-contrast serif display,
+amber/terracotta accent — reads as a generated template rather than an identity, and an amber
+of that lightness is the colour of a default warning state, which is why it looked cheap
+under a `bg-primary` button. Don't reintroduce it. The `--brass*`, `--paper*`, `--hero-*`,
+`--chip-*`, `--tone-*`, `--kicker`, `--header-bg`, `--inset-glint`, `--veil-opacity` and
+`--grid-line` tokens are gone; so is the older parallel "coastal" palette.
 
 Things that are easy to get wrong here:
 
 - **The derivation block targets `:root, .dark`, not just `:root`.** A custom property is
-  substituted on the element that _declares_ it, so `--background: var(--paper)` declared
-  only on `:root` would compute against the light `--paper` and be inherited as-is by a
+  substituted on the element that _declares_ it, so `--background: var(--ground)` declared
+  only on `:root` would compute against the light `--ground` and be inherited as-is by a
   `.dark` subtree. Listing both selectors makes the substitution happen again on `.dark`.
-- **Two ambers, on purpose.** `--brass` is a _fill_ colour (buttons, chips) and `--brass-deep`
-  a _text_ colour. Amber on paper sits around 2:1 contrast — unreadable as text, fine as a
-  flat area under dark ink. `--on-brass` stays dark in **both** themes because the fill stays
-  light. Don't collapse them.
+- **Style bare elements inside `@layer base`, never outside it.** A rule written outside any
+  cascade layer beats _every_ layered rule regardless of specificity, and Tailwind's
+  utilities live in `@layer utilities`. An unlayered `a { color: … }` therefore won against
+  the `text-primary-foreground` of a link drawn as a button — "Espace gérant" rendered in
+  link green on its ink fill, unreadable. The `a` rules now sit in `@layer base`.
+  `.nav-link` stays **outside** any layer on purpose: it must win.
+- **Two greens, on purpose, and they are the mirror of the two ambers they replace.**
+  `--bottle` is a _fill_ (dark green, so it needs light ink: `--on-bottle`) and both stay put
+  across themes because the fill stays dark. `--bottle-deep` is the _text_ accent and is the
+  only one that flips — dark green on stone, pale green on slate. Don't collapse them.
+- **The primary action is ink, not colour.** `--primary` derives from `--primary-fill`
+  (graphite by day, chalk by night), never from `--bottle`. Green signals — link, focus ring,
+  section label, active underline — it never fills a "Enregistrer" button. Filling one with
+  the accent is what made the previous theme look bought.
 - **`@layer base` must not set `body { background-color }`.** shadcn's default rule did, and
-  it silently overrode the gradient declared in the `body` rule — the whole house palette was
+  it silently overrode the colour declared in the `body` rule — the whole house palette was
   invisible. The body's colour is set in the `body` rule only.
+- **The background is a flat fill.** No gradient, no radial halo, no grid overlay, and
+  `body::before` / `body::after` no longer exist. The previous theme stacked three radial
+  gradients, a 28px grid and a linear gradient; the halos barely showed, the grid did not
+  show at all and only dirtied the ground. Depth comes from the 1px `--line`, not from a
+  44px shadow — hence two short shadows (`--shadow-1`, `--shadow-2`) and no `--shadow-3`.
 - **Both token sets are mapped in `@theme inline`**, so the house palette has real utilities:
-  `text-ink-soft`, `border-line`, `bg-brass`, `text-brass-deep`, `bg-chip`. Prefer them over
+  `text-ink-soft`, `border-line`, `bg-surface-raised`, `text-bottle-deep`. Prefer them over
   `text-[var(--ink-soft)]`.
-- Tailwind already ships an `amber-*` scale; the house token is deliberately named **brass**
-  so `bg-brass` can't be confused with `bg-amber-500`.
+- Tailwind ships no `bottle-*` scale, which is the point of the name: `bg-bottle` can't be
+  confused with a framework colour (the same reasoning that named the old token `brass`
+  rather than `amber`).
 
 Dark mode is **class-driven** (`@custom-variant dark (&:is(.dark *))`) and follows the
 system: an inline `ScriptOnce` in `src/routes/__root.tsx` toggles `.dark` on `<html>` from
@@ -244,24 +268,29 @@ system: an inline `ScriptOnce` in `src/routes/__root.tsx` toggles `.dark` on `<h
 deliberately **no toggle and no `localStorage`** — the customer menu follows the phone. The
 `<html>` element carries `suppressHydrationWarning` because the server renders it without the
 class. Two `theme-color` metas are written **directly in the shell's `<head>`**, not in
-`head.meta`: the router dedupes metas by `name` and would keep only one of them.
+`head.meta`: the router dedupes metas by `name` and would keep only one of them — and their
+values (`#eeefec` / `#1a1e1c`) are the two `--ground`s, so they move with the palette.
 
-Fonts: **Manrope** as `--font-sans`, **Fraunces** as `--font-display` (used by
-`.display-title`), loaded by a Google Fonts `@import` at the top of `styles.css`.
+Fonts: **one family, Archivo**, loaded variable on two axes (`wdth` 62–125, `wght` 100–900)
+by a Google Fonts `@import` at the top of `styles.css`. `--font-sans` and `--font-display`
+are both Archivo: the difference between a heading and a paragraph is carried by **width and
+weight**, not by a second typeface. `.display-title` is where that identity lives
+(`font-stretch: 112%`, weight 700) — it is the one place this theme raises its voice, which
+is why everything around it stays quiet.
 
 Visual vocabulary — reuse these before inventing new ones:
 
-| Class            | Where                                                                |
-| ---------------- | -------------------------------------------------------------------- |
-| `.island-shell`  | Showcase surfaces (home, `/login`, customer menu): translucent, blur |
-| `.panel`         | Back office: opaque, no blur, minimal shadow — the sober application |
-| `.feature-card`  | Clickable cards, lift on hover (pointer-fine only)                   |
-| `.page-wrap`     | Centred container, `min(1080px, 100% - 2rem)`                        |
-| `.display-title` | Fraunces + optical sizing                                            |
-| `.island-kicker` | Small caps label in `--kicker`                                       |
-| `.nav-link`      | Link with an underline that grows from the left                      |
-| `.rise-in`       | Entry animation (stagger via `animationDelay`)                       |
-| `.site-footer`   | Footer                                                               |
+| Class            | Where                                                                                                                                                                                                                  |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.island-shell`  | Showcase surfaces (home, `/login`, customer menu): opaque, `--shadow-2`                                                                                                                                                |
+| `.panel`         | Back office: same surface, no shadow — the tool sits flat, the shopfront lifts                                                                                                                                         |
+| `.feature-card`  | Clickable cards, border tints toward `--bottle` on hover (pointer-fine only)                                                                                                                                           |
+| `.page-wrap`     | Centred container, `min(1080px, 100% - 2rem)`                                                                                                                                                                          |
+| `.display-title` | Archivo wide + bold — the theme's signature                                                                                                                                                                            |
+| `.island-kicker` | Small section label in `--bottle-deep`. **Not** all-caps: a tracked-out caps eyebrow above every heading is the commonest generated-design tell, and it mangled a label as long as "Carte digitale pour bars et cafés" |
+| `.nav-link`      | Link with an underline that grows from the left                                                                                                                                                                        |
+| `.rise-in`       | Entry animation (stagger via `animationDelay`)                                                                                                                                                                         |
+| `.site-footer`   | Footer                                                                                                                                                                                                                 |
 
 `@media (prefers-reduced-motion: reduce)` neutralises movement while keeping fades. The
 global `transition` rule covers colours only — `transform` is left to the components, which
@@ -414,8 +443,8 @@ The data layer and the back office exist; **the customer-facing menu does not**.
 real Postgres (no Supabase project was provisioned when it was written; the SQL was verified
 offline via `toSQL()`).
 
-The **"bar du soir" theme** (warm night + brass, day and night variants) is in place across
-`styles.css`, the home page, `/login` and the back office — see the Styles section. The home
+The **"ardoise" theme** (slate + chalk + bottle green, day and night variants) is in place
+across `styles.css`, the home page, `/login` and the back office — see the Styles section. The home
 page is a landing page, not the customer menu.
 
 **Data access is browser-side `supabase-js` + RLS** (decided 2026-09-04). The browser holds

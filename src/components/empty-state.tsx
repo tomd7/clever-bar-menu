@@ -22,7 +22,7 @@ export function EmptyState({
 }) {
   return (
     <div className={cn('panel rounded-2xl px-6 py-12 text-center', className)}>
-      {Icon ? <Icon className="mx-auto size-8 text-brass-deep" /> : null}
+      {Icon ? <Icon className="mx-auto size-8 text-bottle-deep" /> : null}
       <p className={cn('display-title text-lg', Icon && 'mt-3')}>{title}</p>
       <p className="mx-auto mt-1 max-w-sm text-sm text-ink-soft">{children}</p>
     </div>

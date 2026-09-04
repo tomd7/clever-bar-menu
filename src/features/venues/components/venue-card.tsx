@@ -40,7 +40,7 @@ export function VenueCard({
         <p className="mt-1 text-xs text-ink-soft">
           <code>/m/{venue.slug}</code>
         </p>
-        <p className="mt-3 flex items-center gap-1 text-xs font-semibold text-brass-deep">
+        <p className="mt-3 flex items-center gap-1 text-xs font-semibold text-bottle-deep">
           Composer la carte
           <ChevronRight className="size-3" />
         </p>

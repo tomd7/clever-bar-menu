@@ -74,7 +74,7 @@ export function ProductForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="mt-3 rounded-xl border border-line bg-chip p-3 sm:p-4"
+      className="mt-3 rounded-xl border border-line bg-surface-raised p-3 sm:p-4"
     >
       {/* Deux colonnes dès lg : le back-office doit exploiter la largeur, pas empiler. */}
       <div className="grid gap-3 lg:grid-cols-[2fr_1fr]">
