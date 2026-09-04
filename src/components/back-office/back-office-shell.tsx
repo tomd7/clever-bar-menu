@@ -34,8 +34,23 @@ export function BackOfficeShell({
 }) {
   return (
     <div className="min-h-dvh lg:flex">
-      <header className="panel no-print sticky top-0 z-10 lg:static lg:z-auto lg:h-dvh lg:w-64 lg:shrink-0 lg:border-y-0 lg:border-l-0">
-        <div className="flex items-center justify-between gap-3 px-4 py-3 lg:h-full lg:flex-col lg:items-stretch lg:px-4 lg:py-6">
+      {/*
+        `sticky top-0` aux deux largeurs : barre supérieure sur téléphone,
+        colonne épinglée à partir de `lg`. La hauteur explicite `lg:h-dvh` est
+        ce qui rend l'épinglage possible — un élément de flex s'étire par défaut
+        à la hauteur de son conteneur, et une colonne aussi haute que la page
+        n'a nulle part où coller. `overflow-y-auto` fait défiler la colonne
+        elle-même le jour où la liste des établissements dépassera l'écran,
+        plutôt que d'en couper le bas.
+      */}
+      <header className="panel no-print sticky top-0 z-10 lg:h-dvh lg:w-64 lg:shrink-0 lg:overflow-y-auto lg:border-y-0 lg:border-l-0">
+        {/*
+          `min-h-full` et non `h-full` : la déconnexion doit être poussée en bas
+          de la colonne quand elle est courte, mais une hauteur fixe ferait
+          déborder le contenu hors de sa boîte dès que la liste s'allonge, et
+          c'est cette boîte que `overflow-y-auto` fait défiler.
+        */}
+        <div className="flex items-center justify-between gap-3 px-4 py-3 lg:min-h-full lg:flex-col lg:items-stretch lg:px-4 lg:py-6">
           <div className="lg:flex-1">
             <p className="island-kicker">Back-office</p>
             <p className="display-title text-lg leading-tight">
