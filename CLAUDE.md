@@ -253,6 +253,20 @@ both guards and provides the shell. Constraints that are easy to get wrong:
 - **`/login`'s `redirect` search param is optional and sanitized** (internal paths only,
   rejecting `//host`). Keeping the key always present made the router rewrite `/login` to
   `/login?redirect=%2Fadmin` on every direct visit.
+- **Prices are nullable.** `null` means "no price shown" (dish of the day, market price);
+  `0` is a valid free item. Never collapse the two — `parseOptionalEurosToCents` returns
+  `null` only for a blank field. The UI renders "Prix non renseigné" rather than an empty gap.
+- **Prices**: the UI takes euros, the DB stores integer cents. `src/lib/price.ts` is the only
+  place that converts. It parses decimals as _text_ rather than multiplying a float —
+  `1.10 * 100` is `110.00000000000001` in JS. Accepts comma or dot, strips whitespace
+  (`\s` covers non-breaking spaces).
+- **Ordering** uses a `position` column stepping by 100, leaving room to insert between two
+  neighbours without rewriting the list. `swapPositions` in `src/lib/menu.ts` does two
+  sequential updates, not a transaction — PostgREST exposes none. A failure between them
+  leaves two equal positions, which the `(position, name)` ordering resolves deterministically.
+- **`fetchMenu` runs three queries instead of one embedded select.** PostgREST can embed
+  (`select('*, products(*)')`) but typing that needs relationship metadata our hand-written
+  `Database` doesn't carry. Revisit if the menu grows large.
 - Auth is **email + password, sign-in only**. There is deliberately no sign-up form: accounts
   are provisioned by the platform administrator (Supabase dashboard → Authentication → Users
   → Add user, with _Auto Confirm User_). **Don't add a sign-up screen back** without being

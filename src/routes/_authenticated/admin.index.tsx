@@ -1,7 +1,7 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { Link, createFileRoute } from '@tanstack/react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Plus, Store } from 'lucide-react'
+import { ChevronRight, Plus, Store } from 'lucide-react'
 
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
@@ -11,7 +11,7 @@ import { supabase } from '#/lib/supabase'
 import type { FormEvent } from 'react'
 import type { Venue } from '#/lib/supabase'
 
-export const Route = createFileRoute('/_authenticated/admin')({
+export const Route = createFileRoute('/_authenticated/admin/')({
   component: VenuesPage,
 })
 
@@ -179,7 +179,7 @@ function VenuesPage() {
             {venues.map((venue, position) => (
               <li
                 key={venue.id}
-                className="feature-card rise-in rounded-2xl border border-[var(--line)] p-4"
+                className="rise-in"
                 /*
                   Décalage court entre les cartes : l'entrée se lit comme une
                   cascade plutôt que comme un bloc. Au-delà de quelques dizaines
@@ -187,15 +187,22 @@ function VenuesPage() {
                 */
                 style={{ animationDelay: `${Math.min(position, 8) * 45}ms` }}
               >
-                <p className="display-title text-lg leading-tight">
-                  {venue.name}
-                </p>
-                <p className="mt-1 text-xs text-[var(--sea-ink-soft)]">
-                  <code>/m/{venue.slug}</code>
-                </p>
-                <p className="mt-3 text-xs text-[var(--sea-ink-soft)]">
-                  Carte à composer
-                </p>
+                <Link
+                  to="/admin/$venueSlug"
+                  params={{ venueSlug: venue.slug }}
+                  className="feature-card flex min-h-24 flex-col rounded-2xl border border-[var(--line)] p-4 no-underline"
+                >
+                  <p className="display-title text-lg leading-tight text-[var(--sea-ink)]">
+                    {venue.name}
+                  </p>
+                  <p className="mt-1 text-xs text-[var(--sea-ink-soft)]">
+                    <code>/m/{venue.slug}</code>
+                  </p>
+                  <p className="mt-3 flex items-center gap-1 text-xs font-semibold text-[var(--lagoon-deep)]">
+                    Composer la carte
+                    <ChevronRight className="size-3" />
+                  </p>
+                </Link>
               </li>
             ))}
           </ul>

@@ -40,7 +40,7 @@ type ProductRow = {
   category_id: string
   name: string
   description: string | null
-  price_cents: number
+  price_cents: number | null
   image_path: string | null
   is_available: boolean
   position: number
@@ -87,7 +87,12 @@ export type Database = {
         Row: ProductRow
         Insert: Insert<
           ProductRow,
-          Timestamps | Nullable | 'position' | 'is_available' | 'image_path'
+          | Timestamps
+          | Nullable
+          | 'position'
+          | 'is_available'
+          | 'image_path'
+          | 'price_cents'
         >
         Update: Partial<ProductRow>
         Relationships: []
@@ -101,6 +106,8 @@ export type Database = {
 }
 
 export type Venue = VenueRow
+export type Category = CategoryRow
+export type Product = ProductRow
 
 /**
  * Client Supabase du navigateur.

@@ -158,10 +158,24 @@ navigateur, donc l'évaluer pendant le rendu serveur conclurait « non connecté
 requête. La carte publique, elle, restera en SSR — c'est une page scannée au QR code, sa
 vitesse de premier affichage compte.
 
-| Route    | Rôle                                            |
-| -------- | ----------------------------------------------- |
-| `/login` | Connexion                                       |
-| `/admin` | Liste des établissements du gérant, et création |
+| Route               | Rôle                                                       |
+| ------------------- | ---------------------------------------------------------- |
+| `/login`            | Connexion                                                  |
+| `/admin`            | Liste des établissements du gérant, et création            |
+| `/admin/$venueSlug` | Édition de la carte : catégories, produits, prix, ruptures |
+
+Les prix sont saisis en euros et stockés en **centimes entiers**
+([`src/lib/price.ts`](src/lib/price.ts)) : la saisie accepte la virgule comme le point, et
+les décimales sont lues comme du texte plutôt que multipliées en flottant — `1,10 * 100`
+vaut `110.00000000000001` en JavaScript.
+
+Le prix est **facultatif** : un champ laissé vide vaut « pas de prix affiché », pour un plat
+du jour ou un tarif selon arrivage. C'est distinct de `0`, qui reste un prix valide pour un
+article offert.
+
+L'ordre des catégories et des produits est porté par une colonne `position`, avançant de 100
+en 100 pour permettre d'insérer entre deux voisines sans réécrire la liste. Un produit en
+rupture reste dans la carte du gérant, barré, et sera masqué côté client.
 
 ### Création des comptes
 
@@ -247,8 +261,8 @@ node .output/server/index.mjs
 - [ ] Carte publique responsive
 - [ ] Génération des QR codes par table
 - [x] Authentification du back-office (Supabase Auth, comptes créés par l'administrateur)
-- [ ] CRUD de la carte (catégories, produits, prix, photos)
-- [ ] Gestion des ruptures de stock
+- [x] CRUD de la carte (catégories, produits, prix) — photos à venir
+- [x] Gestion des ruptures de stock
 - [ ] Multi-établissements
 - [ ] Internationalisation
 - [ ] Thème clair/sombre et personnalisation par établissement

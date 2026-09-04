@@ -22,6 +22,13 @@
       "when": 1788511398911,
       "tag": "0002_quick_doomsday",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1788526811134,
+      "tag": "0003_short_skreet",
+      "breakpoints": true
     }
   ]
 }

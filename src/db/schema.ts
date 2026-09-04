@@ -191,8 +191,13 @@ export const products = pgTable(
      * Prix dans la plus petite unité de la devise (2450 = 24,50 €).
      * Un entier plutôt qu'un flottant : aucun arrondi ne peut se glisser dans
      * un total. La devise vit sur l'établissement, pas ici.
+     *
+     * Nullable : tout ne se tarife pas à l'avance — un plat du jour, une
+     * suggestion à l'ardoise, un produit dont le prix dépend de l'arrivage.
+     * `null` signifie « pas de prix affiché », ce qui est distinct de `0`, qui
+     * reste un prix valide pour un article offert.
      */
-    priceCents: integer('price_cents').notNull(),
+    priceCents: integer('price_cents'),
 
     /**
      * Chemin de la photo dans le bucket Supabase Storage, pas une URL complète :
