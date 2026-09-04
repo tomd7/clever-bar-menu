@@ -269,6 +269,8 @@ node .output/server/index.mjs
 - [x] Authentification du back-office (Supabase Auth, comptes créés par l'administrateur)
 - [x] CRUD de la carte (catégories, produits, prix, photos)
 - [x] Gestion des ruptures de stock
+- [ ] Gestion de l'inventaire : niveaux de stock, décompte à la vente, seuils d'alerte et
+      passage automatique en rupture
 - [ ] Multi-établissements
 - [ ] Internationalisation
 - [x] Thème « bar du soir » (nuit chaude et laiton), variantes jour et nuit suivant le système
