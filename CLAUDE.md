@@ -349,7 +349,15 @@ TanStack's `createLink`, because a hand-written signature around `Link` compiles
 drops the inference on `to` and `params`, so a renamed route then fails at runtime instead of at
 build.
 
-**The 44px touch target of a navigation link lives in `.nav-link` (`styles.css`), not in a
+**Text navigation links go through `NavLink`** (`src/components/nav-link.tsx`), which lays the
+label out with its optional `icon` and keeps `to` inferred via `createLink`. Outgoing links take
+the same component under its `ExternalNavLink` export — the same implementation, reached with an
+`href` instead of a route. `NavLink` deliberately sets **no default `activeProps`**: the router
+treats a link as active as soon as the URL merely starts with its target, so a back link to
+`/admin` would stay underlined from `/admin/le-comptoir`. The sidebar asks for it explicitly; a
+back link must not.
+
+**The 44px touch target of a navigation link stays in `.nav-link` (`styles.css`), not in the
 component.** That class already owns the link's identity — colour, hover, the underline that
 grows from the left — and splitting its rules across CSS and a React wrapper would be worse than
 the one duplicated utility it saves. Note the rule sits **outside any `@layer`**, so it beats a

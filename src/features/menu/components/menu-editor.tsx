@@ -1,10 +1,10 @@
-import { Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft } from 'lucide-react'
 
 import { AddCategoryForm } from '#/features/menu/components/add-category-form'
 import { CategorySection } from '#/features/menu/components/category-section'
 import { EmptyState } from '#/components/empty-state'
+import { NavLink } from '#/components/nav-link'
 import { menuQueryOptions } from '#/features/menu/api'
 import { useMoveItem } from '#/features/menu/mutations'
 
@@ -30,9 +30,9 @@ export function MenuEditor({ venueSlug }: { venueSlug: string }) {
         <p role="alert" className="text-sm text-destructive">
           {menuQuery.error.message}
         </p>
-        <Link to="/admin" className="mt-4 inline-block text-sm">
+        <NavLink to="/admin" className="mt-4">
           Retour aux établissements
-        </Link>
+        </NavLink>
       </div>
     )
   }
@@ -41,13 +41,9 @@ export function MenuEditor({ venueSlug }: { venueSlug: string }) {
 
   return (
     <div className="page-wrap px-0">
-      <Link
-        to="/admin"
-        className="nav-link inline-flex items-center gap-1 text-sm no-underline"
-      >
-        <ArrowLeft className="size-4" />
+      <NavLink to="/admin" icon={ArrowLeft}>
         Établissements
-      </Link>
+      </NavLink>
 
       <header className="mt-2">
         <p className="island-kicker">Carte</p>

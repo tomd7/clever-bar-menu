@@ -1,5 +1,7 @@
 import { Link } from '@tanstack/react-router'
 
+import { ExternalNavLink } from '#/components/nav-link'
+
 /** Accroche de la page d'accueil : ce que fait le produit, et par où entrer. */
 export function HomeHero() {
   return (
@@ -31,12 +33,12 @@ export function HomeHero() {
         >
           Espace gérant
         </Link>
-        <a
+        <ExternalNavLink
           href="https://github.com/tomd7/clever-bar-menu"
-          className="nav-link inline-flex items-center px-1 text-sm font-medium"
+          className="px-1 font-medium"
         >
           Voir le projet
-        </a>
+        </ExternalNavLink>
       </div>
     </section>
   )

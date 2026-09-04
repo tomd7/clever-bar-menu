@@ -1,7 +1,7 @@
-import { Link } from '@tanstack/react-router'
 import { LogOut, Store } from 'lucide-react'
 
 import { ActionButton } from '#/components/buttons/action-button'
+import { NavLink } from '#/components/nav-link'
 
 import type { ReactNode } from 'react'
 
@@ -36,14 +36,14 @@ export function BackOfficeShell({
             </p>
 
             <nav className="mt-6 hidden lg:block">
-              <Link
+              <NavLink
                 to="/admin"
-                className="nav-link flex items-center gap-2 rounded-lg px-2 text-sm font-medium"
+                icon={Store}
+                className="flex rounded-lg px-2 font-medium"
                 activeProps={{ className: 'is-active' }}
               >
-                <Store className="size-4" />
                 Établissements
-              </Link>
+              </NavLink>
             </nav>
           </div>
 
