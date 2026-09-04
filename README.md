@@ -326,6 +326,9 @@ node .output/server/index.mjs
 - [x] Modèle de données : établissement, catégorie, produit
 - [x] Carte publique responsive
 - [x] Génération du QR code (un par établissement)
+- [ ] Commande à table : panier côté client, envoi au bar depuis la carte scannée, suivi et
+      historique des commandes dans le back-office. **Sans paiement en ligne** — le
+      règlement se fait au comptoir, la commande ne transporte aucune donnée bancaire
 - [x] Authentification du back-office (Supabase Auth, comptes créés par l'administrateur)
 - [x] CRUD de la carte (catégories, produits, prix, photos)
 - [x] Gestion des ruptures de stock
