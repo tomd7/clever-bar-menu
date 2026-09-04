@@ -76,6 +76,7 @@ src/
     venues/     components/ (venues-page, venue-list, venue-card, add-venue-form), api.ts
     menu/       components/ (menu-editor, category-*, product-*), api.ts, price.ts
   components/   ui/ (shadcn), back-office/, home/, and the cross-screen pieces
+                (action-button, icon-button, confirm-delete, move-buttons, error-note…)
   lib/          supabase.ts, postgrest-error.ts, utils.ts
 ```
 
@@ -284,6 +285,20 @@ first and walk it back with `max-*` variants.
   reachable by hover only.
 - Check the small viewport first when verifying a change; a layout that only works at `lg:` is
   unfinished.
+
+**Don't render a bare `<Button>` in a screen.** Two wrappers own the touch target and the
+press feedback so neither is retyped, and neither drifts:
+
+| Component      | For                                               | Owns                                                                                                       |
+| -------------- | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `ActionButton` | Labelled: Ajouter, Enregistrer, Annuler…          | `h-11` on mobile, desktop height from `surface` (`page`/`panel`/`popover`), leading `icon`, press feedback |
+| `IconButton`   | Icon-only: monter, descendre, modifier, supprimer | 44×44 mobile / 36 desktop, **required** `label` → `aria-label`, `tone="destructive"`, press feedback       |
+
+Both live in `src/components/`, both wrap shadcn's `Button` rather than editing it — `ui/` stays
+regenerable. `surface` names where the button sits instead of its height, because only the
+desktop density varies (mobile is always 44px). `ActionButton` defaults `type="button"`: inside
+a form, a missing `type` silently turns a cancel button into a submit. `ConfirmDelete` and
+`MoveButtons` are the semantic layer built on `IconButton` — reach for those first.
 
 ### Rule: design the UI with Emil Kowalski's skills
 

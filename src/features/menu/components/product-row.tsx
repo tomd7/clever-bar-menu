@@ -2,8 +2,8 @@ import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Pencil } from 'lucide-react'
 
-import { Button } from '#/components/ui/button'
 import { ConfirmDelete } from '#/components/confirm-delete'
+import { IconButton } from '#/components/icon-button'
 import { ErrorNote } from '#/components/error-note'
 import { MoveButtons } from '#/components/move-buttons'
 import { ProductForm } from '#/features/menu/components/product-form'
@@ -130,16 +130,11 @@ export function ProductRow({
           isLast={isLast}
           onMove={onMove}
         />
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label="Modifier le produit"
+        <IconButton
+          icon={Pencil}
+          label="Modifier le produit"
           onClick={() => setIsEditing(true)}
-          className="size-11 lg:size-9"
-        >
-          <Pencil className="size-4" />
-        </Button>
+        />
         <ConfirmDelete
           label="Supprimer le produit"
           question={`Supprimer « ${product.name} » ?`}

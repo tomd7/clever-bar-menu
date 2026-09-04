@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react'
 import { Trash2 } from 'lucide-react'
 
-import { Button } from '#/components/ui/button'
+import { ActionButton } from '#/components/action-button'
+import { IconButton } from '#/components/icon-button'
 import {
   Popover,
   PopoverContent,
@@ -38,16 +39,12 @@ export function ConfirmDelete({
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label={label}
+        <IconButton
+          icon={Trash2}
+          label={label}
+          tone="destructive"
           disabled={pending}
-          className="size-11 text-destructive hover:bg-destructive/10 hover:text-destructive lg:size-9"
-        >
-          <Trash2 className="size-4" />
-        </Button>
+        />
       </PopoverTrigger>
 
       <PopoverContent
@@ -74,20 +71,19 @@ export function ConfirmDelete({
         </PopoverDescription>
 
         <div className="mt-3 flex justify-end gap-2">
-          <Button
+          <ActionButton
             ref={cancelRef}
-            type="button"
             variant="ghost"
             size="sm"
+            surface="popover"
             onClick={() => setIsOpen(false)}
-            className="h-11 lg:h-8"
           >
             Annuler
-          </Button>
-          <Button
-            type="button"
+          </ActionButton>
+          <ActionButton
             variant="destructive"
             size="sm"
+            surface="popover"
             /*
               Fermé dès la confirmation : en cas d'échec, le message d'erreur
               s'affiche dans la ligne, que le popover recouvrirait.
@@ -96,10 +92,9 @@ export function ConfirmDelete({
               setIsOpen(false)
               onConfirm()
             }}
-            className="h-11 transition-transform duration-150 ease-out active:scale-[0.97] lg:h-8"
           >
             Supprimer
-          </Button>
+          </ActionButton>
         </div>
       </PopoverContent>
     </Popover>

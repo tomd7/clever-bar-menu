@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { LogOut, Store } from 'lucide-react'
 
-import { Button } from '#/components/ui/button'
+import { ActionButton } from '#/components/action-button'
 
 import type { ReactNode } from 'react'
 
@@ -51,14 +51,15 @@ export function BackOfficeShell({
             <p className="hidden truncate text-xs text-ink-soft lg:block">
               {email}
             </p>
-            <Button
+            <ActionButton
+              icon={LogOut}
               variant="ghost"
+              surface="page"
               onClick={onSignOut}
-              className="h-11 gap-2 transition-transform duration-150 ease-out active:scale-[0.97] lg:h-10 lg:justify-start"
+              className="lg:justify-start"
             >
-              <LogOut className="size-4" />
               <span className="hidden sm:inline">Déconnexion</span>
-            </Button>
+            </ActionButton>
           </div>
         </div>
       </header>

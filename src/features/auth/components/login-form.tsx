@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-import { Button } from '#/components/ui/button'
+import { ActionButton } from '#/components/action-button'
 import { ErrorNote } from '#/components/error-note'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
@@ -79,14 +79,14 @@ export function LoginForm({ onSignedIn }: { onSignedIn: () => Promise<void> }) {
 
       {error ? <ErrorNote className="mt-0">{error}</ErrorNote> : null}
 
-      <Button
+      <ActionButton
         type="submit"
+        surface="page"
         disabled={pending}
-        /* scale au maintien : la pression doit se voir immédiatement. */
-        className="h-11 w-full transition-transform duration-150 ease-out active:scale-[0.97] lg:h-10"
+        className="w-full"
       >
         {pending ? 'Un instant…' : 'Se connecter'}
-      </Button>
+      </ActionButton>
     </form>
   )
 }

@@ -2,8 +2,9 @@ import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Pencil } from 'lucide-react'
 
-import { Button } from '#/components/ui/button'
+import { ActionButton } from '#/components/action-button'
 import { ConfirmDelete } from '#/components/confirm-delete'
+import { IconButton } from '#/components/icon-button'
 import { ErrorNote } from '#/components/error-note'
 import { Input } from '#/components/ui/input'
 import { MoveButtons } from '#/components/move-buttons'
@@ -84,19 +85,16 @@ export function CategoryHeader({
               onChange={(event) => setName(event.target.value)}
               className="h-11 flex-1 lg:h-9"
             />
-            <Button
+            <ActionButton
               type="submit"
               size="sm"
               disabled={rename.isPending || !name.trim()}
-              className="h-11 lg:h-9"
             >
               Enregistrer
-            </Button>
-            <Button
-              type="button"
+            </ActionButton>
+            <ActionButton
               size="sm"
               variant="ghost"
-              className="h-11 lg:h-9"
               onClick={() => {
                 setName(category.name)
                 setIsRenaming(false)
@@ -104,7 +102,7 @@ export function CategoryHeader({
               }}
             >
               Annuler
-            </Button>
+            </ActionButton>
           </form>
         ) : (
           <div className="min-w-0 flex-1">
@@ -128,16 +126,11 @@ export function CategoryHeader({
               isLast={isLast}
               onMove={onMove}
             />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label="Renommer la catégorie"
+            <IconButton
+              icon={Pencil}
+              label="Renommer la catégorie"
               onClick={() => setIsRenaming(true)}
-              className="size-11 lg:size-9"
-            >
-              <Pencil className="size-4" />
-            </Button>
+            />
             <ConfirmDelete
               label="Supprimer la catégorie"
               /*

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Plus } from 'lucide-react'
 
-import { Button } from '#/components/ui/button'
+import { ActionButton } from '#/components/action-button'
 import { CategoryHeader } from '#/features/menu/components/category-header'
 import { ProductForm } from '#/features/menu/components/product-form'
 import { ProductRow } from '#/features/menu/components/product-row'
@@ -72,15 +72,14 @@ export function CategorySection({
           }}
         />
       ) : (
-        <Button
-          type="button"
+        <ActionButton
+          icon={Plus}
           variant="ghost"
           onClick={() => setIsAdding(true)}
-          className="mt-3 h-11 gap-2 transition-transform duration-150 ease-out active:scale-[0.97] lg:h-9"
+          className="mt-3"
         >
-          <Plus className="size-4" />
           Ajouter un produit
-        </Button>
+        </ActionButton>
       )}
     </section>
   )
