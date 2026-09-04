@@ -336,7 +336,7 @@ node .output/server/index.mjs
       propriété
 - [x] Suppression d'un établissement (logique, avec corbeille et restauration)
 - [ ] Internationalisation
-- [x] Thème « bar du soir » (nuit chaude et laiton), variantes jour et nuit suivant le système
+- [x] Thème : variantes jour et nuit suivant le système
 - [ ] Personnalisation du thème par établissement
 
 ## Contribuer
