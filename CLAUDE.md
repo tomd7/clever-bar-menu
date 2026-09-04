@@ -149,36 +149,74 @@ runs on any Node host (`node .output/server/index.mjs`).
 
 ## Styles
 
-`src/styles.css` (347 lines) is the only style file and contains **two parallel token sets** —
-this is the project's main trap:
+`src/styles.css` is the only style file. It carries the **"bar du soir"** theme — warm night
+and brass — in a **single token set**, which is the structural point to preserve:
 
-1. **shadcn tokens** (`--background`, `--primary`, `--border`… in `oklch`, zinc base) defined
-   in `:root`, redefined in `.dark`, then exposed to Tailwind via `@theme inline`. They are
-   used as utilities: `bg-background`, `text-muted-foreground`, `rounded-lg`.
-2. **In-house "coastal" palette** (`--sea-ink`, `--lagoon`, `--lagoon-deep`, `--palm`,
-   `--sand`, `--foam`, `--surface`, `--line`, `--hero-a`…) in raw hex/rgba. It is **not**
-   mapped in `@theme`, so there is no Tailwind utility: use `var(--lagoon)` in CSS or an
-   arbitrary value like `bg-[var(--lagoon)]`. It **does** have a dark variant: `.dark`
-   redefines every coastal token (styles.css:65-118).
+1. **House palette** (`--ink`, `--ink-soft`, `--brass`, `--brass-deep`, `--on-brass`,
+   `--paper`, `--paper-soft`, `--surface`, `--line`, `--hero-a`…) defined in `:root` (day:
+   warm paper, espresso ink) and redefined in `.dark` (night: `#14100e` + amber). This is the
+   **source of truth**.
+2. **shadcn contract** (`--background`, `--primary`, `--border`…) **derived** from it in a
+   `:root, .dark` block: `--primary: var(--brass)`, `--background: var(--paper)`, etc.
+   Never give a shadcn token a literal colour — change the house token instead, and both
+   themes follow. The old zinc/oklch set is gone; so is the parallel "coastal" palette
+   (`--sea-ink`, `--lagoon`, `--palm`, `--sand`, `--foam`), which no longer exists.
 
-Dark mode is **class-driven**: `@custom-variant dark (&:is(.dark *))`. So a `.dark` is needed
-on an ancestor (nothing sets it for now — no theme provider).
+Things that are easy to get wrong here:
 
-Fonts: **Manrope** as `--font-sans`, **Fraunces** for display titles, loaded by a Google Fonts
-`@import` at the top of `styles.css`.
+- **The derivation block targets `:root, .dark`, not just `:root`.** A custom property is
+  substituted on the element that _declares_ it, so `--background: var(--paper)` declared
+  only on `:root` would compute against the light `--paper` and be inherited as-is by a
+  `.dark` subtree. Listing both selectors makes the substitution happen again on `.dark`.
+- **Two ambers, on purpose.** `--brass` is a _fill_ colour (buttons, chips) and `--brass-deep`
+  a _text_ colour. Amber on paper sits around 2:1 contrast — unreadable as text, fine as a
+  flat area under dark ink. `--on-brass` stays dark in **both** themes because the fill stays
+  light. Don't collapse them.
+- **`@layer base` must not set `body { background-color }`.** shadcn's default rule did, and
+  it silently overrode the gradient declared in the `body` rule — the whole house palette was
+  invisible. The body's colour is set in the `body` rule only.
+- **Both token sets are mapped in `@theme inline`**, so the house palette has real utilities:
+  `text-ink-soft`, `border-line`, `bg-brass`, `text-brass-deep`, `bg-chip`. Prefer them over
+  `text-[var(--ink-soft)]`.
+- Tailwind already ships an `amber-*` scale; the house token is deliberately named **brass**
+  so `bg-brass` can't be confused with `bg-amber-500`.
 
-A visual vocabulary is **already written but still unused** in the code: `.page-wrap`,
-`.display-title`, `.island-shell`, `.feature-card`, `.island-kicker`, `.nav-link`, `.rise-in`,
-`.site-footer`, plus the `body::before`/`body::after` decorations and the `rise-in` animation.
-Reuse these classes before inventing new ones.
+Dark mode is **class-driven** (`@custom-variant dark (&:is(.dark *))`) and follows the
+system: an inline `ScriptOnce` in `src/routes/__root.tsx` toggles `.dark` on `<html>` from
+`prefers-color-scheme` before hydration, and keeps listening for changes. There is
+deliberately **no toggle and no `localStorage`** — the customer menu follows the phone. The
+`<html>` element carries `suppressHydrationWarning` because the server renders it without the
+class. Two `theme-color` metas are written **directly in the shell's `<head>`**, not in
+`head.meta`: the router dedupes metas by `name` and would keep only one of them.
+
+Fonts: **Manrope** as `--font-sans`, **Fraunces** as `--font-display` (used by
+`.display-title`), loaded by a Google Fonts `@import` at the top of `styles.css`.
+
+Visual vocabulary — reuse these before inventing new ones:
+
+| Class            | Where                                                                |
+| ---------------- | -------------------------------------------------------------------- |
+| `.island-shell`  | Showcase surfaces (home, `/login`, customer menu): translucent, blur |
+| `.panel`         | Back office: opaque, no blur, minimal shadow — the sober application |
+| `.feature-card`  | Clickable cards, lift on hover (pointer-fine only)                   |
+| `.page-wrap`     | Centred container, `min(1080px, 100% - 2rem)`                        |
+| `.display-title` | Fraunces + optical sizing                                            |
+| `.island-kicker` | Small caps label in `--kicker`                                       |
+| `.nav-link`      | Link with an underline that grows from the left                      |
+| `.rise-in`       | Entry animation (stagger via `animationDelay`)                       |
+| `.site-footer`   | Footer                                                               |
+
+`@media (prefers-reduced-motion: reduce)` neutralises movement while keeping fades. The
+global `transition` rule covers colours only — `transform` is left to the components, which
+declare their own `active:scale-[0.97]`.
 
 ## Conventions
 
 - **Prettier**: no semicolons, single quotes, trailing commas everywhere. Run `npm run format`
-  before committing. Careful: `npm run check` already flags 13 pre-existing unformatted files
-  from the scaffold (shadcn components, `src/styles.css`, `tsconfig.json`, `components.json`,
-  `AGENTS.md`) — a global `npm run format` would rewrite them all and bloat the diff. Only
-  format the files you touch.
+  before committing. Careful: `npm run check` already flags a dozen pre-existing unformatted
+  files from the scaffold (shadcn components, `tsconfig.json`, `components.json`, `.cta.json`,
+  `prettier.config.js`, `AGENTS.md`) — a global `npm run format` would rewrite them all and
+  bloat the diff. Only format the files you touch.
 - **ESLint**: `@tanstack/eslint-config`, with `import/order`, `sort-imports`,
   `import/no-cycle`, `@typescript-eslint/array-type` and `require-await` **disabled**. Don't
   reorder imports "to make it clean".
@@ -229,11 +267,14 @@ the relevant skill first and follows its `SKILL.md`.** This is not optional, and
 
 ## Project status
 
-The data layer exists; **the UI does not**. `src/routes/index.tsx` is still the TanStack
-template page, and the `<title>` in `__root.tsx` is still "TanStack Start Starter". Nothing
-reads or writes the database yet — there is no query module and no `createServerFn`, and the
-schema has never been run against a real Postgres (no Supabase project was provisioned when
-it was written; the SQL was verified offline via `toSQL()`).
+The data layer and the back office exist; **the customer-facing menu does not**. There is no
+`/$venueSlug` route yet, and no QR code generation. The schema has never been run against a
+real Postgres (no Supabase project was provisioned when it was written; the SQL was verified
+offline via `toSQL()`).
+
+The **"bar du soir" theme** (warm night + brass, day and night variants) is in place across
+`styles.css`, the home page, `/login` and the back office — see the Styles section. The home
+page is a landing page, not the customer menu.
 
 **Data access is browser-side `supabase-js` + RLS** (decided 2026-09-04). The browser holds
 the publishable key and talks to PostgREST directly; Postgres policies — not application

@@ -20,7 +20,8 @@ gère ses catégories, ses produits et ses prix depuis un back-office.
 - **Multi-établissements** — un même déploiement héberge plusieurs bars, chacun avec sa
   carte et ses accès.
 - **Multilingue et thème clair/sombre** — carte traduisible et apparence personnalisable
-  par établissement.
+  par établissement. Le thème « bar du soir » est en place : il suit le réglage clair/sombre
+  du téléphone qui scanne le QR code, sans interrupteur ni cookie.
 
 ## Stack technique
 
@@ -265,7 +266,8 @@ node .output/server/index.mjs
 - [x] Gestion des ruptures de stock
 - [ ] Multi-établissements
 - [ ] Internationalisation
-- [ ] Thème clair/sombre et personnalisation par établissement
+- [x] Thème « bar du soir » (nuit chaude et laiton), variantes jour et nuit suivant le système
+- [ ] Personnalisation du thème par établissement
 
 ## Contribuer
 
