@@ -334,6 +334,9 @@ node .output/server/index.mjs
 - [x] Gestion des ruptures de stock
 - [ ] Gestion de l'inventaire : niveaux de stock, décompte à la vente, seuils d'alerte et
       passage automatique en rupture
+- [ ] Tableau de bord : nouvelle page d'accueil du back-office, à la place de la simple
+      liste des établissements — chiffres de la journée, alertes (stocks bas, ruptures,
+      commandes en attente) et accès direct à chaque carte
 - [x] Multi-établissements : un gérant, plusieurs bars, cloisonnés par le RLS
 - [ ] Accès partagés : plusieurs comptes sur un même établissement, rôles, transfert de
       propriété
