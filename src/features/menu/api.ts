@@ -1,6 +1,7 @@
 import { queryOptions } from '@tanstack/react-query'
 
 import { describeError } from '#/lib/postgrest-error'
+import { removeProductPhoto } from '#/features/menu/photo'
 import { supabase } from '#/lib/supabase'
 
 import type { Category, Product, Venue } from '#/lib/supabase'
@@ -214,9 +215,26 @@ export async function renameCategory(
   await write(supabase.from('categories').update({ name }).eq('id', categoryId))
 }
 
-/** La cascade est déclarée en base : les produits de la catégorie partent avec. */
+/**
+ * Supprime une catégorie, ses produits et leurs photos.
+ *
+ * La cascade sur les produits est déclarée en base, mais elle s'arrête au bord
+ * du Storage : Postgres ne sait rien des fichiers. Les chemins sont donc relevés
+ * *avant* la suppression, seul moment où ils sont encore lisibles, puis les
+ * fichiers sont retirés une fois la cascade passée.
+ */
 export async function deleteCategory(categoryId: string): Promise<void> {
+  const { data } = await supabase
+    .from('products')
+    .select('image_path')
+    .eq('category_id', categoryId)
+    .not('image_path', 'is', null)
+
   await write(supabase.from('categories').delete().eq('id', categoryId))
+
+  for (const row of data ?? []) {
+    if (row.image_path) await removeProductPhoto(row.image_path)
+  }
 }
 
 /** Champs d'un produit tels que le formulaire les tient, prix déjà en centimes. */
@@ -224,6 +242,8 @@ export type ProductDraft = {
   name: string
   description: string | null
   priceCents: number | null
+  /** Chemin dans le bucket, jamais une URL : celle-ci dépend du projet. */
+  imagePath: string | null
 }
 
 function toProductRow(draft: ProductDraft) {
@@ -231,6 +251,7 @@ function toProductRow(draft: ProductDraft) {
     name: draft.name,
     description: draft.description,
     price_cents: draft.priceCents,
+    image_path: draft.imagePath,
   }
 }
 
@@ -255,8 +276,21 @@ export async function updateProduct(
   )
 }
 
-export async function deleteProduct(productId: string): Promise<void> {
-  await write(supabase.from('products').delete().eq('id', productId))
+/**
+ * Supprime un produit et, le cas échéant, sa photo.
+ *
+ * La ligne part avant le fichier, et pas l'inverse : le Storage n'a pas de
+ * cascade, il faut donc choisir lequel des deux restes est acceptable. Un
+ * fichier orphelin ne se voit pas et ne coûte que quelques kilo-octets ; une
+ * ligne qui pointe vers un fichier disparu affiche une image cassée dans la
+ * carte d'un client.
+ */
+export async function deleteProduct(product: {
+  id: string
+  imagePath: string | null
+}): Promise<void> {
+  await write(supabase.from('products').delete().eq('id', product.id))
+  if (product.imagePath) await removeProductPhoto(product.imagePath)
 }
 
 export async function setProductAvailability(

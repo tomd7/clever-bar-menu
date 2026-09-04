@@ -10,18 +10,21 @@ import {
   useSetProductAvailability,
 } from '#/features/menu/mutations'
 import { formatPrice } from '#/features/menu/price'
+import { productPhotoUrl } from '#/features/menu/photo'
 
 import type { Product } from '#/lib/supabase'
 
 /** Une ligne de produit : lecture, bascule de disponibilité, édition, suppression. */
 export function ProductRow({
   product,
+  venueId,
   currency,
   isFirst,
   isLast,
   onMove,
 }: {
   product: Product
+  venueId: string
   currency: string
   isFirst: boolean
   isLast: boolean
@@ -39,6 +42,7 @@ export function ProductRow({
       <li className="py-3">
         <ProductForm
           product={product}
+          venueId={venueId}
           categoryId={product.category_id}
           position={product.position}
           onCancel={() => setIsEditing(false)}
@@ -50,6 +54,17 @@ export function ProductRow({
 
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3">
+      {product.image_path ? (
+        <img
+          src={productPhotoUrl(product.image_path)}
+          alt=""
+          /* Chargée paresseusement : une carte fournie ne doit pas tirer
+             trente images avant d'être lisible. */
+          loading="lazy"
+          className="size-12 shrink-0 rounded-lg border border-line object-cover"
+        />
+      ) : null}
+
       <div className="min-w-0 flex-1">
         <p
           className={
@@ -117,7 +132,9 @@ export function ProductRow({
           label="Supprimer le produit"
           question={`Supprimer « ${product.name} » ?`}
           pending={remove.isPending}
-          onConfirm={() => remove.mutate(product.id)}
+          onConfirm={() =>
+            remove.mutate({ id: product.id, imagePath: product.image_path })
+          }
         />
       </div>
 

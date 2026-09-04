@@ -1,8 +1,10 @@
 import { Button } from '#/components/ui/button'
+import { DESTRUCTIVE_TONE } from '#/components/buttons/tone'
 import { cn } from '#/lib/utils.ts'
 
 import type { ComponentProps } from 'react'
 import type { LucideIcon } from 'lucide-react'
+import type { Tone } from '#/components/buttons/tone'
 
 /**
  * Bouton réduit à son icône : monter, descendre, modifier, supprimer.
@@ -30,7 +32,7 @@ export function IconButton({
 }: {
   icon: LucideIcon
   label: string
-  tone?: 'default' | 'destructive'
+  tone?: Tone
 } & Omit<ComponentProps<typeof Button>, 'children' | 'size' | 'aria-label'>) {
   return (
     <Button
@@ -40,8 +42,7 @@ export function IconButton({
       aria-label={label}
       className={cn(
         'size-11 transition-transform duration-150 ease-out active:scale-[0.97] lg:size-9',
-        tone === 'destructive' &&
-          'text-destructive hover:bg-destructive/10 hover:text-destructive',
+        tone === 'destructive' && DESTRUCTIVE_TONE,
         className,
       )}
       {...props}

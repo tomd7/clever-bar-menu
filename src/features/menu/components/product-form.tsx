@@ -4,6 +4,7 @@ import { CancelButton } from '#/components/buttons/cancel-button'
 import { SaveButton } from '#/components/buttons/save-button'
 import { ErrorNote } from '#/components/error-note'
 import { TextAreaField } from '#/components/form/textarea-field'
+import { PhotoField } from '#/features/menu/components/photo-field'
 import { TextField } from '#/components/form/text-field'
 import { centsToInput } from '#/features/menu/price'
 import { useSaveProduct } from '#/features/menu/mutations'
@@ -20,12 +21,14 @@ import type { Product } from '#/lib/supabase'
  */
 export function ProductForm({
   product,
+  venueId,
   categoryId,
   position,
   onCancel,
   onSaved,
 }: {
   product?: Product
+  venueId: string
   categoryId: string
   position: number
   onCancel: () => void
@@ -36,6 +39,17 @@ export function ProductForm({
   const [price, setPrice] = useState(
     product ? centsToInput(product.price_cents) : '',
   )
+  /*
+    Deux états distincts pour une seule photo : `photoFile` est le fichier
+    choisi mais pas encore envoyé, `imagePath` celui déjà en base. Les garder
+    séparés permet de distinguer « remplacée » de « retirée », et de ne rien
+    envoyer tant que le formulaire n'est pas validé — un gérant qui annule ne
+    doit laisser aucun fichier derrière lui.
+  */
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [imagePath, setImagePath] = useState<string | null>(
+    product?.image_path ?? null,
+  )
   const save = useSaveProduct()
 
   function handleSubmit(event: FormEvent) {
@@ -43,11 +57,15 @@ export function ProductForm({
     save.mutate(
       {
         productId: product?.id,
+        venueId,
         categoryId,
         position,
         name,
         description,
         price,
+        photoFile,
+        imagePath,
+        previousImagePath: product?.image_path ?? null,
       },
       { onSuccess: onSaved },
     )
@@ -99,6 +117,17 @@ export function ProductForm({
         placeholder="Facultatif — origine, degré, allergènes…"
         value={description}
         onChange={(event) => setDescription(event.target.value)}
+      />
+
+      <PhotoField
+        className="mt-3"
+        imagePath={imagePath}
+        file={photoFile}
+        onSelect={setPhotoFile}
+        onRemove={() => {
+          setPhotoFile(null)
+          setImagePath(null)
+        }}
       />
 
       {save.error ? <ErrorNote>{save.error.message}</ErrorNote> : null}

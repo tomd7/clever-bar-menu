@@ -474,6 +474,25 @@ both guards and provides the shell. Constraints that are easy to get wrong:
   `window.confirm` blocks the thread and can't be styled. Focus lands on **Annuler**,
   never on **Supprimer** — the popover opens from the keyboard too, and a reflex Enter
   must not destroy a category.
+- **Product photos live in the `product-photos` Storage bucket**, created by migration `0004`
+  (hand-written: it touches the `storage` schema, which `src/db/schema.ts` doesn't describe).
+  The bucket is **public for reads** — the menu is opened from a QR code on mobile data, and a
+  public URL is CDN-cacheable where a signed URL costs a round trip per image and expires.
+  Writes are owner-only: the first path segment is the venue id
+  (`<venue_id>/<random>.<ext>`), which the `storage.objects` policies join back to
+  `venues.owner_id`.
+- **In a storage policy, qualify `storage.objects.name` in full.** Written as bare `name`
+  inside the `exists (select ... from venues ...)` subquery, Postgres resolves it against
+  `venues.name` — the policy then compares the venue's _name_ to the folder and silently
+  refuses every upload. This cost a debugging round; the migration carries the warning.
+- **Photos are downscaled in the browser** before upload (`src/features/menu/photo.ts`,
+  canvas, max 1200px, WebP with a JPEG fallback). `imageOrientation: 'from-image'` applies the
+  EXIF rotation — without it, photos taken sideways arrive lying down.
+- **File names are random, never derived from the product id.** Replacing a photo must write a
+  new path: public URLs are CDN-cached, and reusing a path keeps serving the old image.
+- **Storage has no cascade.** Deleting a product removes its file after the row; deleting a
+  category collects its products' paths _before_ the DB cascade wipes them. Order matters: an
+  orphan file is invisible, a row pointing at a deleted file shows a broken image to a customer.
 - Auth is **email + password, sign-in only**. There is deliberately no sign-up form: accounts
   are provisioned by the platform administrator (Supabase dashboard → Authentication → Users
   → Add user, with _Auto Confirm User_). **Don't add a sign-up screen back** without being

@@ -41,6 +41,7 @@ export function CategorySection({
             <ProductRow
               key={product.id}
               product={product}
+              venueId={category.venue_id}
               currency={currency}
               isFirst={index === 0}
               isLast={index === productCount - 1}
@@ -58,6 +59,7 @@ export function CategorySection({
 
       {isAdding ? (
         <ProductForm
+          venueId={category.venue_id}
           categoryId={category.id}
           position={nextPosition(category.products)}
           onCancel={() => setIsAdding(false)}

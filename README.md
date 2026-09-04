@@ -170,6 +170,11 @@ Les prix sont saisis en euros et stockés en **centimes entiers**
 les décimales sont lues comme du texte plutôt que multipliées en flottant — `1,10 * 100`
 vaut `110.00000000000001` en JavaScript.
 
+Les **photos** sont déposées dans le bucket Supabase Storage `product-photos`, public en
+lecture (la carte se charge au QR code, une URL publique passe par le CDN) mais dont
+l'écriture est réservée au propriétaire de l'établissement. Elles sont réduites dans le
+navigateur avant l'envoi — 1200 px de côté au maximum, en WebP.
+
 Le prix est **facultatif** : un champ laissé vide vaut « pas de prix affiché », pour un plat
 du jour ou un tarif selon arrivage. C'est distinct de `0`, qui reste un prix valide pour un
 article offert.
@@ -262,7 +267,7 @@ node .output/server/index.mjs
 - [ ] Carte publique responsive
 - [ ] Génération des QR codes par table
 - [x] Authentification du back-office (Supabase Auth, comptes créés par l'administrateur)
-- [x] CRUD de la carte (catégories, produits, prix) — photos à venir
+- [x] CRUD de la carte (catégories, produits, prix, photos)
 - [x] Gestion des ruptures de stock
 - [ ] Multi-établissements
 - [ ] Internationalisation

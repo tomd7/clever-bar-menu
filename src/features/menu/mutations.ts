@@ -15,6 +15,7 @@ import {
   PriceFormatError,
   parseOptionalEurosToCents,
 } from '#/features/menu/price'
+import { removeProductPhoto, uploadProductPhoto } from '#/features/menu/photo'
 
 /**
  * Toute écriture sur la carte invalide la carte.
@@ -82,16 +83,29 @@ export function useMoveItem() {
  * la mutation plutôt que par une validation séparée dans le formulaire fait
  * remonter les deux sortes d'échec — saisie illisible et refus du serveur —
  * par le même `error`, donc au même endroit à l'écran.
+ *
+ * La photo suit le même chemin, et l'ordre des opérations n'est pas neutre :
+ * l'envoi précède l'écriture en base, parce que la ligne doit connaître le
+ * chemin du fichier. Si l'écriture échoue ensuite, le fichier fraîchement
+ * envoyé est retiré — sans quoi chaque tentative ratée laisserait un orphelin
+ * dans le bucket.
  */
 export function useSaveProduct() {
   return useMenuMutation(
     async (input: {
       productId?: string
+      venueId: string
       categoryId: string
       position: number
       name: string
       description: string
       price: string
+      /** Photo choisie à l'instant, si le gérant vient d'en sélectionner une. */
+      photoFile: File | null
+      /** Chemin conservé : celui du produit, ou `null` si la photo est retirée. */
+      imagePath: string | null
+      /** Chemin avant modification, pour savoir quel fichier devient inutile. */
+      previousImagePath: string | null
     }) => {
       let priceCents: number | null
       try {
@@ -102,19 +116,41 @@ export function useSaveProduct() {
           : new Error('Prix invalide.')
       }
 
+      const uploadedPath = input.photoFile
+        ? await uploadProductPhoto(input.venueId, input.photoFile)
+        : null
+
       const draft = {
         name: input.name.trim(),
         description: input.description.trim() || null,
         priceCents,
+        imagePath: uploadedPath ?? input.imagePath,
       }
 
-      await (input.productId
-        ? updateProduct(input.productId, draft)
-        : createProduct({
-            ...draft,
-            categoryId: input.categoryId,
-            position: input.position,
-          }))
+      try {
+        await (input.productId
+          ? updateProduct(input.productId, draft)
+          : createProduct({
+              ...draft,
+              categoryId: input.categoryId,
+              position: input.position,
+            }))
+      } catch (cause) {
+        if (uploadedPath) await removeProductPhoto(uploadedPath)
+        throw cause
+      }
+
+      /*
+        L'ancienne photo n'est plus référencée : remplacée, ou retirée. Elle
+        part après l'écriture, jamais avant — un échec en base doit laisser le
+        produit exactement dans l'état où il était, image comprise.
+      */
+      if (
+        input.previousImagePath &&
+        input.previousImagePath !== draft.imagePath
+      ) {
+        await removeProductPhoto(input.previousImagePath)
+      }
     },
   )
 }
