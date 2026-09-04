@@ -5,6 +5,19 @@ import { supabase } from '#/lib/supabase'
 
 import type { Category, Product, Venue } from '#/lib/supabase'
 
+/**
+ * L'établissement demandé n'existe pas.
+ *
+ * Distinguée d'une `Error` ordinaire parce que c'est une réponse, pas une
+ * panne : la base a répondu, et elle a répondu « rien ». Réessayer ne changera
+ * jamais rien, d'où le `retry` désactivé dans `menuQueryOptions`.
+ */
+export class VenueNotFoundError extends Error {
+  constructor() {
+    super("Cet établissement n'existe pas.")
+  }
+}
+
 /** Une catégorie et ses produits, dans l'ordre d'affichage de la carte. */
 export type CategoryWithProducts = Category & { products: Array<Product> }
 
@@ -50,7 +63,7 @@ export async function fetchMenu(venueSlug: string): Promise<Menu> {
 
   if (venueResult.error) throw new Error(describeError(venueResult.error))
   if (!venueResult.data) {
-    throw new Error("Cet établissement n'existe pas.")
+    throw new VenueNotFoundError()
   }
 
   const venue = venueResult.data
@@ -138,6 +151,20 @@ export function menuQueryOptions(venueSlug: string) {
   return queryOptions({
     queryKey: [...MENU_QUERY_KEY, venueSlug],
     queryFn: () => fetchMenu(venueSlug),
+    /*
+      Un slug introuvable est une réponse définitive : les trois tentatives par
+      défaut ne feraient que retarder le message d'une poignée de secondes.
+      Pire, elles laissent l'écran sur « Chargement… » indéfiniment quand
+      l'onglet passe à l'arrière-plan — React Query suspend ses tentatives tant
+      que le document n'est pas au premier plan, et une erreur qui n'a jamais
+      fini de réessayer n'est jamais affichée. Ne pas réessayer supprime les
+      deux à la fois.
+
+      Le reste garde les trois tentatives : une coupure réseau, elle, se répare
+      toute seule.
+    */
+    retry: (failureCount, error) =>
+      !(error instanceof VenueNotFoundError) && failureCount < 3,
   })
 }
 

@@ -459,6 +459,12 @@ both guards and provides the shell. Constraints that are easy to get wrong:
 - **Writes go through `write()` in `src/features/menu/api.ts`**, a one-line helper that reads
   `error` and raises `describeError(error)`. It exists so a mutation added later can't forget
   the translation and surface a raw English PostgREST message in the UI.
+- **A missing venue is a `VenueNotFoundError`, and `menuQueryOptions` does not retry it.** The
+  database answered — it answered "nothing" — so the three default attempts would only delay
+  the message. Worse, React Query pauses retries while the document is hidden, so an error that
+  never finished retrying is never shown: a background tab would sit on « Chargement… »
+  indefinitely. Everything else keeps the default three attempts; a network blip does repair
+  itself.
 - **`fetchMenu` runs three queries instead of one embedded select.** PostgREST can embed
   (`select('*, products(*)')`) but typing that needs relationship metadata our hand-written
   `Database` doesn't carry. Revisit if the menu grows large.
