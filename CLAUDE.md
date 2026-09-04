@@ -63,6 +63,48 @@ File-based routing in `src/routes/`. **`src/routeTree.gen.ts` is generated** —
 The Vite plugin regenerates it on the fly; `npm run generate-routes` is for a cold build or
 after a mass rename.
 
+### Feature-based architecture
+
+Code is grouped by **feature**, not by technical kind. A feature owns its screens, its
+queries and its domain rules in one directory; nothing about it is scattered across a
+`components/` and a `lib/` at the other end of the tree.
+
+```
+src/
+  features/
+    auth/       components/ (login-screen, login-form), redirect.ts, errors.ts
+    venues/     components/ (venues-page, venue-list, venue-card, add-venue-form), api.ts
+    menu/       components/ (menu-editor, category-*, product-*), api.ts, price.ts
+  components/   ui/ (shadcn), back-office/, home/, and the cross-screen pieces
+  lib/          supabase.ts, postgrest-error.ts, utils.ts
+```
+
+Rules that keep the layout honest:
+
+- **Only business domains are features.** `back-office/` (the shell) and `home/` (the landing
+  page) stay in `src/components/`: they carry no data and no domain rule, and a directory
+  holding one presentational file is a folder, not a feature.
+- **No cross-feature imports.** `features/menu` must not reach into `features/venues`.
+  Anything two features need is not a feature concern — it moves down to `src/components/` or
+  `src/lib/`. That is why `describeError` lives in `src/lib/postgrest-error.ts`: PostgREST
+  error codes belong to no domain.
+- **Dependencies point one way**: routes → features → shared (`src/components`, `src/lib`).
+  A file under `src/components/` or `src/lib/` importing from `#/features/` is the inversion
+  to catch in review — nothing enforces it, `import/no-cycle` is disabled.
+- **No barrel `index.ts`.** Imports name the file they need
+  (`#/features/menu/components/product-row`). Deliberate: a barrel adds a file to maintain and
+  hides which module a route actually depends on.
+
+**Route files hold routing only** — `createFileRoute`, `ssr`, `beforeLoad`, `validateSearch`,
+and a component that reads the route's own hooks (`Route.useParams`, `Route.useSearch`,
+`Route.useRouteContext`) and passes plain props down. A feature component takes props instead
+of calling `Route.useX()`: it keeps TanStack Router's inference intact and stays movable.
+
+**Query keys live with their query function** — `menuQueryOptions` in
+`src/features/menu/api.ts`, `venuesQueryOptions` in `src/features/venues/api.ts`. A component
+that invalidates reads the key from those helpers rather than retyping `['menu', slug]`, which
+is how an invalidation ends up silently targeting a key nothing reads.
+
 ### Import aliases
 
 `tsconfig.json` maps **`#/*` and `@/*`** to `./src/*`, but only `#/*` is declared in the
@@ -302,22 +344,24 @@ both guards and provides the shell. Constraints that are easy to get wrong:
 - **Prices are nullable.** `null` means "no price shown" (dish of the day, market price);
   `0` is a valid free item. Never collapse the two — `parseOptionalEurosToCents` returns
   `null` only for a blank field. The UI renders "Prix non renseigné" rather than an empty gap.
-- **Prices**: the UI takes euros, the DB stores integer cents. `src/lib/price.ts` is the only
+- **Prices**: the UI takes euros, the DB stores integer cents. `src/features/menu/price.ts`
+  is the only
   place that converts. It parses decimals as _text_ rather than multiplying a float —
   `1.10 * 100` is `110.00000000000001` in JS. Accepts comma or dot, strips whitespace
   (`\s` covers non-breaking spaces).
 - **Ordering** uses a `position` column stepping by 100, leaving room to insert between two
-  neighbours without rewriting the list. `swapPositions` in `src/lib/menu.ts` does two
+  neighbours without rewriting the list. `swapPositions` in `src/features/menu/api.ts` does two
   sequential updates, not a transaction — PostgREST exposes none. A failure between them
   leaves two equal positions, which the `(position, name)` ordering resolves deterministically.
 - **`fetchMenu` runs three queries instead of one embedded select.** PostgREST can embed
   (`select('*, products(*)')`) but typing that needs relationship metadata our hand-written
   `Database` doesn't carry. Revisit if the menu grows large.
 - **Destructive actions confirm in a Popover** anchored to the trash button
-  (`ConfirmDelete` in `admin.$venueSlug.tsx`), not inline and not `window.confirm`. Inline
-  confirmation pushed the surrounding row around; `window.confirm` blocks the thread and
-  can't be styled. Focus lands on **Annuler**, never on **Supprimer** — the popover opens
-  from the keyboard too, and a reflex Enter must not destroy a category.
+  (`ConfirmDelete`, `src/components/confirm-delete.tsx`), not inline and not
+  `window.confirm`. Inline confirmation pushed the surrounding row around;
+  `window.confirm` blocks the thread and can't be styled. Focus lands on **Annuler**,
+  never on **Supprimer** — the popover opens from the keyboard too, and a reflex Enter
+  must not destroy a category.
 - Auth is **email + password, sign-in only**. There is deliberately no sign-up form: accounts
   are provisioned by the platform administrator (Supabase dashboard → Authentication → Users
   → Add user, with _Auto Confirm User_). **Don't add a sign-up screen back** without being
@@ -328,7 +372,8 @@ both guards and provides the shell. Constraints that are easy to get wrong:
   setting. Check it with
   `curl -s "$VITE_SUPABASE_URL/auth/v1/settings" -H "apikey: $VITE_SUPABASE_ANON_KEY"` —
   `disable_signup` must be `true`.
-- Supabase auth errors arrive in English; `translateAuthError` in `src/routes/login.tsx` maps
+- Supabase auth errors arrive in English; `translateAuthError` in
+  `src/features/auth/errors.ts` maps
   `AuthApiError.code` (fed from the API's `error_code`) to French. Keep the credentials
   message indistinct between unknown address and wrong password — naming which one failed
   turns the screen into an account-enumeration oracle.

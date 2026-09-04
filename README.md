@@ -166,7 +166,7 @@ vitesse de premier affichage compte.
 | `/admin/$venueSlug` | Édition de la carte : catégories, produits, prix, ruptures |
 
 Les prix sont saisis en euros et stockés en **centimes entiers**
-([`src/lib/price.ts`](src/lib/price.ts)) : la saisie accepte la virgule comme le point, et
+([`src/features/menu/price.ts`](src/features/menu/price.ts)) : la saisie accepte la virgule comme le point, et
 les décimales sont lues comme du texte plutôt que multipliées en flottant — `1,10 * 100`
 vaut `110.00000000000001` en JavaScript.
 

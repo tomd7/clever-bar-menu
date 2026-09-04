@@ -1,3 +1,6 @@
+import { queryOptions } from '@tanstack/react-query'
+
+import { describeError } from '#/lib/postgrest-error'
 import { supabase } from '#/lib/supabase'
 
 import type { Category, Product, Venue } from '#/lib/supabase'
@@ -28,23 +31,6 @@ function nextPosition(existing: Array<{ position: number }>): number {
 }
 
 export { nextPosition }
-
-/** Traduit une erreur PostgREST en message affichable. */
-export function describeError(error: {
-  code?: string
-  message: string
-}): string {
-  switch (error.code) {
-    case '23505':
-      return 'Cet élément existe déjà.'
-    case '42501':
-      return "Vous n'avez pas les droits sur cet établissement."
-    case 'PGRST116':
-      return 'Élément introuvable. Il a peut-être été supprimé entre-temps.'
-    default:
-      return error.message
-  }
-}
 
 /**
  * Charge un établissement et sa carte complète.
@@ -141,4 +127,19 @@ export async function swapPositions(
     .update({ position: a.position })
     .eq('id', b.id)
   if (second.error) throw new Error(describeError(second.error))
+}
+
+/**
+ * Requête de la carte d'un établissement.
+ *
+ * Passer par `queryOptions` plutôt que par une clé écrite à la main à chaque
+ * appel : la clé et la fonction de chargement restent solidaires, et
+ * l'invalidation après mutation ne peut plus viser une clé légèrement
+ * différente de celle qui a servi à lire.
+ */
+export function menuQueryOptions(venueSlug: string) {
+  return queryOptions({
+    queryKey: ['menu', venueSlug],
+    queryFn: () => fetchMenu(venueSlug),
+  })
 }
