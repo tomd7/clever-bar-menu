@@ -29,6 +29,11 @@ Add a shadcn/ui component:
 npx shadcn@latest add dialog
 ```
 
+**Check the generated file before using it.** Adding `popover` produced
+`import { cn } from "cn"` — the CLI mis-resolved the `#/lib/utils` alias and installed an
+unrelated npm package named `cn`. Fix the import to `#/lib/utils.ts` (matching the other
+components) and remove the stray dependency.
+
 `.cursorrules` gives this command as `pnpm dlx`: that's a leftover from the template, the
 project uses npm.
 
@@ -267,6 +272,11 @@ both guards and provides the shell. Constraints that are easy to get wrong:
 - **`fetchMenu` runs three queries instead of one embedded select.** PostgREST can embed
   (`select('*, products(*)')`) but typing that needs relationship metadata our hand-written
   `Database` doesn't carry. Revisit if the menu grows large.
+- **Destructive actions confirm in a Popover** anchored to the trash button
+  (`ConfirmDelete` in `admin.$venueSlug.tsx`), not inline and not `window.confirm`. Inline
+  confirmation pushed the surrounding row around; `window.confirm` blocks the thread and
+  can't be styled. Focus lands on **Annuler**, never on **Supprimer** — the popover opens
+  from the keyboard too, and a reflex Enter must not destroy a category.
 - Auth is **email + password, sign-in only**. There is deliberately no sign-up form: accounts
   are provisioned by the platform administrator (Supabase dashboard → Authentication → Users
   → Add user, with _Auto Confirm User_). **Don't add a sign-up screen back** without being
