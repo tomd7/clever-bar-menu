@@ -596,7 +596,21 @@ back office is `ssr: false`. Consequences worth keeping in mind:
 - A null price renders **nothing** here, where the back office writes "Prix non renseigné".
   That label is addressed to the manager; showing it to a customer would expose an omission.
 - **Nothing animates on entry.** The content is already in the SSR'd HTML; fading it in would
-  only delay a reading the customer asked for by scanning.
+  only delay a reading the customer asked for by scanning. The page's only movement is the
+  section rail's highlight, which answers scrolling — an action, not an arrival.
+- **`MenuNav` is a sticky table of contents, and it appears only from three categories up**
+  (`NAV_MIN_CATEGORIES` in `public-menu.tsx`). Below that everything fits in a screen and the
+  rail would just be one more band to scroll past. The highlight follows an
+  `IntersectionObserver` band (`rootMargin: '-25% 0px -65% 0px'`), not the last chip clicked:
+  a customer scrolls by hand too, and a rail still pointing at the tapped section ten screens
+  later would be lying. Sections carry `scroll-mt-24` so an anchor lands _below_ the rail
+  rather than behind it. Known limit, and it is the one every anchor nav has: on a short menu
+  the last section cannot reach the top, so tapping it highlights whatever the band actually
+  holds. Half a viewport of padding would fix it and would put a hole at the end of a menu.
+- **The leader rule (`.menu-leader`) is what fills the line between a name and its price.**
+  It is the printed-carte convention, and it is functional before it is decorative: the eye
+  crosses the gap without dropping a line. A product with no price gets no leader either —
+  there is nothing to lead to.
 - Auth is **email + password, sign-in only**. There is deliberately no sign-up form: accounts
   are provisioned by the platform administrator (Supabase dashboard → Authentication → Users
   → Add user, with _Auto Confirm User_). **Don't add a sign-up screen back** without being

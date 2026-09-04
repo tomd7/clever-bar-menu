@@ -478,6 +478,47 @@ a {
   background: var(--bottle);
 }
 
+/*
+  Le filet de conduite d'une carte imprimée, entre le nom d'un produit et son
+  prix.
+
+  Sa raison d'être est fonctionnelle avant d'être décorative : sur une ligne où
+  le nom fait trois mots et le prix vit à l'autre bout, l'œil doit traverser un
+  vide et rate souvent d'une ligne. Le filet le conduit. Il règle du même coup
+  ce qui rendait cette page terne — deux tiers de chaque ligne restaient nus.
+
+  Aligné sur la ligne de base par sa marge basse : un élément vide aligné en
+  `baseline` pose son bord inférieur sur la ligne, et la marge le remonte
+  jusqu'à la hauteur des points d'une conduite typographique.
+*/
+.menu-leader {
+  flex: 1 1 auto;
+  min-width: 1.5rem;
+  align-self: baseline;
+  margin-bottom: 0.25em;
+  height: 1px;
+  color: var(--ink-soft);
+  opacity: 0.5;
+  background-image: repeating-linear-gradient(
+    to right,
+    currentColor 0 1.5px,
+    transparent 1.5px 5px
+  );
+}
+
+/*
+  Le rail de sections défile horizontalement quand la carte a beaucoup de
+  catégories. La barre de défilement native le soulignerait d'un trait gris qui
+  n'appartient pas à la page — le geste, lui, reste possible.
+*/
+.scrollbar-none {
+  scrollbar-width: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
 .rise-in {
   animation: rise-in 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
