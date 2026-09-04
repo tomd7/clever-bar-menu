@@ -321,10 +321,31 @@ Under them sit the two **shape** primitives, for genuine one-offs only (« Se co
 | `ActionButton` | Labelled  | `h-11` on mobile, desktop height from `surface` (`page`/`panel`/`popover`), leading `icon`, press feedback |
 | `IconButton`   | Icon-only | 44×44 mobile / 36 desktop, **required** `label` → `aria-label`, `tone="destructive"`, press feedback       |
 
-Both wrap shadcn's `Button` rather than editing it — `ui/` stays regenerable. `surface` names
-where the button sits instead of its height, because only the desktop density varies (mobile is
-always 44px). `ActionButton` defaults `type="button"`: inside a form, a missing `type` silently
-turns a cancel button into a submit.
+Both wrap shadcn's `Button` rather than editing it — `ui/` stays regenerable. `ActionButton`
+defaults `type="button"`: inside a form, a missing `type` silently turns a cancel button into a
+submit.
+
+**Fields follow the same shape**, in `src/components/form/`:
+
+| Component       | Owns                                                                                  |
+| --------------- | ------------------------------------------------------------------------------------- |
+| `TextField`     | `useId()` wiring, `<Label>`, height from `surface`, optional `hint`, `hiddenLabel`    |
+| `TextAreaField` | Same, minus `surface` — a textarea sizes by `rows`, it has no resting height to match |
+
+On both, `className` dresses the **block** (that's what you put in a grid or grow with
+`flex-1`); `inputClassName` / `textareaClassName` dress the control.
+
+**`SURFACE_HEIGHT` in `src/components/surface.ts` is shared between buttons and fields**, and
+that sharing is the point: in « Nouvelle catégorie » an input and an `AddButton` sit on the same
+row. `surface` names where the control sits rather than its height, because only the desktop
+density varies — mobile is always 44px. Two tables maintained apart would drift by a pixel and
+put the row out of line.
+
+**Never hand-write `htmlFor` / `id` again.** It was the one part of a field that breaks in
+silence: a typo raises no error and fails no type — it just leaves the input nameless to a
+screen reader and stops the label from focusing it. The category rename input had no accessible
+name at all until `TextField` took over (`hiddenLabel` keeps the wiring where the layout
+replaces a title and can show no label).
 
 `DeleteButton`'s focus placement is a real invariant, not a detail: the popover opens from the
 keyboard too, and a reflex Enter must not destroy a category. If you touch that component,

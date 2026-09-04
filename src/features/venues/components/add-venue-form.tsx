@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { AddButton } from '#/components/buttons/add-button'
 import { ErrorNote } from '#/components/error-note'
-import { Input } from '#/components/ui/input'
-import { Label } from '#/components/ui/label'
+import { TextField } from '#/components/form/text-field'
 import { slugify } from '#/features/venues/api'
 import { useCreateVenue } from '#/features/venues/mutations'
 
@@ -33,23 +32,23 @@ export function AddVenueForm() {
         onSubmit={handleSubmit}
         className="flex flex-col gap-3 lg:flex-row lg:items-end"
       >
-        <div className="flex-1 space-y-2">
-          <Label htmlFor="venue-name">Nom de l'établissement</Label>
-          <Input
-            id="venue-name"
-            required
-            maxLength={80}
-            placeholder="Le Comptoir"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            className="h-11 lg:h-10"
-          />
-          {preview ? (
-            <p className="text-xs text-ink-soft">
-              Adresse publique : <code>/m/{preview}</code>
-            </p>
-          ) : null}
-        </div>
+        <TextField
+          label="Nom de l'établissement"
+          surface="page"
+          required
+          maxLength={80}
+          placeholder="Le Comptoir"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          className="flex-1"
+          hint={
+            preview ? (
+              <>
+                Adresse publique : <code>/m/{preview}</code>
+              </>
+            ) : undefined
+          }
+        />
 
         <AddButton
           type="submit"

@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { AddButton } from '#/components/buttons/add-button'
 import { ErrorNote } from '#/components/error-note'
-import { Input } from '#/components/ui/input'
-import { Label } from '#/components/ui/label'
+import { TextField } from '#/components/form/text-field'
 import { nextPosition } from '#/features/menu/api'
 import { useCreateCategory } from '#/features/menu/mutations'
 
@@ -40,18 +39,16 @@ export function AddCategoryForm({
         onSubmit={handleSubmit}
         className="flex flex-col gap-3 lg:flex-row lg:items-end"
       >
-        <div className="flex-1 space-y-2">
-          <Label htmlFor="category-name">Nouvelle catégorie</Label>
-          <Input
-            id="category-name"
-            required
-            maxLength={80}
-            placeholder="Bières pression"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            className="h-11 lg:h-10"
-          />
-        </div>
+        <TextField
+          label="Nouvelle catégorie"
+          surface="page"
+          required
+          maxLength={80}
+          placeholder="Bières pression"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          className="flex-1"
+        />
         <AddButton
           type="submit"
           surface="page"

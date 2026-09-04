@@ -1,23 +1,10 @@
 import { Button } from '#/components/ui/button'
+import { SURFACE_HEIGHT } from '#/components/surface'
 import { cn } from '#/lib/utils.ts'
 
 import type { ComponentProps, ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
-
-/**
- * Hauteur au repos selon la surface qui porte le bouton.
- *
- * Sur mobile, tous font 44px — la cible tactile ne se négocie pas. C'est à
- * partir de `lg` que la densité se différencie : un formulaire de page respire,
- * une ligne de produit se resserre, un popover plus encore. Nommer la surface
- * plutôt que la hauteur évite d'avoir à se rappeler laquelle des trois valeurs
- * s'applique où.
- */
-const SURFACE_HEIGHT = {
-  page: 'lg:h-10',
-  panel: 'lg:h-9',
-  popover: 'lg:h-8',
-}
+import type { Surface } from '#/components/surface'
 
 /**
  * Bouton d'action libellé : ajouter, enregistrer, annuler, se connecter.
@@ -35,7 +22,7 @@ export function ActionButton({
   ...props
 }: {
   icon?: LucideIcon
-  surface?: keyof typeof SURFACE_HEIGHT
+  surface?: Surface
   children: ReactNode
 } & Omit<ComponentProps<typeof Button>, 'children'>) {
   return (

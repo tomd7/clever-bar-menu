@@ -4,7 +4,7 @@ import { DeleteButton } from '#/components/buttons/delete-button'
 import { EditButton } from '#/components/buttons/edit-button'
 import { SaveButton } from '#/components/buttons/save-button'
 import { ErrorNote } from '#/components/error-note'
-import { Input } from '#/components/ui/input'
+import { TextField } from '#/components/form/text-field'
 import { MoveButtons } from '#/components/buttons/move-buttons'
 import { useDeleteCategory, useRenameCategory } from '#/features/menu/mutations'
 
@@ -50,13 +50,15 @@ export function CategoryHeader({
             }}
             className="flex flex-1 flex-wrap items-center gap-2"
           >
-            <Input
+            <TextField
+              label="Nom de la catégorie"
+              hiddenLabel
               autoFocus
               required
               maxLength={80}
               value={name}
               onChange={(event) => setName(event.target.value)}
-              className="h-11 flex-1 lg:h-9"
+              className="flex-1"
             />
             <SaveButton
               size="sm"

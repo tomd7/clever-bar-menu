@@ -2,8 +2,7 @@ import { useState } from 'react'
 
 import { ActionButton } from '#/components/buttons/action-button'
 import { ErrorNote } from '#/components/error-note'
-import { Input } from '#/components/ui/input'
-import { Label } from '#/components/ui/label'
+import { TextField } from '#/components/form/text-field'
 import { useSignIn } from '#/features/auth/mutations'
 
 import type { FormEvent } from 'react'
@@ -35,33 +34,26 @@ export function LoginForm({ onSignedIn }: { onSignedIn: () => void }) {
 
   return (
     <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="email">Adresse e-mail</Label>
-        <Input
-          id="email"
-          type="email"
-          inputMode="email"
-          autoComplete="email"
-          required
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          /* 44px sur mobile : la cible tactile minimale. Plus dense à partir de lg. */
-          className="h-11 lg:h-10"
-        />
-      </div>
+      <TextField
+        label="Adresse e-mail"
+        surface="page"
+        type="email"
+        inputMode="email"
+        autoComplete="email"
+        required
+        value={email}
+        onChange={(event) => setEmail(event.target.value)}
+      />
 
-      <div className="space-y-2">
-        <Label htmlFor="password">Mot de passe</Label>
-        <Input
-          id="password"
-          type="password"
-          autoComplete="current-password"
-          required
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          className="h-11 lg:h-10"
-        />
-      </div>
+      <TextField
+        label="Mot de passe"
+        surface="page"
+        type="password"
+        autoComplete="current-password"
+        required
+        value={password}
+        onChange={(event) => setPassword(event.target.value)}
+      />
 
       {signIn.error ? (
         <ErrorNote className="mt-0">{signIn.error.message}</ErrorNote>

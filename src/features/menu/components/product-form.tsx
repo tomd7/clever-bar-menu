@@ -3,9 +3,8 @@ import { useState } from 'react'
 import { CancelButton } from '#/components/buttons/cancel-button'
 import { SaveButton } from '#/components/buttons/save-button'
 import { ErrorNote } from '#/components/error-note'
-import { Input } from '#/components/ui/input'
-import { Label } from '#/components/ui/label'
-import { Textarea } from '#/components/ui/textarea'
+import { TextAreaField } from '#/components/form/textarea-field'
+import { TextField } from '#/components/form/text-field'
 import { centsToInput } from '#/features/menu/price'
 import { useSaveProduct } from '#/features/menu/mutations'
 
@@ -54,10 +53,6 @@ export function ProductForm({
     )
   }
 
-  const fieldId = product
-    ? `product-${product.id}`
-    : `product-new-${categoryId}`
-
   return (
     <form
       onSubmit={handleSubmit}
@@ -65,54 +60,46 @@ export function ProductForm({
     >
       {/* Deux colonnes dès lg : le back-office doit exploiter la largeur, pas empiler. */}
       <div className="grid gap-3 lg:grid-cols-[2fr_1fr]">
-        <div className="space-y-2">
-          <Label htmlFor={`${fieldId}-name`}>Nom</Label>
-          <Input
-            id={`${fieldId}-name`}
-            autoFocus
-            required
-            maxLength={120}
-            placeholder="Pinte de blonde"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            className="h-11 lg:h-9"
-          />
-        </div>
+        <TextField
+          label="Nom"
+          autoFocus
+          required
+          maxLength={120}
+          placeholder="Pinte de blonde"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+        />
 
-        <div className="space-y-2">
-          <Label htmlFor={`${fieldId}-price`}>
-            Prix <span className="font-normal text-ink-soft">(facultatif)</span>
-          </Label>
-          <Input
-            id={`${fieldId}-price`}
-            /*
-              `inputMode="decimal"` fait apparaître le pavé numérique sur mobile,
-              là où `type="number"` imposerait le point décimal et des flèches
-              inutiles pour un prix.
-            */
-            inputMode="decimal"
-            placeholder="6,50"
-            value={price}
-            onChange={(event) => setPrice(event.target.value)}
-            className="h-11 tabular-nums lg:h-9"
-          />
-          <p className="text-xs text-ink-soft">
-            Laissez vide pour un plat du jour ou un prix selon arrivage.
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-3 space-y-2">
-        <Label htmlFor={`${fieldId}-description`}>Description</Label>
-        <Textarea
-          id={`${fieldId}-description`}
-          rows={2}
-          maxLength={500}
-          placeholder="Facultatif — origine, degré, allergènes…"
-          value={description}
-          onChange={(event) => setDescription(event.target.value)}
+        <TextField
+          label={
+            <>
+              Prix{' '}
+              <span className="font-normal text-ink-soft">(facultatif)</span>
+            </>
+          }
+          /*
+            `inputMode="decimal"` fait apparaître le pavé numérique sur mobile,
+            là où `type="number"` imposerait le point décimal et des flèches
+            inutiles pour un prix.
+          */
+          inputMode="decimal"
+          placeholder="6,50"
+          value={price}
+          onChange={(event) => setPrice(event.target.value)}
+          inputClassName="tabular-nums"
+          hint="Laissez vide pour un plat du jour ou un prix selon arrivage."
         />
       </div>
+
+      <TextAreaField
+        label="Description"
+        className="mt-3"
+        rows={2}
+        maxLength={500}
+        placeholder="Facultatif — origine, degré, allergènes…"
+        value={description}
+        onChange={(event) => setDescription(event.target.value)}
+      />
 
       {save.error ? <ErrorNote>{save.error.message}</ErrorNote> : null}
 
