@@ -1,0 +1,17 @@
+diff --git a/node_modules/nitro/dist/_build/vite.env.mjs b/node_modules/nitro/dist/_build/vite.env.mjs
+index 342953d..4e34f80 100644
+--- a/node_modules/nitro/dist/_build/vite.env.mjs
++++ b/node_modules/nitro/dist/_build/vite.env.mjs
+@@ -66,9 +66,10 @@ function createServiceEnvironment(ctx, name, serviceConfig) {
+ 		},
+ 		dev: { createEnvironment: async (envName, envConfig) => {
+ 			const entry = tryResolve(serviceConfig.entry);
+-			(ctx._viteEnvs ??= /* @__PURE__ */ new Map()).set(envName, entry);
+ 			const { createFetchableDevEnvironment } = await import("./vite.dev.mjs");
+-			return createFetchableDevEnvironment(envName, envConfig, getEnvRunner(ctx), entry, { preventExternalize: isWorkerdRunner });
++			const _env = createFetchableDevEnvironment(envName, envConfig, getEnvRunner(ctx), entry, { preventExternalize: isWorkerdRunner });
++			(ctx._viteEnvs ??= /* @__PURE__ */ new Map()).set(envName, entry);
++			return _env;
+ 		} }
+ 	};
+ }

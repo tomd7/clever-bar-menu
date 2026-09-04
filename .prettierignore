@@ -2,3 +2,5 @@ package-lock.json
 pnpm-lock.yaml
 yarn.lock
 .agents
+# Généré par drizzle-kit, réécrit à chaque migration
+src/db/migrations

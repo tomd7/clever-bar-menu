@@ -15,6 +15,17 @@ export default [
     },
   },
   {
-    ignores: ['eslint.config.js', 'prettier.config.js'],
+    ignores: [
+      'eslint.config.js',
+      'prettier.config.js',
+      // Artefacts de build : présents dès qu'un `npm run build` a tourné, et
+      // absents du tsconfig, ce qui fait échouer les règles typées.
+      '.output',
+      '.nitro',
+      '.tanstack',
+      'dist',
+      // Généré par drizzle-kit.
+      'src/db/migrations',
+    ],
   },
 ]
