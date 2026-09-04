@@ -341,6 +341,22 @@ row. `surface` names where the control sits rather than its height, because only
 density varies — mobile is always 44px. Two tables maintained apart would drift by a pixel and
 put the row out of line.
 
+**Links are not buttons.** A destination gets an `<a>`, never a `<button>` calling
+`navigate()` — that would lose middle-click, open-in-new-tab and copy-link. The home page's
+« Espace gérant » is a link drawn as a button, and its classes stay inline: it is the only one
+in the app, on a placeholder landing page. Should a second appear, wrap it — and wrap it with
+TanStack's `createLink`, because a hand-written signature around `Link` compiles but silently
+drops the inference on `to` and `params`, so a renamed route then fails at runtime instead of at
+build.
+
+**The 44px touch target of a navigation link lives in `.nav-link` (`styles.css`), not in a
+component.** That class already owns the link's identity — colour, hover, the underline that
+grows from the left — and splitting its rules across CSS and a React wrapper would be worse than
+the one duplicated utility it saves. Note the rule sits **outside any `@layer`**, so it beats a
+`min-h-*` utility written at the call site: deliberate, but know it before trying to override it.
+`display` stays at the call sites, since the sidebar needs `flex` where the others want
+`inline-flex`.
+
 **Never hand-write `htmlFor` / `id` again.** It was the one part of a field that breaks in
 silence: a typo raises no error and fails no type — it just leaves the input nameless to a
 screen reader and stops the label from focusing it. The category rename input had no accessible

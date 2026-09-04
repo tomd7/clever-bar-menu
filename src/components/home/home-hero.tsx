@@ -20,9 +20,12 @@ export function HomeHero() {
         <Link
           to="/login"
           /*
-            44px de haut sur mobile : la cible tactile minimale. Le `scale`
-            au maintien donne le retour immédiat qui fait qu'un bouton
-            paraît écouter — 150ms, sous le seuil où l'on perçoit un délai.
+            Les classes sont ici et non dans un composant : c'est le seul lien
+            dessiné en bouton de l'application, et cette page d'accueil est une
+            vitrine provisoire. 44px de haut sur mobile — la cible tactile
+            minimale ; le `scale` au maintien donne le retour immédiat qui fait
+            qu'un bouton paraît écouter, en 150ms, sous le seuil où l'on perçoit
+            un délai.
           */
           className="inline-flex min-h-11 items-center rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground no-underline transition-transform duration-150 ease-out active:scale-[0.97]"
         >
@@ -30,7 +33,7 @@ export function HomeHero() {
         </Link>
         <a
           href="https://github.com/tomd7/clever-bar-menu"
-          className="nav-link inline-flex min-h-11 items-center px-1 text-sm font-medium"
+          className="nav-link inline-flex items-center px-1 text-sm font-medium"
         >
           Voir le projet
         </a>

@@ -390,6 +390,18 @@ a {
   position: relative;
   text-decoration: none;
   color: var(--ink-soft);
+  /*
+    44px : la cible tactile minimale, ici plutôt qu'en `min-h-11` sur chaque
+    appel. Un lien de navigation se tape au pouce comme un bouton, et l'oubli
+    ne se voit pas à l'œil sur un écran de bureau.
+
+    Attention, cette règle n'est pas dans un `@layer` : elle l'emporte donc sur
+    un utilitaire `min-h-*` posé au même endroit. C'est voulu — la hauteur ne
+    se négocie pas — mais il faut le savoir avant d'essayer de la surcharger.
+    Le `display: flex` reste aux appels : la barre latérale a besoin de `flex`
+    là où les autres veulent `inline-flex`.
+  */
+  min-height: 2.75rem;
 }
 
 .nav-link::after {

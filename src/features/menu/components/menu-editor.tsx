@@ -43,7 +43,7 @@ export function MenuEditor({ venueSlug }: { venueSlug: string }) {
     <div className="page-wrap px-0">
       <Link
         to="/admin"
-        className="nav-link inline-flex min-h-11 items-center gap-1 text-sm no-underline"
+        className="nav-link inline-flex items-center gap-1 text-sm no-underline"
       >
         <ArrowLeft className="size-4" />
         Établissements

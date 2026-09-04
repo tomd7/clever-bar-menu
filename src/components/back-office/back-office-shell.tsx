@@ -38,7 +38,7 @@ export function BackOfficeShell({
             <nav className="mt-6 hidden lg:block">
               <Link
                 to="/admin"
-                className="nav-link flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-medium"
+                className="nav-link flex items-center gap-2 rounded-lg px-2 text-sm font-medium"
                 activeProps={{ className: 'is-active' }}
               >
                 <Store className="size-4" />
