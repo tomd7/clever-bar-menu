@@ -280,6 +280,15 @@ declare their own `active:scale-[0.97]`.
 - **Strict TypeScript** with `noUnusedLocals` and `noUnusedParameters`: an unused variable or
   parameter breaks the typecheck. `verbatimModuleSyntax` is on → type imports must go through
   `import type`.
+- **Never add a dependency without asking — devDependencies included.** No `npm install`
+  (with or without `-D`), and no `npx shadcn@latest add <x>` or generator that drags a new
+  package in, before the owner has said yes. A test runner, a lint plugin or a build tool goes
+  through the same question as a runtime package: "it's only a devDependency" is not a reason
+  to skip asking. Proposing one is welcome whenever it genuinely earns its place — but as a
+  **question with the case argued both ways**: what problem it solves and what it would
+  replace, against its cost (bundle size for runtime deps, transitive deps, last release and
+  maintenance, SSR compatibility with TanStack Start, lock-in) and what writing it by hand
+  would actually take. State a recommendation, then wait for the answer.
 
 ## UI rules
 
