@@ -1,0 +1,6 @@
+/* Habille `site-footer.tsx`. */
+
+.site-footer {
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}

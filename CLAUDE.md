@@ -225,7 +225,45 @@ runs on any Node host (`node .output/server/index.mjs`).
 
 ## Styles
 
-`src/styles.css` is the only style file. It carries the **"ardoise"** theme — the bar's
+`src/styles.css` is the **entry point and nothing else**: it declares no rule, it only
+`@import`s. The stylesheet is split the way the code is — by who owns it:
+
+```
+src/
+  styles.css                                   entry: @imports only, in cascade order
+  styles/
+    theme.css        palette, shadcn contract, @theme inline
+    base.css         bare elements (html, body, a, code, pre) + @layer base *
+    vocabulary.css   .page-wrap .display-title .island-shell .panel .feature-card .island-kicker
+    motion.css       the global transition, .rise-in, prefers-reduced-motion
+    print.css        .no-print + the white page ground
+  components/
+    nav-link.css     .nav-link            (next to nav-link.tsx)
+    site-footer.css  .site-footer
+  features/venues/components/
+    venue-nav.css    .rail-link
+    venue-qr.css     .print-sheet
+  features/menu/components/
+    menu-nav.css     .scrollbar-none, .rail-fade (stock-page reuses the pair)
+    public-menu.css  .menu-leader
+```
+
+- **A class only one screen uses lives next to that screen**; a class two screens share moves
+  up to `styles/vocabulary.css`. Same rule as the TypeScript modules — a component's CSS is
+  found by opening the component's directory, and it disappears with it.
+- **Assembly is by `@import`, not by `import './x.css'` in the component.** Tailwind flattens
+  those imports before processing the sheet, which is what keeps `@apply` and the `@theme`
+  tokens available in every file, ships **one** stylesheet (`__root.tsx` links it with `?url`,
+  and the SSR'd public menu must not flash), and keeps the cascade order readable — it is the
+  import list, top to bottom. A component file imported through JS would need `@reference` and
+  would land in the cascade wherever the bundler chose.
+- **The component imports come after the shared ones**, so a component rule can win against
+  the shared vocabulary at equal specificity, never the other way round. Print is last: it
+  undoes most of what precedes.
+- Splitting the file changed **no rule**: the compiled sheet is identical block for block,
+  only reordered where nothing conflicts.
+
+Together those files carry the **"ardoise"** theme — the bar's
 slate board, chalk, and a bottle green — in a **single token set**, which is the structural
 point to preserve:
 
@@ -423,7 +461,8 @@ treats a link as active as soon as the URL merely starts with its target, so a b
 `/admin` would stay underlined from `/admin/le-comptoir`. The sidebar asks for it explicitly; a
 back link must not.
 
-**The 44px touch target of a navigation link stays in `.nav-link` (`styles.css`), not in the
+**The 44px touch target of a navigation link stays in `.nav-link` (`components/nav-link.css`),
+not in the
 component.** That class already owns the link's identity — colour, hover, the underline that
 grows from the left — and splitting its rules across CSS and a React wrapper would be worse than
 the one duplicated utility it saves. Note the rule sits **outside any `@layer`**, so it beats a
@@ -471,7 +510,8 @@ QR sheet (`/admin/$venueSlug/qr`) and the stock screen (`/admin/$venueSlug/stock
 each has its own section below. What is left is in `README.md`'s Roadmap.
 
 The **"ardoise" theme** (slate + chalk + bottle green, day and night variants) is in place
-across `styles.css`, the home page, `/login`, the back office and the public menu — see the
+across `styles.css` and `src/styles/`, the home page, `/login`, the back office and the public
+menu — see the
 Styles section. The home page is a landing page, **not** the customer menu: `/` markets the
 product, `/m/$venueSlug` is what a QR code points at.
 
@@ -653,7 +693,8 @@ menu is identical everywhere, and a table number would be inert until something 
 - **`isLocalOrigin` guards against printing a `localhost` code** — visually identical to a
   valid one, useless once glued to a table.
 - Printing is scoped by `.no-print` (shell, header block, buttons) and `.print-sheet` in
-  `src/styles.css`. The sheet forces black-on-white: a QR reader relies on contrast, and the
+  `src/styles/print.css` (`.no-print`) and `src/features/venues/components/venue-qr.css`
+  (`.print-sheet`). The sheet forces black-on-white: a QR reader relies on contrast, and the
   theme's gradient is both ink-hungry and harmful to it.
 
 ### Public menu

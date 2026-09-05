@@ -1,0 +1,23 @@
+/*
+  Impression.
+
+  Une seule page de l'application est destinée au papier : la feuille du QR
+  code (`features/venues/components/venue-qr.css` porte sa mise en page).
+  `.no-print` est en revanche posée ailleurs — la colonne du back-office
+  notamment — parce que ce qui doit disparaître à l'impression ne vit pas dans
+  la page imprimée : c'est ce qui l'entoure. D'où sa place ici et non chez le
+  QR code.
+
+  Le fond de page est aussi neutralisé : la pierre claire du thème est jolie à
+  l'écran, coûteuse en encre et nuisible au contraste sur lequel s'appuie un
+  lecteur de QR.
+*/
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+  }
+}
