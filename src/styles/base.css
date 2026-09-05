@@ -1,0 +1,97 @@
+/*
+  Les éléments nus : ce qui s'applique sans qu'aucune classe soit posée.
+
+  Rien ici n'appartient à un composant — c'est la raison d'être de ce fichier,
+  et la frontière à tenir : dès qu'une règle vise une classe qu'un seul écran
+  emploie, elle descend à côté de ce composant.
+*/
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+/*
+  Fond plein.
+
+  La version précédente empilait trois dégradés radiaux, une trame de 28px et
+  un dégradé linéaire. Les halos se voyaient à peine, la trame ne se voyait pas
+  du tout — elle ne faisait que salir le fond — et l'ensemble donnait à un
+  outil de saisie de prix l'habillage d'une page de vente. Une seule couleur
+  laisse les surfaces se détacher par leur filet, ce qui est le sujet de ce
+  thème.
+*/
+body {
+  margin: 0;
+  color: var(--ink);
+  background-color: var(--ground);
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/*
+  Les liens sont habillés dans `@layer base`, et c'est structurel.
+
+  Une règle écrite hors calque l'emporte sur *tout* le CSS calqué, quelle que
+  soit sa spécificité — les utilitaires Tailwind vivent dans `@layer utilities`.
+  Écrit hors calque, ce `color` gagnait donc contre le `text-primary-foreground`
+  d'un lien dessiné en bouton : « Espace gérant » s'affichait en vert de lien
+  sur son aplat d'encre, illisible. Dans `base`, l'utilitaire reprend la main.
+
+  `.nav-link`, lui, reste volontairement hors calque (voir
+  `components/nav-link.css`) : il doit gagner.
+*/
+@layer base {
+  a {
+    color: var(--bottle-deep);
+    text-decoration-color: color-mix(
+      in oklab,
+      var(--bottle-deep) 40%,
+      transparent
+    );
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+  }
+
+  a:hover {
+    color: color-mix(in oklab, var(--bottle-deep) 82%, var(--ink));
+  }
+}
+
+code {
+  font-size: 0.9em;
+  border: 1px solid var(--line-soft);
+  background: var(--surface-raised);
+  border-radius: 6px;
+  padding: 2px 7px;
+}
+
+pre code {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  font-size: inherit;
+  color: inherit;
+}
+
+.prose pre {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #1a1e1c;
+  color: #e8ebe6;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  /*
+    Pas de `body { background-color }` ici : la règle par défaut de shadcn
+    écrasait la couleur déclarée plus haut, ce qui rendait toute la palette
+    maison invisible. La couleur du corps est réglée dans la règle `body`.
+  */
+}

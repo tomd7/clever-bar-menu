@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { AddButton } from '#/components/buttons/add-button'
 import { ErrorNote } from '#/components/error-note'
 import { TextField } from '#/components/form/text-field'
+import { publicMenuPath } from '#/lib/public-menu-url'
 import { slugify } from '#/features/venues/api'
 import { useCreateVenue } from '#/features/venues/mutations'
 
@@ -44,7 +45,7 @@ export function AddVenueForm() {
           hint={
             preview ? (
               <>
-                Adresse publique : <code>/m/{preview}</code>
+                Adresse publique : <code>{publicMenuPath(preview)}</code>
               </>
             ) : undefined
           }

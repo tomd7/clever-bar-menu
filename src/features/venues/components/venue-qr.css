@@ -1,0 +1,15 @@
+/*
+  La feuille imprimable du QR code (`venue-qr.tsx`), seule page de
+  l'application destinée au papier. Ce qui doit disparaître autour d'elle passe
+  par `.no-print`, déclarée dans `styles/print.css` puisqu'elle est posée sur
+  des composants qui n'ont rien à voir avec le QR code.
+*/
+@media print {
+  .print-sheet {
+    border: 0 !important;
+    box-shadow: none !important;
+    /* Le code occupe la page, sans dépendre de la largeur de la fenêtre. */
+    margin: 0 auto !important;
+    max-width: 100% !important;
+  }
+}

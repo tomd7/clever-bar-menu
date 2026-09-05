@@ -9,10 +9,15 @@ import type { LucideIcon } from 'lucide-react'
 /**
  * Lien de navigation textuel.
  *
- * `.nav-link` (dans `styles.css`) porte l'identité visuelle — couleur, 44px de
- * cible tactile, soulignement qui pousse depuis la gauche. Ce composant porte
- * ce qui ne peut pas vivre dans une feuille de style : la mise en ligne du
- * libellé avec son icône, et le typage de la destination.
+ * `.nav-link` — dans `nav-link.css`, juste à côté — porte l'identité visuelle :
+ * couleur, 44px de cible tactile, soulignement qui pousse depuis la gauche. Ce
+ * composant porte ce qui ne peut pas vivre dans une feuille de style : la mise
+ * en ligne du libellé avec son icône, et le typage de la destination.
+ *
+ * Il pose **deux** boîtes, et c'est structurel : celle qu'on tape fait 44px,
+ * celle qu'on souligne fait la hauteur du texte. Poser `.nav-link` à la main
+ * sur une balise donne donc la couleur et la cible, mais pas le trait — passer
+ * par ce composant n'est plus une préférence de style.
  *
  * Volontairement **sans `activeProps` par défaut**. Le routeur considère un
  * lien actif dès que l'URL courante commence par sa cible : un retour vers
@@ -21,9 +26,9 @@ import type { LucideIcon } from 'lucide-react'
  * page courante ; celui qui le veut le demande explicitement.
  *
  * Ce composant est celui des liens **en ligne dans le contenu**. La colonne du
- * back-office n'en est pas : ses éléments passent par `.rail-link`, parce que
- * le soulignement posé 8px sous la boîte tomberait dans l'élément suivant
- * d'une liste verticale.
+ * back-office n'en est pas : ses éléments passent par `.rail-link`
+ * (`features/venues/components/venue-nav.css`), parce qu'un mot souligné au
+ * milieu d'une colonne de mots ne se repère qu'en la lisant.
  */
 function BaseNavLink({
   icon: Icon,
@@ -40,7 +45,12 @@ function BaseNavLink({
       {...props}
     >
       {Icon ? <Icon className="size-4" /> : null}
-      {children}
+      {/*
+        Le libellé porte le soulignement, d'où cette enveloppe : la boîte du
+        lien fait 44px de haut — la cible tactile — et un trait accroché à son
+        bord bas flotterait loin sous le mot. Voir `nav-link.css`.
+      */}
+      <span className="nav-link-label">{children}</span>
     </a>
   )
 }

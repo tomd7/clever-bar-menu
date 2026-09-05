@@ -276,7 +276,8 @@ fonctionnalité ne lit ce numéro.
   développement encode `localhost` : imprimé et collé sur les tables, il ne mène nulle part,
   et rien ne le distingue visuellement d'un code valide.
 - `Cmd+P` n'imprime que la feuille : la navigation, les boutons et le fond du thème
-  disparaissent (`.no-print` et `.print-sheet` dans `src/styles.css`).
+  disparaissent (`.no-print` dans `src/styles/print.css`, `.print-sheet` à côté de l'écran,
+  dans `src/features/venues/components/venue-qr.css`).
 
 ## Carte publique
 
@@ -320,8 +321,14 @@ src/
 ├── env.server.ts    # Variables d'environnement serveur
 ├── router.tsx       # Configuration du router
 ├── routeTree.gen.ts # Généré — ne pas éditer à la main
-└── styles.css       # Tailwind et thème
+├── styles.css       # Point d'entrée : n'assemble que des `@import`
+└── styles/          # Thème, éléments nus, vocabulaire partagé, mouvement, impression
 ```
+
+Le CSS suit le même découpage que le code : `src/styles/` porte ce qui appartient à
+l'application entière, et **le style d'un composant vit dans un `.css` à côté de lui**
+(`components/nav-link.css`, `features/menu/components/public-menu.css`…). `src/styles.css`
+n'en est que la table des matières, dans l'ordre de la cascade.
 
 Les fichiers suffixés `.server.ts` sont refusés à la compilation s'ils sont importés depuis du
 code client. C'est important ici : les `loader` de route sont **isomorphes** et s'exécutent

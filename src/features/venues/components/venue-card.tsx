@@ -3,6 +3,7 @@ import { ChevronRight } from 'lucide-react'
 
 import { DeleteButton } from '#/components/buttons/delete-button'
 import { ErrorNote } from '#/components/error-note'
+import { MenuAddress } from '#/components/back-office/menu-address'
 import { useArchiveVenue } from '#/features/venues/mutations'
 
 import type { Venue } from '#/lib/supabase'
@@ -26,25 +27,33 @@ export function VenueCard({
 
   return (
     <li
-      className="rise-in relative"
+      className="rise-in feature-card relative flex min-h-24 flex-col rounded-2xl border border-line p-4"
       style={{ animationDelay: `${Math.min(position, 8) * 45}ms` }}
     >
+      {/*
+        Le lien n'entoure plus que le nom, et couvre la carte par un
+        pseudo-élément étiré. L'adresse publique est elle-même un lien : deux
+        ancres imbriquées sont du HTML invalide, et le navigateur refermerait
+        la première au passage. La carte reste cliquable dans son entier — la
+        surcouche est en dessous de tout ce qui vient après elle dans le
+        balisage, d'où le `relative` sur l'adresse.
+      */}
       <Link
         to="/admin/$venueSlug"
         params={{ venueSlug: venue.slug }}
-        className="feature-card flex min-h-24 flex-col rounded-2xl border border-line p-4 no-underline"
+        className="no-underline after:absolute after:inset-0 after:rounded-2xl after:content-['']"
       >
         <p className="display-title text-lg leading-tight text-ink">
           {venue.name}
         </p>
-        <p className="mt-1 text-xs text-ink-soft">
-          <code>/m/{venue.slug}</code>
-        </p>
-        <p className="mt-3 flex items-center gap-1 text-xs font-semibold text-bottle-deep">
-          Composer la carte
-          <ChevronRight className="size-3" />
-        </p>
       </Link>
+
+      <MenuAddress slug={venue.slug} className="relative mt-1" />
+
+      <p className="mt-3 flex items-center gap-1 text-xs font-semibold text-bottle-deep">
+        Composer la carte
+        <ChevronRight className="size-3" />
+      </p>
 
       {/*
         En surcouche du lien plutôt qu'à l'intérieur : un bouton imbriqué dans

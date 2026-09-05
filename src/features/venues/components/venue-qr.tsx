@@ -1,11 +1,12 @@
-import { Link } from '@tanstack/react-router'
 import { ArrowLeft, Download, Printer } from 'lucide-react'
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 
 import { ActionButton } from '#/components/buttons/action-button'
 import { ErrorNote } from '#/components/error-note'
-import { isLocalOrigin, publicMenuUrl, venueQrSvg } from '#/features/venues/qr'
+import { NavLink } from '#/components/nav-link'
+import { isLocalOrigin, venueQrSvg } from '#/features/venues/qr'
+import { publicMenuUrl } from '#/lib/public-menu-url'
 import { venueBySlugQueryOptions } from '#/features/venues/api'
 
 import type { Venue } from '#/lib/supabase'
@@ -71,14 +72,14 @@ function QrSheet({ venue, origin }: { venue: Venue; origin: string }) {
           sections de l'établissement. En dessous, elle n'existe pas et ce lien
           reste la seule sortie.
         */}
-        <Link
+        <NavLink
           to="/admin/$venueSlug"
           params={{ venueSlug: venue.slug }}
-          className="nav-link inline-flex min-h-11 items-center gap-1 text-sm no-underline lg:hidden"
+          icon={ArrowLeft}
+          className="lg:hidden"
         >
-          <ArrowLeft className="size-4" />
           Retour à la carte
-        </Link>
+        </NavLink>
 
         <header className="mt-2 lg:mt-0">
           <p className="island-kicker">QR code</p>

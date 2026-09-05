@@ -4,6 +4,7 @@ import { ArrowLeft, Boxes, QrCode } from 'lucide-react'
 import { AddCategoryForm } from '#/features/menu/components/add-category-form'
 import { CategorySection } from '#/features/menu/components/category-section'
 import { EmptyState } from '#/components/empty-state'
+import { MenuAddress } from '#/components/back-office/menu-address'
 import { NavLink } from '#/components/nav-link'
 import { menuQueryOptions } from '#/features/menu/api'
 import { useMoveItem } from '#/features/menu/mutations'
@@ -56,9 +57,10 @@ export function MenuEditor({ venueSlug }: { venueSlug: string }) {
         <h1 className="display-title mt-1 text-2xl leading-tight sm:text-3xl">
           {venue.name}
         </h1>
+        <MenuAddress slug={venue.slug} className="mt-1" />
+
         <p className="mt-2 text-sm text-ink-soft">
-          <code>/m/{venue.slug}</code> — les produits en rupture sont masqués
-          pour les clients.
+          Les produits en rupture sont masqués pour les clients.
         </p>
 
         {/* Même raison : ces sections sont dans la colonne à partir de `lg`. */}

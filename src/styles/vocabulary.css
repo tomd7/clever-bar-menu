@@ -1,0 +1,80 @@
+/*
+  Le vocabulaire visuel partagé : les classes qu'aucun composant ne possède en
+  propre, parce que plusieurs écrans les emploient. Une classe qui finirait par
+  n'avoir plus qu'un seul appelant a sa place à côté de lui, pas ici.
+
+  Le mouvement de ces mêmes surfaces est dans `motion.css`.
+*/
+
+.page-wrap {
+  width: min(1080px, calc(100% - 2rem));
+  margin-inline: auto;
+}
+
+/*
+  Le titre d'affichage.
+
+  C'est l'endroit unique où ce thème prend un risque : Archivo est une grotesque
+  à axe de largeur, et `font-stretch: 112%` l'élargit franchement. Le nom d'un
+  établissement en haut de sa carte devient un objet graphique plutôt qu'une
+  ligne de texte — et le reste de la page peut rester silencieux.
+
+  L'interlettrage négatif ne vaut que pour les grandes tailles ; `.display-title`
+  s'emploie aussi en `text-lg` sur une carte d'établissement, d'où une valeur
+  modérée que les gros titres resserrent eux-mêmes au point d'appel.
+*/
+.display-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-stretch: 112%;
+  letter-spacing: -0.02em;
+}
+
+/*
+  `.island-shell` habille les surfaces vitrine — accueil, connexion, carte
+  client. Opaque, elle aussi : le verre dépoli de la version précédente était
+  un effet, pas une information. Ce qui la distingue de `.panel`, c'est
+  l'élévation : la vitrine se pose *sur* le décor, l'outil est à plat dedans.
+*/
+.island-shell {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: var(--shadow-2);
+}
+
+/*
+  `.panel` habille le back-office. Même surface, aucune ombre : un écran de
+  saisie de prix n'a rien à gagner à flotter, et vingt panneaux ombrés dans une
+  page produisent une bouillie grise.
+*/
+.panel {
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.feature-card {
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+}
+
+/* Le survol reste réservé aux pointeurs fins : sur tactile il se déclenche au tap. */
+@media (hover: hover) and (pointer: fine) {
+  .feature-card:hover {
+    border-color: color-mix(in oklab, var(--bottle) 45%, var(--line));
+  }
+}
+
+/*
+  Le libellé de section (« Carte », « Vos établissements », « Back-office »).
+
+  Il n'est plus en capitales espacées : posée au-dessus de chaque titre, cette
+  forme est l'un des tics les plus reconnaissables des maquettes génériques, et
+  elle rendait illisible une chaîne aussi longue que « Carte digitale pour bars
+  et cafés ». Le vert et la graisse suffisent à le détacher du texte courant.
+*/
+.island-kicker {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--bottle-deep);
+}

@@ -1,0 +1,42 @@
+/*
+  Le rail de sections de la carte client (`menu-nav.tsx`), repris tel quel par
+  le bandeau de raccourcis de l'écran de stock (`stock-page.tsx`) : les deux
+  sont la même bande de pastilles qui déborde la largeur d'un téléphone.
+*/
+
+/*
+  Le rail défile horizontalement quand la carte a beaucoup de catégories. La
+  barre de défilement native le soulignerait d'un trait gris qui n'appartient
+  pas à la page — le geste, lui, reste possible.
+*/
+.scrollbar-none {
+  scrollbar-width: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/*
+  Le bord droit du rail, estompé.
+
+  Une carte de six sections déborde la largeur d'un téléphone, et la pastille
+  coupée net au ras de l'écran se lit comme un défaut de mise en page plutôt
+  que comme une invitation à faire glisser. Le dégradé dit qu'il y a une suite
+  — c'est le rôle qu'aurait tenu la barre de défilement, masquée juste au-
+  dessus parce qu'elle souligne le bandeau d'un trait gris étranger à la page.
+
+  Le masque est fixe et non piloté par la position de défilement : arrivé au
+  bout, il estompe encore un ou deux millimètres de la dernière pastille. Le
+  corriger demanderait de suivre le `scroll` en JavaScript pour deux
+  millimètres de fondu, sur la seule page de l'application dont le budget est
+  un réseau mobile.
+*/
+.rail-fade {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    #000 calc(100% - 1.75rem),
+    transparent
+  );
+  mask-image: linear-gradient(to right, #000 calc(100% - 1.75rem), transparent);
+}

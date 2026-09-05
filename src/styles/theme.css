@@ -1,0 +1,238 @@
+/*
+  Thème « ardoise » : le tableau noir du bar, la craie, et un vert bouteille.
+
+  Un seul jeu de tokens : la palette maison est la source, le contrat shadcn en
+  est *dérivé* plus bas. Changer une couleur se fait donc à un seul endroit.
+
+  Deux températures pour la même identité : `:root` est la version jour (pierre
+  claire, encre graphite) — celle du gérant qui corrige un prix derrière son
+  comptoir ; `.dark` la version soir (ardoise, craie) — celle du client qui
+  scanne le QR code à table.
+
+  Ce que cette palette évite délibérément : le fond crème, le titre en serif à
+  fort contraste et l'accent ambre/terracotta qu'elle remplace. La combinaison
+  était devenue un signal « gabarit » plutôt qu'une identité, et l'ambre en
+  aplat de bouton (#d99c2b) est la couleur des états d'avertissement par
+  défaut. Ici le neutre est quasi achromatique — c'est ce qui laisse le vert
+  exister — et le bouton primaire est en encre, pas en couleur.
+*/
+:root {
+  color-scheme: light;
+
+  --ink: #171a18;
+  --ink-soft: #5c625e;
+
+  /* Le fond est plein : ni dégradé, ni halo, ni trame. Voir la règle `body`. */
+  --ground: #eeefec;
+  /* La surface opaque posée dessus : carte, panneau, popover. */
+  --surface: #ffffff;
+  /* Un cran au-dessus de la surface : survol, champ creusé, pastille. */
+  --surface-raised: #e5e8e3;
+
+  --line: rgba(23, 26, 24, 0.14);
+  --line-soft: rgba(23, 26, 24, 0.08);
+
+  /*
+    Deux verts, comme il y avait deux ambres, mais dans l'autre sens. L'ambre
+    était un aplat *clair* qui demandait une encre sombre ; le vert bouteille
+    est un aplat *sombre* qui demande une encre claire. `--bottle` est donc la
+    couleur de remplissage et `--on-bottle` l'encre qu'on y pose — toutes deux
+    stables d'un thème à l'autre, puisque l'aplat reste sombre. `--bottle-deep`
+    est la version *texte*, la seule qui bascule : un vert sombre sur pierre
+    claire, un vert pâle sur ardoise.
+  */
+  --bottle: #35604a;
+  --bottle-deep: #2c5540;
+  --on-bottle: #f1f4f0;
+
+  /*
+    L'ardoise elle-même, enfin posée quelque part.
+
+    Le thème porte ce nom depuis le début mais aucune surface ne l'incarnait :
+    la palette n'en tirait qu'un fond de page. `--board` est le tableau du bar
+    — le panneau sombre sur lequel la carte client annonce le nom de
+    l'établissement — et `--on-board` la craie qu'on y écrit.
+
+    Ces trois-là ne basculent pas en `.dark`, exactement pour la raison qui fige
+    `--bottle` / `--on-bottle` : un tableau noir est sombre à toute heure. Le
+    faire s'éclaircir le soir reviendrait à repeindre l'ardoise en pierre.
+
+    La valeur est plus sombre que le `--ground` de nuit (#1a1e1c) : c'est ce qui
+    permet au panneau de se détacher encore quand toute la page est en ardoise.
+    `--bottle-chalk` est le vert du thème sombre, le seul lisible sur ce fond —
+    le vert continue donc de signaler ici aussi, il ne remplit rien.
+  */
+  --board: #151917;
+  --on-board: #f1f4f0;
+  --on-board-soft: #a8afa9;
+  --bottle-chalk: #8fbca4;
+
+  /*
+    L'action primaire est en encre, pas en couleur. C'est ce qui distingue
+    cette palette de la précédente : le vert ne remplit jamais un bouton
+    « Enregistrer ». Il signale (lien, focus, libellé de section, soulignement
+    actif), il ne crie pas.
+  */
+  --primary-fill: #222824;
+  --on-primary-fill: #f2f4f1;
+
+  --danger: #a83a26;
+  --danger-tint: rgba(168, 58, 38, 0.1);
+
+  /*
+    Deux ombres, courtes. Le relief est porté par les filets d'un pixel, pas
+    par un halo de 44px sous chaque carte — c'était la signature du « kit de
+    cartes SaaS » dont cette refonte sort.
+  */
+  --shadow-1: 0 1px 2px rgba(23, 26, 24, 0.05);
+  --shadow-2:
+    0 2px 4px rgba(23, 26, 24, 0.04), 0 10px 26px rgba(23, 26, 24, 0.06);
+
+  --radius: 0.625rem;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --ink: #e8ebe6;
+  --ink-soft: #8b938d;
+
+  --ground: #1a1e1c;
+  --surface: #232825;
+  --surface-raised: #2b312d;
+
+  --line: rgba(232, 235, 230, 0.15);
+  --line-soft: rgba(232, 235, 230, 0.09);
+
+  /* Légèrement relevé : le même vert que de jour disparaîtrait dans l'ardoise. */
+  --bottle: #3d6c54;
+  --bottle-deep: #8fbca4;
+  --on-bottle: #f1f4f0;
+
+  --primary-fill: #e8ebe6;
+  --on-primary-fill: #1a1e1c;
+
+  --danger: #e8836c;
+  --danger-tint: rgba(232, 131, 108, 0.14);
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --shadow-2: 0 2px 4px rgba(0, 0, 0, 0.35), 0 10px 26px rgba(0, 0, 0, 0.4);
+}
+
+/*
+  Contrat shadcn, dérivé de la palette ci-dessus.
+
+  Écrit une fois pour les deux thèmes : les `var()` se résolvent sur l'élément
+  qui porte les tokens, donc ce bloc suit automatiquement `.dark`. Le sélecteur
+  vise `:root` *et* `.dark` pour que la substitution soit recalculée si `.dark`
+  atterrit un jour sur un sous-arbre plutôt que sur `<html>` — une propriété
+  personnalisée est substituée sur l'élément où elle est déclarée, pas chez ses
+  descendants.
+*/
+:root,
+.dark {
+  --background: var(--ground);
+  --foreground: var(--ink);
+  --card: var(--surface);
+  --card-foreground: var(--ink);
+  /* Opaque, et c'est le seul point non négociable : on ne lit pas au travers. */
+  --popover: var(--surface);
+  --popover-foreground: var(--ink);
+  --primary: var(--primary-fill);
+  --primary-foreground: var(--on-primary-fill);
+  --secondary: var(--surface-raised);
+  --secondary-foreground: var(--ink);
+  --muted: var(--surface-raised);
+  --muted-foreground: var(--ink-soft);
+  --accent: var(--surface-raised);
+  --accent-foreground: var(--ink);
+  --destructive: var(--danger);
+  /* `Button variant="destructive"` écrit `text-white` en dur ; ce token ne sert
+     qu'aux composants qui le liraient, et doit rester lisible sur `--danger`. */
+  --destructive-foreground: #ffffff;
+  --border: var(--line);
+  --input: var(--line);
+  --ring: var(--bottle-deep);
+  --chart-1: var(--bottle);
+  --chart-2: #6f8f7c;
+  --chart-3: #4a5b63;
+  --chart-4: #8c7b52;
+  --chart-5: #a8624f;
+  --sidebar: var(--surface);
+  --sidebar-foreground: var(--ink);
+  --sidebar-primary: var(--primary-fill);
+  --sidebar-primary-foreground: var(--on-primary-fill);
+  --sidebar-accent: var(--surface-raised);
+  --sidebar-accent-foreground: var(--ink);
+  --sidebar-border: var(--line);
+  --sidebar-ring: var(--bottle-deep);
+}
+
+@theme inline {
+  /*
+    Une seule famille, variable sur deux axes. La distinction entre un titre et
+    un paragraphe ne passe plus par un second caractère (l'ancien duo
+    Fraunces/Manrope) mais par la *largeur* et la graisse d'Archivo — voir
+    `.display-title`. Une police en moins à charger, et une identité qui tient
+    dans un seul fichier de fonte.
+  */
+  --font-sans: 'Archivo', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Archivo', ui-sans-serif, system-ui, sans-serif;
+
+  /* La palette maison est exposée à Tailwind : `text-ink-soft`, `border-line`,
+     `bg-surface-raised`, `text-bottle-deep` plutôt que des `text-[var(--x)]`. */
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+  --color-bottle: var(--bottle);
+  --color-bottle-deep: var(--bottle-deep);
+  --color-on-bottle: var(--on-bottle);
+  --color-ground: var(--ground);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-board: var(--board);
+  --color-on-board: var(--on-board);
+  --color-on-board-soft: var(--on-board-soft);
+  --color-bottle-chalk: var(--bottle-chalk);
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}

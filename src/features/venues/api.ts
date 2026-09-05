@@ -23,6 +23,17 @@ export function slugify(value: string): string {
     .slice(0, 60)
 }
 
+/**
+ * Les slugs que le back-office s'est déjà réservés.
+ *
+ * `/admin/corbeille` est un segment statique : le routeur le fait passer avant
+ * `/admin/$venueSlug`, si bien qu'un établissement portant ce slug serait créé
+ * sans la moindre erreur puis resterait introuvable — sa carte publique
+ * marcherait, son écran d'édition non. Le refus à la création est le seul
+ * endroit où le problème est encore explicable.
+ */
+const RESERVED_SLUGS = new Set(['corbeille'])
+
 export const VENUES_QUERY_KEY = ['venues'] as const
 
 /**
@@ -112,6 +123,11 @@ export async function createVenue(name: string): Promise<void> {
   const slug = slugify(name)
   if (!slug) {
     throw new Error('Ce nom ne permet pas de construire une adresse.')
+  }
+  if (RESERVED_SLUGS.has(slug)) {
+    throw new Error(
+      `L'adresse « ${slug} » est réservée par le back-office. Choisissez un autre nom.`,
+    )
   }
 
   /**

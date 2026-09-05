@@ -1,0 +1,115 @@
+# Shared components — `src/components/`
+
+Holds `ui/` (shadcn), `buttons/`, `form/`, `back-office/`, `home/`, and the cross-screen
+pieces (`nav-link`, `error-note`, `empty-state`, `surface.ts`…).
+
+**Nothing here may import from `#/features/`.** Dependencies point one way: routes →
+features → shared. A file under `src/components/` or `src/lib/` reaching into a feature is
+the inversion to catch in review — nothing enforces it, `import/no-cycle` is disabled.
+
+`back-office/` (the shell) and `home/` (the landing page) stay here rather than becoming
+features: they carry no data and no domain rule.
+
+## Buttons
+
+**Never render a bare `<Button>` in a screen.** Reach for a **semantic** wrapper first —
+it names the action, so the icon, the wording and the behaviour can't diverge between two
+screens:
+
+| Wrapper        | Renders                         | What it owns for you                                                                                                                            |
+| -------------- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AddButton`    | `Plus` + « Ajouter »            | `pending` swaps the label (`pendingLabel`, default « Ajout… ») **and** disables. Pass children only to qualify the add (« Ajouter un produit ») |
+| `SaveButton`   | `Save` + « Enregistrer »        | `type="submit"`, « Enregistrement… » while `pending`, disables                                                                                  |
+| `CancelButton` | « Annuler »                     | `variant="ghost"`, non-overridable — a cancel must never weigh as much as the action                                                            |
+| `EditButton`   | `Pencil`, icon only             | **required** `label`: the icon is shared, what it edits is not                                                                                  |
+| `DeleteButton` | `Trash2` + confirmation popover | There is no path that deletes on the first click. Focus lands on **Annuler**                                                                    |
+| `MoveButtons`  | `ChevronUp`/`ChevronDown` pair  | Both `aria-label`s, `disabled` at the list's ends                                                                                               |
+| `CopyButton`   | `Copy`, icon only               | The confirmation: green check + a `role="status"` announcement for 2s, a destructive cross if the clipboard refuses. **required** `label`       |
+
+Under them sit the two **shape** primitives, for genuine one-offs only (« Se connecter »,
+« Déconnexion ») — anything recurring deserves a wrapper instead:
+
+| Primitive      | For       | Owns                                                                                                       |
+| -------------- | --------- | ---------------------------------------------------------------------------------------------------------- |
+| `ActionButton` | Labelled  | `h-11` on mobile, desktop height from `surface` (`page`/`panel`/`popover`), leading `icon`, press feedback |
+| `IconButton`   | Icon-only | 44×44 mobile / 36 desktop, **required** `label` → `aria-label`, `tone="destructive"`, press feedback       |
+
+Both wrap shadcn's `Button` rather than editing it — `ui/` stays regenerable.
+`ActionButton` defaults `type="button"`: inside a form, a missing `type` silently turns a
+cancel button into a submit.
+
+**`DeleteButton`'s focus placement is a real invariant.** The popover opens from the
+keyboard too, and a reflex Enter must not destroy a category. If you touch that component,
+re-check it in a browser — the ref chain that puts focus on **Annuler** crosses three
+components and no type error will tell you it broke. Confirmation is a popover anchored to
+the trash button, not inline (it pushed the surrounding row around) and not
+`window.confirm` (blocks the thread, can't be styled).
+
+## Fields — `form/`
+
+| Component       | Owns                                                                                  |
+| --------------- | ------------------------------------------------------------------------------------- |
+| `TextField`     | `useId()` wiring, `<Label>`, height from `surface`, optional `hint`, `hiddenLabel`    |
+| `TextAreaField` | Same, minus `surface` — a textarea sizes by `rows`, it has no resting height to match |
+
+On both, `className` dresses the **block** (that's what you put in a grid or grow with
+`flex-1`); `inputClassName` / `textareaClassName` dress the control.
+
+**Never hand-write `htmlFor` / `id` again.** It is the one part of a field that breaks in
+silence: a typo raises no error and fails no type — it just leaves the input nameless to a
+screen reader and stops the label from focusing it. `hiddenLabel` keeps the wiring where
+the layout replaces a title and can show no label.
+
+## `surface.ts`
+
+**`SURFACE_HEIGHT` is shared between buttons and fields**, and that sharing is the point:
+in « Nouvelle catégorie » an input and an `AddButton` sit on the same row. `surface` names
+where the control sits rather than its height, because only the desktop density varies —
+mobile is always 44px. Two tables maintained apart would drift by a pixel and put the row
+out of line.
+
+## Links
+
+**Links are not buttons.** A destination gets an `<a>`, never a `<button>` calling
+`navigate()` — that would lose middle-click, open-in-new-tab and copy-link. The home
+page's « Espace gérant » is a link drawn as a button and its classes stay inline: it is
+the only one in the app, on a placeholder landing page. Should a second appear, wrap it
+with TanStack's `createLink` — a hand-written signature around `Link` compiles but
+silently drops the inference on `to` and `params`, so a renamed route then fails at
+runtime instead of at build.
+
+**Text navigation links go through `NavLink`** (`nav-link.tsx`), which lays the label out
+with its optional `icon` and keeps `to` inferred via `createLink`. Outgoing links take the
+same component under its `ExternalNavLink` export — same implementation, reached with an
+`href`. `NavLink` deliberately sets **no default `activeProps`**: the router treats a link
+as active as soon as the URL merely starts with its target, so a back link to `/admin`
+would stay underlined from `/admin/le-comptoir`. The sidebar asks for it explicitly; a
+back link must not.
+
+**The 44px touch target stays in `.nav-link` (`nav-link.css`), not in the component.**
+That class already owns the link's identity — colour, hover, the underline that grows from
+the left. The rule sits **outside any `@layer`**, so it beats a `min-h-*` utility written
+at the call site: deliberate, but know it before trying to override it. `display` stays at
+the call sites, since the sidebar needs `flex` where the others want `inline-flex`.
+
+**A nav link draws two boxes, and the underline hangs on the inner one.** The tapped box
+is 44px tall; the underlined box is the height of the text. `.nav-link-label` — the span
+`nav-link.tsx` wraps around `children` — carries the `::after` at `bottom: -2px`. Hung on
+the `<a>` instead, the line landed a dozen pixels below a 14px label centred in 44px and
+ran under the leading icon. Consequence: **`.nav-link` written by hand on a tag gives the
+colour and the target but no underline** — every call site goes through the component. The
+label is `inline-flex` with `gap: inherit` because a trailing icon can be a child, and
+Tailwind's preflight renders `svg` as `display: block`, which would break the line inside
+an inline container.
+
+## `back-office/`
+
+`BackOfficeShell` takes its navigation as a `nav` prop rather than building it: listing
+venues is the venues domain, and this directory must not import from `#/features/`.
+
+`MenuAddress` (`back-office/menu-address.tsx`) draws `/m/<slug>` as a **control, not a
+caption**: a link opening the customer menu in a **new tab** — the manager checks the
+result and comes back to the form they left — next to a `CopyButton` that copies the
+**absolute** URL, since `/m/x` pasted in a message leads nowhere. It lives here because
+both `features/venues` (the venue card) and `features/menu` (the editor's header) render
+it.
