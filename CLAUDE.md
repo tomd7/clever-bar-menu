@@ -256,6 +256,13 @@ Things that are easy to get wrong here:
   `--bottle` is a _fill_ (dark green, so it needs light ink: `--on-bottle`) and both stay put
   across themes because the fill stays dark. `--bottle-deep` is the _text_ accent and is the
   only one that flips — dark green on stone, pale green on slate. Don't collapse them.
+- **`--board` is the chalkboard itself, and it does not flip.** The theme was named
+  "ardoise" long before any surface was one; the customer menu's header is that surface
+  (`--board` ground, `--on-board` chalk, `--on-board-soft` for secondary text, and
+  `--bottle-chalk` — the dark theme's green — for the only accent legible on it). Frozen
+  across themes for the same reason as `--bottle`/`--on-bottle`: a chalkboard is dark at any
+  hour, and lightening it at night would repaint the slate in stone. Its value sits _below_
+  the night `--ground` so the panel still detaches when the whole page has gone dark.
 - **The primary action is ink, not colour.** `--primary` derives from `--primary-fill`
   (graphite by day, chalk by night), never from `--bottle`. Green signals — link, focus ring,
   section label, active underline — it never fills a "Enregistrer" button. Filling one with
@@ -293,18 +300,19 @@ is why everything around it stays quiet.
 
 Visual vocabulary — reuse these before inventing new ones:
 
-| Class            | Where                                                                                                                                                                                                                  |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `.island-shell`  | Showcase surfaces (home, `/login`, customer menu): opaque, `--shadow-2`                                                                                                                                                |
-| `.panel`         | Back office: same surface, no shadow — the tool sits flat, the shopfront lifts                                                                                                                                         |
-| `.feature-card`  | Clickable cards, border tints toward `--bottle` on hover (pointer-fine only)                                                                                                                                           |
-| `.page-wrap`     | Centred container, `min(1080px, 100% - 2rem)`                                                                                                                                                                          |
-| `.display-title` | Archivo wide + bold — the theme's signature                                                                                                                                                                            |
-| `.island-kicker` | Small section label in `--bottle-deep`. **Not** all-caps: a tracked-out caps eyebrow above every heading is the commonest generated-design tell, and it mangled a label as long as "Carte digitale pour bars et cafés" |
-| `.nav-link`      | Inline link in the content, underline that grows from the left                                                                                                                                                         |
-| `.rail-link`     | Item in the back-office sidebar: tinted ground + a `--bottle` bar at the left edge when active. **Not** a `.nav-link` — that underline sits 8px _below_ its box and would land inside the next item of a vertical list |
-| `.rise-in`       | Entry animation (stagger via `animationDelay`)                                                                                                                                                                         |
-| `.site-footer`   | Footer                                                                                                                                                                                                                 |
+| Class            | Where                                                                                                                                                                                                                           |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.island-shell`  | Showcase surfaces (home, `/login`, customer menu): opaque, `--shadow-2`. The menu drops the border, radius and shadow at the base width and takes them back at `sm:` — the phone gets the bare sheet, the wide screen the frame |
+| `.panel`         | Back office: same surface, no shadow — the tool sits flat, the shopfront lifts                                                                                                                                                  |
+| `.feature-card`  | Clickable cards, border tints toward `--bottle` on hover (pointer-fine only)                                                                                                                                                    |
+| `.page-wrap`     | Centred container, `min(1080px, 100% - 2rem)`                                                                                                                                                                                   |
+| `.display-title` | Archivo wide + bold — the theme's signature                                                                                                                                                                                     |
+| `.island-kicker` | Small section label in `--bottle-deep`. **Not** all-caps: a tracked-out caps eyebrow above every heading is the commonest generated-design tell, and it mangled a label as long as "Carte digitale pour bars et cafés"          |
+| `.nav-link`      | Inline link in the content, underline that grows from the left                                                                                                                                                                  |
+| `.rail-link`     | Item in the back-office sidebar: tinted ground + a `--bottle` bar at the left edge when active. **Not** a `.nav-link` — that underline sits 8px _below_ its box and would land inside the next item of a vertical list          |
+| `.rail-fade`     | Right-edge mask on a horizontally scrolling rail — says the row continues where a scrollbar would only dirty the band. Fixed, not scroll-driven: at the end it still dims a millimetre of the last chip                         |
+| `.rise-in`       | Entry animation (stagger via `animationDelay`)                                                                                                                                                                                  |
+| `.site-footer`   | Footer                                                                                                                                                                                                                          |
 
 `@media (prefers-reduced-motion: reduce)` neutralises movement while keeping fades. The
 global `transition` rule covers colours only — `transform` is left to the components, which
@@ -609,9 +617,19 @@ back office is `ssr: false`. Consequences worth keeping in mind:
   on QR codes.
 - A null price renders **nothing** here, where the back office writes "Prix non renseigné".
   That label is addressed to the manager; showing it to a customer would expose an omission.
+- **The page is drawn as an object, not as a document.** An opaque sheet (`.island-shell`)
+  topped by a `--board` panel carrying the venue name in chalk — the bar's board, which is
+  the only place in the app where the theme shows what named it. Full-bleed on the phone
+  (a frame and two margins would only eat the reading width on the screen this page is
+  actually read on), a sheet laid on the ground from `sm:` up.
+- **Never put `overflow-hidden` on that sheet.** It is the obvious way to clip the board
+  panel's corners, and it turns the sheet into a scroll container — `MenuNav` then sticks to
+  nothing. The panel rounds itself instead, at the sheet's radius minus its 1px border.
 - **Nothing animates on entry.** The content is already in the SSR'd HTML; fading it in would
-  only delay a reading the customer asked for by scanning. The page's only movement is the
-  section rail's highlight, which answers scrolling — an action, not an arrival.
+  only delay a reading the customer asked for by scanning. The same argument rules out a
+  full-screen cover: the board panel stays compact so the first category is reachable. The
+  page's only movements are the section rail's highlight, which answers scrolling, and a
+  chip's `active:scale-[0.97]` — both answer an action, neither an arrival.
 - **`MenuNav` is a sticky table of contents, and it appears only from three categories up**
   (`NAV_MIN_CATEGORIES` in `public-menu.tsx`). Below that everything fits in a screen and the
   rail would just be one more band to scroll past. The highlight follows an
@@ -625,6 +643,21 @@ back office is `ssr: false`. Consequences worth keeping in mind:
   It is the printed-carte convention, and it is functional before it is decorative: the eye
   crosses the gap without dropping a line. A product with no price gets no leader either —
   there is nothing to lead to.
+- **The photo column is reserved per section, not per row**, as soon as one product in it
+  carries a photo, and it sits on the **right**. Thumbnails on the left indented only the
+  illustrated products and turned the menu's left edge into a staircase; on the right without
+  a reserved column, those rows' leaders shorten and the prices stop lining up — and the price
+  column is the one a customer reads down. Empty space to the right of an unillustrated
+  product is invisible; an empty frame to its left is not. Rows are centred on that column:
+  most products have neither price nor description, and a top-aligned row left the name
+  stranded above 80px of nothing.
+- **The category description is rendered here** (`categories.description`). It is the only
+  editorial text a manager can put on this page, and a menu that renders nothing but names
+  and prices can only look raw. Note the back-office forms don't expose the field yet — it is
+  writable through `createCategory` alone.
+- **The back-to-top link appears only where the rail does.** Below three categories the thumb
+  scrolls back faster than a link takes to find; above it, the last section sits ten screens
+  from the venue's name and the rail only ever jumps between sections.
 - Auth is **email + password, sign-in only**. There is deliberately no sign-up form: accounts
   are provisioned by the platform administrator (Supabase dashboard → Authentication → Users
   → Add user, with _Auto Confirm User_). **Don't add a sign-up screen back** without being

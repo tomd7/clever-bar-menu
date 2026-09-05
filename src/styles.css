@@ -54,6 +54,28 @@
   --on-bottle: #f1f4f0;
 
   /*
+    L'ardoise elle-même, enfin posée quelque part.
+
+    Le thème porte ce nom depuis le début mais aucune surface ne l'incarnait :
+    la palette n'en tirait qu'un fond de page. `--board` est le tableau du bar
+    — le panneau sombre sur lequel la carte client annonce le nom de
+    l'établissement — et `--on-board` la craie qu'on y écrit.
+
+    Ces trois-là ne basculent pas en `.dark`, exactement pour la raison qui fige
+    `--bottle` / `--on-bottle` : un tableau noir est sombre à toute heure. Le
+    faire s'éclaircir le soir reviendrait à repeindre l'ardoise en pierre.
+
+    La valeur est plus sombre que le `--ground` de nuit (#1a1e1c) : c'est ce qui
+    permet au panneau de se détacher encore quand toute la page est en ardoise.
+    `--bottle-chalk` est le vert du thème sombre, le seul lisible sur ce fond —
+    le vert continue donc de signaler ici aussi, il ne remplit rien.
+  */
+  --board: #151917;
+  --on-board: #f1f4f0;
+  --on-board-soft: #a8afa9;
+  --bottle-chalk: #8fbca4;
+
+  /*
     L'action primaire est en encre, pas en couleur. C'est ce qui distingue
     cette palette de la précédente : le vert ne remplit jamais un bouton
     « Enregistrer ». Il signale (lien, focus, libellé de section, soulignement
@@ -177,6 +199,10 @@
   --color-ground: var(--ground);
   --color-surface: var(--surface);
   --color-surface-raised: var(--surface-raised);
+  --color-board: var(--board);
+  --color-on-board: var(--on-board);
+  --color-on-board-soft: var(--on-board-soft);
+  --color-bottle-chalk: var(--bottle-chalk);
 
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
@@ -517,6 +543,30 @@ a {
 
 .scrollbar-none::-webkit-scrollbar {
   display: none;
+}
+
+/*
+  Le bord droit du rail de sections, estompé.
+
+  Une carte de six sections déborde la largeur d'un téléphone, et la pastille
+  coupée net au ras de l'écran se lit comme un défaut de mise en page plutôt
+  que comme une invitation à faire glisser. Le dégradé dit qu'il y a une suite
+  — c'est le rôle qu'aurait tenu la barre de défilement, masquée juste au-
+  dessus parce qu'elle souligne le bandeau d'un trait gris étranger à la page.
+
+  Le masque est fixe et non piloté par la position de défilement : arrivé au
+  bout, il estompe encore un ou deux millimètres de la dernière pastille. Le
+  corriger demanderait de suivre le `scroll` en JavaScript pour deux
+  millimètres de fondu, sur la seule page de l'application dont le budget est
+  un réseau mobile.
+*/
+.rail-fade {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    #000 calc(100% - 1.75rem),
+    transparent
+  );
+  mask-image: linear-gradient(to right, #000 calc(100% - 1.75rem), transparent);
 }
 
 .rise-in {

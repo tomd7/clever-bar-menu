@@ -80,12 +80,13 @@ export function MenuNav({
       aria-label="Sections de la carte"
       /*
         Opaque et non translucide : le texte qui défile dessous doit
-        disparaître, pas transparaître. Les marges négatives font toucher le
-        fond aux bords de l'écran là où le contenu reste dans sa colonne.
+        disparaître, pas transparaître. Le fond est celui de la feuille sur
+        laquelle la carte est imprimée — le rail lui appartient, il n'est pas
+        posé sur le décor de la page.
       */
-      className="sticky top-0 z-10 -mx-4 mt-8 border-b border-line bg-ground px-4 py-2 sm:-mx-6 sm:px-6"
+      className="sticky top-0 z-10 border-b border-line bg-surface px-5 py-2 sm:px-9"
     >
-      <ul className="scrollbar-none flex gap-2 overflow-x-auto">
+      <ul className="scrollbar-none rail-fade flex gap-2 overflow-x-auto">
         {categories.map((category) => {
           const isActive = category.id === activeId
 
@@ -94,10 +95,21 @@ export function MenuNav({
               <a
                 href={`#${sectionId(category.id)}`}
                 aria-current={isActive ? 'true' : undefined}
+                /*
+                  `active:scale-*` plutôt qu'un simple changement de couleur :
+                  une pastille est un objet qu'on presse, et l'enfoncement est
+                  ce qui prouve au doigt que le tap a été entendu — avant même
+                  que le défilement n'ait commencé. La transition est celle,
+                  globale, des liens ; le repos se fait donc en `--ease-out`.
+
+                  Le fond au repos monte d'un cran (`--surface-raised`) depuis
+                  que le rail est sur la feuille : une pastille en `--surface`
+                  sur une surface `--surface` n'aurait plus que son filet.
+                */
                 className={
                   isActive
-                    ? 'flex min-h-11 items-center rounded-full border border-bottle bg-bottle px-4 text-sm font-semibold whitespace-nowrap text-on-bottle no-underline'
-                    : 'flex min-h-11 items-center rounded-full border border-line bg-surface px-4 text-sm font-medium whitespace-nowrap text-ink-soft no-underline'
+                    ? 'flex min-h-11 items-center rounded-full border border-bottle bg-bottle px-4 text-sm font-semibold whitespace-nowrap text-on-bottle no-underline active:scale-[0.97]'
+                    : 'flex min-h-11 items-center rounded-full border border-transparent bg-surface-raised px-4 text-sm font-medium whitespace-nowrap text-ink-soft no-underline hover:text-ink active:scale-[0.97]'
                 }
               >
                 {category.name}
