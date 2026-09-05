@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { QrCode, Store, UtensilsCrossed } from 'lucide-react'
+import { Boxes, QrCode, Store, UtensilsCrossed } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 
 import { venuesQueryOptions } from '#/features/venues/api'
@@ -11,11 +11,11 @@ import { venuesQueryOptions } from '#/features/venues/api'
  * lien de retour déjà présent en haut de chaque écran : une colonne de 256px
  * pour une destination que le contenu donnait déjà. Ce qu'un gérant fait
  * réellement, c'est passer d'un établissement à l'autre et, dans l'un d'eux,
- * de la carte au QR code — deux mouvements qui n'existaient nulle part
+ * de la carte au stock ou au QR code — des mouvements qui n'existaient nulle part
  * ailleurs que par un aller-retour vers la liste.
  *
  * L'arbre ne répète jamais une destination : l'établissement ouvert devient un
- * intitulé de groupe, et ce sont ses deux sections qui portent les liens. Les
+ * intitulé de groupe, et ce sont ses sections qui portent les liens. Les
  * autres établissements restent de simples liens.
  *
  * `activeVenueSlug` est passé par la route plutôt que lu ici : savoir où l'on
@@ -85,6 +85,17 @@ export function VenueNav({
                   >
                     <UtensilsCrossed className="size-4 shrink-0" />
                     Carte
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/admin/$venueSlug/stock"
+                    params={{ venueSlug: venue.slug }}
+                    activeProps={{ className: 'is-active' }}
+                    className="rail-link"
+                  >
+                    <Boxes className="size-4 shrink-0" />
+                    Stock
                   </Link>
                 </li>
                 <li>

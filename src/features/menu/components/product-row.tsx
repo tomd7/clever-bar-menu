@@ -4,12 +4,14 @@ import { EditButton } from '#/components/buttons/edit-button'
 import { ErrorNote } from '#/components/error-note'
 import { MoveButtons } from '#/components/buttons/move-buttons'
 import { ProductForm } from '#/features/menu/components/product-form'
+import { StockBadge } from '#/features/menu/components/stock-badge'
 import { Switch } from '#/components/ui/switch'
 import {
   useDeleteProduct,
   useSetProductAvailability,
 } from '#/features/menu/mutations'
 import { formatPrice } from '#/features/menu/price'
+import { isHiddenFromCustomers } from '#/features/menu/stock'
 import { productPhotoUrl } from '#/features/menu/photo'
 
 import type { Product } from '#/lib/supabase'
@@ -36,6 +38,13 @@ export function ProductRow({
   const remove = useDeleteProduct()
 
   const error = setAvailability.error ?? remove.error
+
+  /*
+    Barré parce qu'il a quitté la carte, quelle qu'en soit la cause : retiré à
+    la main, ou épuisé. Le gérant regarde la ligne pour savoir ce qu'un client
+    voit, pas pour savoir laquelle des deux colonnes vaut quoi.
+  */
+  const isHidden = isHiddenFromCustomers(product)
 
   if (isEditing) {
     return (
@@ -66,15 +75,18 @@ export function ProductRow({
       ) : null}
 
       <div className="min-w-0 flex-1">
-        <p
-          className={
-            product.is_available
-              ? 'font-medium'
-              : 'font-medium text-ink-soft line-through'
-          }
-        >
-          {product.name}
-        </p>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <p
+            className={
+              isHidden
+                ? 'font-medium text-ink-soft line-through'
+                : 'font-medium'
+            }
+          >
+            {product.name}
+          </p>
+          <StockBadge product={product} />
+        </div>
         {product.description ? (
           <p className="mt-0.5 line-clamp-2 text-sm text-ink-soft">
             {product.description}
@@ -112,6 +124,13 @@ export function ProductRow({
                 : 'Remettre à la carte'
             }
           />
+          {/*
+            L'interrupteur ne lit que `is_available`, jamais l'état déduit du
+            stock : c'est le geste manuel du gérant, et il doit rester réversible
+            indépendamment. Un produit épuisé mais resté « En vente » revient
+            donc de lui-même à la livraison — la pastille, elle, dit déjà qu'il
+            est parti.
+          */}
           <span className="hidden sm:inline">
             {product.is_available ? 'En vente' : 'Rupture'}
           </span>

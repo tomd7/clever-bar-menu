@@ -244,6 +244,19 @@ export type ProductDraft = {
   priceCents: number | null
   /** Chemin dans le bucket, jamais une URL : celle-ci dépend du projet. */
   imagePath: string | null
+  /**
+   * Niveau de stock, `null` pour un produit non suivi, `undefined` pour « ne
+   * pas y toucher ».
+   *
+   * Le troisième cas n'est pas une commodité : le stock est la seule colonne
+   * qu'un autre écran modifie pendant qu'une fiche produit est ouverte. Un
+   * gérant qui corrige une faute dans une description à neuf heures du soir
+   * réécrirait sinon le niveau qu'il avait sous les yeux en ouvrant le
+   * formulaire, et annulerait les trois « −1 » tapés au comptoir entre-temps.
+   */
+  stockQuantity?: number | null
+  /** Seuil d'alerte. Mêmes conventions que `stockQuantity`. */
+  lowStockThreshold?: number | null
 }
 
 function toProductRow(draft: ProductDraft) {
@@ -252,6 +265,14 @@ function toProductRow(draft: ProductDraft) {
     description: draft.description,
     price_cents: draft.priceCents,
     image_path: draft.imagePath,
+    /*
+      Une valeur `undefined` disparaît de la charge utile : `JSON.stringify`
+      supprime les propriétés qui la portent, et PostgREST ne reçoit donc pas
+      la colonne — elle garde sa valeur en base sur un `update`, et son défaut
+      sur un `insert`.
+    */
+    stock_quantity: draft.stockQuantity,
+    low_stock_threshold: draft.lowStockThreshold,
   }
 }
 
@@ -303,4 +324,52 @@ export async function setProductAvailability(
       .update({ is_available: isAvailable })
       .eq('id', productId),
   )
+}
+
+/**
+ * Fixe le niveau de stock à une valeur absolue.
+ *
+ * C'est le geste de la livraison — « il y en a trente » — et celui qui active
+ * ou coupe le suivi : `null` rend le produit non suivi, sans jamais le faire
+ * passer par zéro, donc sans le masquer de la carte au passage.
+ *
+ * Un `update` ordinaire suffit ici, contrairement au décompte : une valeur
+ * absolue ne dépend pas de celle qu'elle remplace, deux saisies concurrentes
+ * ne peuvent donc pas s'annuler l'une l'autre — la dernière gagne, ce qui est
+ * le comportement attendu.
+ */
+export async function setProductStock(
+  productId: string,
+  quantity: number | null,
+): Promise<void> {
+  await write(
+    supabase
+      .from('products')
+      .update({ stock_quantity: quantity })
+      .eq('id', productId),
+  )
+}
+
+/**
+ * Décompte (ou recrédite) le stock d'un produit, sans lire la valeur courante.
+ *
+ * Passe par la fonction `adjust_product_stock` (migration `0007`) et non par un
+ * `update` : PostgREST ne sait pas écrire `stock_quantity = stock_quantity - 1`,
+ * il faudrait donc lire puis écrire, et deux appareils derrière le même bar
+ * perdraient un décompte sur deux. La fonction fait les deux en une instruction,
+ * et planche à zéro.
+ *
+ * C'est le point d'accroche prévu pour la commande à table : une commande
+ * validée appellera ceci, avec la quantité commandée en `delta`.
+ */
+export async function adjustProductStock(
+  productId: string,
+  delta: number,
+): Promise<void> {
+  const { error } = await supabase.rpc('adjust_product_stock', {
+    product_id: productId,
+    delta,
+  })
+
+  if (error) throw new Error(describeError(error))
 }

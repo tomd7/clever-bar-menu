@@ -1,0 +1,205 @@
+import { ArrowLeft, PackageOpen } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+
+import { EmptyState } from '#/components/empty-state'
+import { NavLink } from '#/components/nav-link'
+import { StockRow, stockRowId } from '#/features/menu/components/stock-row'
+import { isTracked, needsRestock, stockStateOf } from '#/features/menu/stock'
+import { menuQueryOptions } from '#/features/menu/api'
+
+/**
+ * Page « Stock » d'un établissement.
+ *
+ * Écrite pour être tenue debout derrière un comptoir, pas pour être consultée :
+ * les cibles font 44px, le compteur d'une ligne est atteignable au pouce, et
+ * rien n'y demande de valider un formulaire.
+ *
+ * Elle lit `menuQueryOptions`, la requête de l'éditeur, plutôt que la sienne. Le
+ * stock n'est pas une autre collection : c'est la même carte, regardée par la
+ * colonne des quantités. Une seconde requête ferait deux caches à invalider, et
+ * un « −1 » corrigé ici n'apparaîtrait pas sur la carte ouverte dans l'onglet
+ * d'à côté.
+ *
+ * Deux ensembles, et l'ordre entre eux est délibéré :
+ *
+ * - Un **bandeau d'alerte** en tête, qui ne contient que des raccourcis. Il dit
+ *   quoi traiter, il ne le traite pas — les compteurs restent dans la liste,
+ *   à un seul endroit.
+ * - La **liste complète**, dans l'ordre de la carte, catégorie par catégorie.
+ *   Cet ordre-là ne bouge jamais : trier par urgence ferait remonter une ligne
+ *   au moment même où le doigt appuie sur son « −1 », et le deuxième appui
+ *   tomberait sur le produit d'à côté. La liste est ce qu'on parcourt en
+ *   longeant le bar, elle suit donc l'ordre du bar.
+ */
+export function StockPage({ venueSlug }: { venueSlug: string }) {
+  const menuQuery = useQuery(menuQueryOptions(venueSlug))
+
+  if (menuQuery.isPending) {
+    return <p className="text-sm text-ink-soft">Chargement…</p>
+  }
+
+  if (menuQuery.isError) {
+    return (
+      <div className="panel rounded-2xl p-6">
+        <p role="alert" className="text-sm text-destructive">
+          {menuQuery.error.message}
+        </p>
+        <NavLink to="/admin" className="mt-4">
+          Retour aux établissements
+        </NavLink>
+      </div>
+    )
+  }
+
+  const { venue, categories } = menuQuery.data
+
+  /*
+    Les produits non suivis sont écartés d'emblée. Ils sont la majorité d'une
+    carte de bar — un café, une pression au fût — et les afficher avec un
+    compteur vide donnerait trente lignes inertes à traverser pour atteindre les
+    six qui comptent.
+  */
+  const trackedCategories = categories
+    .map((category) => ({
+      ...category,
+      products: category.products.filter(isTracked),
+    }))
+    .filter((category) => category.products.length > 0)
+
+  const trackedProducts = trackedCategories.flatMap(
+    (category) => category.products,
+  )
+  const alerts = trackedProducts.filter(needsRestock)
+
+  const untrackedCount =
+    categories.reduce(
+      (total, category) => total + category.products.length,
+      0,
+    ) - trackedProducts.length
+
+  return (
+    <div className="page-wrap px-0">
+      {/* Masqué à partir de `lg`, où la colonne porte la même destination. En
+          dessous, la colonne n'existe pas et ce lien est la seule sortie. */}
+      <NavLink
+        to="/admin/$venueSlug"
+        params={{ venueSlug: venue.slug }}
+        icon={ArrowLeft}
+        className="lg:hidden"
+      >
+        Retour à la carte
+      </NavLink>
+
+      <header className="mt-2 lg:mt-0">
+        <p className="island-kicker">Stock</p>
+        <h1 className="display-title mt-1 text-2xl leading-tight sm:text-3xl">
+          {venue.name}
+        </h1>
+        <p className="mt-2 text-sm text-ink-soft">
+          Un produit épuisé quitte la carte des clients et y revient dès qu'il
+          est réapprovisionné.
+        </p>
+      </header>
+
+      {alerts.length > 0 ? (
+        <section
+          aria-label="Produits à réapprovisionner"
+          className="panel mt-6 rounded-2xl p-4 sm:p-5"
+        >
+          <p className="island-kicker">À réapprovisionner</p>
+          <p className="mt-1 text-sm text-ink-soft">{describeAlerts(alerts)}</p>
+
+          {/*
+            Des raccourcis, pas des contrôles : le compteur d'un produit
+            n'existe qu'une fois, dans la liste. Le dupliquer ici aurait donné
+            deux « −1 » pour la même bouteille, et un bandeau dont les lignes
+            disparaissent sous le doigt à mesure qu'on les traite.
+
+            `rail-fade` reprend le rail de la carte client : le masque au bord
+            droit dit que la rangée continue, là où une barre de défilement ne
+            ferait que salir la bande.
+          */}
+          <ul className="scrollbar-none rail-fade mt-3 flex gap-2 overflow-x-auto">
+            {alerts.map((product) => (
+              <li key={product.id}>
+                <a
+                  href={`#${stockRowId(product.id)}`}
+                  className={
+                    stockStateOf(product) === 'out'
+                      ? 'flex min-h-11 items-center gap-2 rounded-full border border-destructive/30 bg-destructive/10 px-4 text-sm font-medium whitespace-nowrap text-destructive no-underline active:scale-[0.97]'
+                      : 'flex min-h-11 items-center gap-2 rounded-full border border-line bg-surface-raised px-4 text-sm font-medium whitespace-nowrap text-ink-soft no-underline hover:text-ink active:scale-[0.97]'
+                  }
+                >
+                  {product.name}
+                  <span className="tabular-nums opacity-70">
+                    {product.stock_quantity}
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {trackedCategories.length === 0 ? (
+        <EmptyState
+          icon={PackageOpen}
+          title="Aucun stock suivi"
+          className="mt-6"
+        >
+          Renseignez un stock restant sur la fiche d'un produit, depuis la
+          carte, et il apparaîtra ici. Les produits sans stock fini — un café,
+          une pression au fût — n'ont rien à y faire.
+        </EmptyState>
+      ) : (
+        <div className="mt-6 space-y-4">
+          {trackedCategories.map((category) => (
+            <section key={category.id} className="panel rounded-2xl p-4 sm:p-5">
+              <h2 className="display-title text-lg leading-tight">
+                {category.name}
+              </h2>
+
+              <ul className="mt-3 divide-y divide-line border-t border-line">
+                {category.products.map((product) => (
+                  <StockRow key={product.id} product={product} />
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
+      )}
+
+      {untrackedCount > 0 ? (
+        <p className="mt-4 text-sm text-ink-soft">
+          {untrackedCount === 1
+            ? '1 produit sans suivi de stock.'
+            : `${untrackedCount} produits sans suivi de stock.`}{' '}
+          <NavLink to="/admin/$venueSlug" params={{ venueSlug: venue.slug }}>
+            Activez-le depuis la carte
+          </NavLink>
+        </p>
+      ) : null}
+    </div>
+  )
+}
+
+/**
+ * Résume les alertes en une phrase.
+ *
+ * Une phrase et non deux compteurs côte à côte : « 2 épuisés, 3 bientôt » se lit
+ * d'un coup d'œil, là où deux pastilles chiffrées demandent d'abord de
+ * comprendre leur légende.
+ */
+function describeAlerts(
+  alerts: Array<{ stock_quantity: number; low_stock_threshold: number | null }>,
+): string {
+  const out = alerts.filter((product) => stockStateOf(product) === 'out').length
+  const low = alerts.length - out
+
+  const parts: Array<string> = []
+  if (out > 0)
+    parts.push(out === 1 ? '1 produit épuisé' : `${out} produits épuisés`)
+  if (low > 0) parts.push(low === 1 ? '1 stock bas' : `${low} stocks bas`)
+
+  return `${parts.join(', ')}.`
+}

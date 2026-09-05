@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 import { CancelButton } from '#/components/buttons/cancel-button'
 import { SaveButton } from '#/components/buttons/save-button'
@@ -7,6 +7,7 @@ import { TextAreaField } from '#/components/form/textarea-field'
 import { PhotoField } from '#/features/menu/components/photo-field'
 import { TextField } from '#/components/form/text-field'
 import { centsToInput } from '#/features/menu/price'
+import { stockToInput } from '#/features/menu/stock'
 import { useSaveProduct } from '#/features/menu/mutations'
 
 import type { FormEvent } from 'react'
@@ -50,7 +51,29 @@ export function ProductForm({
   const [imagePath, setImagePath] = useState<string | null>(
     product?.image_path ?? null,
   )
+  const [stock, setStock] = useState(
+    product ? stockToInput(product.stock_quantity) : '',
+  )
+  const [lowStockThreshold, setLowStockThreshold] = useState(
+    product ? stockToInput(product.low_stock_threshold) : '',
+  )
+
+  /*
+    Les valeurs de stock à l'ouverture, figées.
+    `useRef` et non les props : celles-ci changent si le comptoir décompte
+    pendant que la fiche est ouverte, et une comparaison avec la valeur courante
+    ferait alors passer un champ auquel personne n'a touché pour une saisie.
+  */
+  const stockAtOpen = useRef({ stock, lowStockThreshold })
+
   const save = useSaveProduct()
+
+  /*
+    Zéro n'est pas une quantité basse, c'est une disparition : le produit quitte
+    la carte publique tant qu'il n'est pas réapprovisionné. L'écrire au moment
+    de la saisie évite au gérant de le découvrir en rechargeant sa carte.
+  */
+  const willBeHidden = /^0+$/.test(stock.replace(/\s/g, ''))
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -63,6 +86,10 @@ export function ProductForm({
         name,
         description,
         price,
+        stock,
+        lowStockThreshold,
+        initialStock: stockAtOpen.current.stock,
+        initialLowStockThreshold: stockAtOpen.current.lowStockThreshold,
         photoFile,
         imagePath,
         previousImagePath: product?.image_path ?? null,
@@ -129,6 +156,53 @@ export function ProductForm({
           setImagePath(null)
         }}
       />
+
+      {/*
+        Le stock est séparé du reste par un filet : les champs au-dessus
+        décrivent ce qu'un client lit, ceux-ci ce que le bar compte. Les mêler
+        dans la même grille ferait du seuil d'alerte un attribut de la carte.
+      */}
+      <div className="mt-4 border-t border-line pt-3">
+        <p className="island-kicker">Suivi de stock</p>
+
+        <div className="mt-2 grid gap-3 sm:grid-cols-2">
+          <TextField
+            label={
+              <>
+                Stock restant{' '}
+                <span className="font-normal text-ink-soft">(facultatif)</span>
+              </>
+            }
+            /* `inputMode="numeric"` : le pavé numérique, sans les flèches ni le
+               défilement à la molette d'un `type="number"`. */
+            inputMode="numeric"
+            placeholder="24"
+            value={stock}
+            onChange={(event) => setStock(event.target.value)}
+            inputClassName="tabular-nums"
+            hint={
+              willBeHidden
+                ? 'Épuisé : le produit est masqué de la carte jusqu’au réapprovisionnement.'
+                : 'Laissez vide pour ne pas suivre ce produit — un café, une pression au fût.'
+            }
+          />
+
+          <TextField
+            label={
+              <>
+                Seuil d’alerte{' '}
+                <span className="font-normal text-ink-soft">(facultatif)</span>
+              </>
+            }
+            inputMode="numeric"
+            placeholder="5"
+            value={lowStockThreshold}
+            onChange={(event) => setLowStockThreshold(event.target.value)}
+            inputClassName="tabular-nums"
+            hint="En dessous, le produit est signalé sur la page Stock."
+          />
+        </div>
+      </div>
 
       {save.error ? <ErrorNote>{save.error.message}</ErrorNote> : null}
 

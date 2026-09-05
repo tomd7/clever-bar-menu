@@ -1,5 +1,6 @@
 import {
   boolean,
+  check,
   index,
   integer,
   pgPolicy,
@@ -38,7 +39,7 @@ const publicRead = (name: string) =>
 /**
  * Écriture réservée au propriétaire de l'établissement.
  *
- * `check` est l'expression qui rattache la ligne à son propriétaire. Elle est
+ * `owns` est l'expression qui rattache la ligne à son propriétaire. Elle est
  * passée à la fois en `using` (quelles lignes existantes sont visées par un
  * UPDATE/DELETE) et en `withCheck` (à quoi doit ressembler la ligne après un
  * INSERT/UPDATE) : sans le second, on pourrait céder sa propre ligne à
@@ -49,22 +50,22 @@ const publicRead = (name: string) =>
  * lieu de le réévaluer ligne à ligne. C'est la différence entre un scan correct
  * et un scan quadratique sur une carte un peu fournie.
  */
-const ownerWrite = (name: string, check: ReturnType<typeof sql>) => [
+const ownerWrite = (name: string, owns: ReturnType<typeof sql>) => [
   pgPolicy(`${name}_owner_insert`, {
     for: 'insert',
     to: authenticatedRole,
-    withCheck: check,
+    withCheck: owns,
   }),
   pgPolicy(`${name}_owner_update`, {
     for: 'update',
     to: authenticatedRole,
-    using: check,
-    withCheck: check,
+    using: owns,
+    withCheck: owns,
   }),
   pgPolicy(`${name}_owner_delete`, {
     for: 'delete',
     to: authenticatedRole,
-    using: check,
+    using: owns,
   }),
 ]
 
@@ -249,8 +250,40 @@ export const products = pgTable(
      */
     imagePath: text('image_path'),
 
-    /** Rupture de stock : masque le produit sur la carte publique. */
+    /**
+     * Rupture décidée à la main : masque le produit sur la carte publique.
+     *
+     * Distinct de l'épuisement du stock, qui se déduit de `stockQuantity`. Un
+     * gérant retire un produit pour des raisons qu'aucun compteur ne connaît —
+     * la machine est en panne, le fournisseur a changé, la recette ne suit
+     * plus. Écraser ce drapeau à chaque fois qu'un stock retombe à zéro ferait
+     * réapparaître, à la livraison suivante, un produit que personne n'avait
+     * demandé à remettre.
+     */
     isAvailable: boolean('is_available').notNull().default(true),
+
+    /**
+     * Niveau de stock restant, ou `null` si le produit n'est pas suivi.
+     *
+     * `null` est l'état par défaut, et c'est le bon : la plupart des lignes
+     * d'une carte de bar n'ont pas de stock fini à l'échelle d'un service — un
+     * café, une pression au fût, un plat du jour. Le suivi s'active produit par
+     * produit, sur ceux qui se comptent en bouteilles.
+     *
+     * `0` signifie « épuisé » et n'est donc pas la même chose que `null` : le
+     * premier masque le produit de la carte publique, le second ne dit rien.
+     */
+    stockQuantity: integer('stock_quantity'),
+
+    /**
+     * Niveau à partir duquel le stock est signalé comme bas.
+     *
+     * `null` = pas de seuil : le produit n'alerte qu'une fois épuisé. Le seuil
+     * n'a de sens que sur un produit suivi ; sur les autres il est ignoré
+     * plutôt qu'interdit, ce qui éviterait au formulaire d'imposer un ordre de
+     * saisie pour une contrainte que personne ne peut violer par accident.
+     */
+    lowStockThreshold: integer('low_stock_threshold'),
 
     position: smallint('position').notNull().default(0),
 
@@ -261,11 +294,29 @@ export const products = pgTable(
       table.categoryId,
       table.position,
     ),
+
+    /*
+      Un stock négatif n'est pas une valeur basse, c'est une incohérence : il
+      ne pourrait venir que d'un décompte concurrent mal ordonné. La fonction
+      `adjust_product_stock` (migration 0007) plancher déjà à zéro ; ces
+      contraintes sont le garde-fou de tout ce qui l'écrirait autrement, y
+      compris un appel direct à PostgREST.
+    */
+    check(
+      'products_stock_quantity_non_negative',
+      sql`${table.stockQuantity} is null or ${table.stockQuantity} >= 0`,
+    ),
+    check(
+      'products_low_stock_threshold_non_negative',
+      sql`${table.lowStockThreshold} is null or ${table.lowStockThreshold} >= 0`,
+    ),
     /**
-     * Volontairement sans filtre sur `is_available` : masquer une rupture est
-     * une décision d'affichage, elle est prise dans la requête de la carte. La
-     * mettre ici casserait la lecture du back-office le jour où il passerait
-     * par la clé publiable, et de façon difficile à diagnostiquer.
+     * Volontairement sans filtre sur `is_available` ni sur `stock_quantity` :
+     * masquer une rupture est une décision d'affichage, elle est prise dans la
+     * requête de la carte. La mettre ici casserait la lecture du back-office,
+     * qui passe par la même clé publiable, et de façon difficile à diagnostiquer
+     * — un produit épuisé disparaîtrait de l'écran qui sert justement à le
+     * réapprovisionner.
      */
     publicRead('products_public_read'),
     ...ownerWrite(

@@ -17,6 +17,9 @@ gère ses catégories, ses produits et ses prix depuis un back-office.
   consultable sur mobile, sans installation ni compte.
 - **Back-office de gestion** — création et édition des catégories, produits, prix,
   descriptions et photos ; un produit en rupture peut être masqué en un clic.
+- **Suivi de stock** — activable produit par produit, avec un seuil d'alerte et une page
+  faite pour être tenue debout derrière le bar. Un produit épuisé quitte la carte des
+  clients et y revient de lui-même au réapprovisionnement.
 - **Multi-établissements** — un même déploiement héberge plusieurs bars. Un gérant en
   possède autant qu'il veut, chacun avec sa carte, son adresse publique et son QR code.
   L'isolation est portée par Postgres : un gérant ne voit et ne modifie que ses
@@ -162,12 +165,14 @@ navigateur, donc l'évaluer pendant le rendu serveur conclurait « non connecté
 requête. La carte publique, elle, est en SSR — c'est une page scannée au QR code, sa vitesse de
 premier affichage compte.
 
-| Route               | Rôle                                                       |
-| ------------------- | ---------------------------------------------------------- |
-| `/login`            | Connexion                                                  |
-| `/admin`            | Liste des établissements du gérant, et création            |
-| `/admin/$venueSlug` | Édition de la carte : catégories, produits, prix, ruptures |
-| `/m/$venueSlug`     | **Carte publique** — la page que vise le QR code           |
+| Route                     | Rôle                                                       |
+| ------------------------- | ---------------------------------------------------------- |
+| `/login`                  | Connexion                                                  |
+| `/admin`                  | Liste des établissements du gérant, et création            |
+| `/admin/$venueSlug`       | Édition de la carte : catégories, produits, prix, ruptures |
+| `/admin/$venueSlug/stock` | Suivi de stock : niveaux, alertes, décompte                |
+| `/admin/$venueSlug/qr`    | Feuille de QR code à imprimer                              |
+| `/m/$venueSlug`           | **Carte publique** — la page que vise le QR code           |
 
 Les prix sont saisis en euros et stockés en **centimes entiers**
 ([`src/features/menu/price.ts`](src/features/menu/price.ts)) : la saisie accepte la virgule comme le point, et
@@ -186,6 +191,31 @@ article offert.
 L'ordre des catégories et des produits est porté par une colonne `position`, avançant de 100
 en 100 pour permettre d'insérer entre deux voisines sans réécrire la liste. Un produit en
 rupture reste dans la carte du gérant, barré, et sera masqué côté client.
+
+### Suivi de stock
+
+Le suivi s'active **produit par produit**, en renseignant un stock restant sur sa fiche. Un
+champ laissé vide veut dire « pas de suivi », et c'est le cas normal : un café ou une
+pression au fût ne se comptent pas à l'échelle d'un service. Un seuil d'alerte facultatif
+signale un stock bas avant l'épuisement.
+
+`/admin/$venueSlug/stock` regroupe les produits suivis, dans l'ordre de la carte, avec un
+compteur par ligne : « −1 » pendant le service, la saisie du niveau à la livraison. Un
+bandeau en tête donne les raccourcis vers ce qui demande une intervention. La liste, elle,
+ne se réordonne jamais — trier par urgence ferait remonter une ligne à l'instant où le doigt
+appuie sur son « −1 ».
+
+Deux points de conception valent d'être connus :
+
+- **La rupture par épuisement est déduite, jamais écrite.** `is_available` reste le geste
+  manuel du gérant ; un stock à zéro masque le produit de la carte publique par un filtre de
+  requête, et le réapprovisionnement le fait réapparaître sans intervention. Basculer
+  vraiment la colonne obligerait à réactiver chaque produit à la main après une livraison,
+  et écraserait au passage une décision prise pour une tout autre raison.
+- **Le décompte passe par une fonction Postgres**, `adjust_product_stock` (migration
+  `0007`). PostgREST ne sait pas écrire `stock_quantity = stock_quantity - 1` : sans elle, le
+  navigateur devrait lire puis écrire, et deux appareils derrière le même bar perdraient un
+  décompte sur deux. C'est aussi le point d'accroche prévu pour la commande à table.
 
 ### Création des comptes
 
@@ -258,7 +288,8 @@ réseau mobile d'un client attablé.
 Trois comportements à connaître :
 
 - **Les produits en rupture sont écartés dans la requête**, pas à l'affichage : ils ne
-  quittent jamais le serveur. Une catégorie dont tous les produits sont en rupture disparaît
+  quittent jamais le serveur. Deux causes indépendantes les écartent — la rupture décidée à
+  la main, et un stock épuisé. Une catégorie dont tous les produits sont partis disparaît
   également.
 - **Un produit sans prix n'affiche rien** — pas « Prix non renseigné », qui est un message
   destiné au gérant. C'est ce que fait une carte imprimée pour un plat du jour.
@@ -327,13 +358,16 @@ node .output/server/index.mjs
 - [x] Carte publique responsive
 - [x] Génération du QR code (un par établissement)
 - [ ] Commande à table : panier côté client, envoi au bar depuis la carte scannée, suivi et
-      historique des commandes dans le back-office. **Sans paiement en ligne** — le
-      règlement se fait au comptoir, la commande ne transporte aucune donnée bancaire
+      historique des commandes dans le back-office, et décompte du stock à la validation.
+      **Sans paiement en ligne** — le règlement se fait au comptoir, la commande ne
+      transporte aucune donnée bancaire
 - [x] Authentification du back-office (Supabase Auth, comptes créés par l'administrateur)
 - [x] CRUD de la carte (catégories, produits, prix, photos)
 - [x] Gestion des ruptures de stock
-- [ ] Gestion de l'inventaire : niveaux de stock, décompte à la vente, seuils d'alerte et
-      passage automatique en rupture
+- [x] Gestion de l'inventaire : niveaux de stock activables par produit, seuils d'alerte,
+      décompte manuel et passage automatique en rupture. Le **décompte à la vente** attend la
+      commande à table : il appellera `adjust_product_stock`, la fonction qui sert déjà au
+      décompte manuel
 - [ ] Tableau de bord : nouvelle page d'accueil du back-office, à la place de la simple
       liste des établissements — chiffres de la journée, alertes (stocks bas, ruptures,
       commandes en attente) et accès direct à chaque carte

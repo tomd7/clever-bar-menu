@@ -2,12 +2,14 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 import {
   MENU_QUERY_KEY,
+  adjustProductStock,
   createCategory,
   createProduct,
   deleteCategory,
   deleteProduct,
   renameCategory,
   setProductAvailability,
+  setProductStock,
   swapPositions,
   updateProduct,
 } from '#/features/menu/api'
@@ -15,7 +17,11 @@ import {
   PriceFormatError,
   parseOptionalEurosToCents,
 } from '#/features/menu/price'
+import { StockFormatError, parseOptionalStock } from '#/features/menu/stock'
 import { removeProductPhoto, uploadProductPhoto } from '#/features/menu/photo'
+
+import type { Menu } from '#/features/menu/api'
+import type { Product } from '#/lib/supabase'
 
 /**
  * Toute écriture sur la carte invalide la carte.
@@ -100,6 +106,13 @@ export function useSaveProduct() {
       name: string
       description: string
       price: string
+      /** Niveau de stock saisi, en texte. Vide = produit non suivi. */
+      stock: string
+      /** Seuil d'alerte saisi, en texte. Vide = alerte à l'épuisement seulement. */
+      lowStockThreshold: string
+      /** Les deux mêmes champs tels qu'ils étaient à l'ouverture du formulaire. */
+      initialStock: string
+      initialLowStockThreshold: string
       /** Photo choisie à l'instant, si le gérant vient d'en sélectionner une. */
       photoFile: File | null
       /** Chemin conservé : celui du produit, ou `null` si la photo est retirée. */
@@ -116,6 +129,30 @@ export function useSaveProduct() {
           : new Error('Prix invalide.')
       }
 
+      /*
+        Les colonnes de stock ne sont réécrites que si leur champ a bougé.
+        C'est la seule partie d'un produit qu'un autre écran modifie pendant
+        que ce formulaire est ouvert : enregistrer une description ne doit pas
+        remonter le niveau à ce qu'il était quand la fiche s'est affichée.
+        `undefined` laisse la colonne intacte (voir `ProductDraft`).
+      */
+      let stockQuantity: number | null | undefined
+      let lowStockThreshold: number | null | undefined
+      try {
+        stockQuantity =
+          input.stock === input.initialStock
+            ? undefined
+            : parseOptionalStock(input.stock)
+        lowStockThreshold =
+          input.lowStockThreshold === input.initialLowStockThreshold
+            ? undefined
+            : parseOptionalStock(input.lowStockThreshold)
+      } catch (cause) {
+        throw cause instanceof StockFormatError
+          ? cause
+          : new Error('Quantité invalide.')
+      }
+
       const uploadedPath = input.photoFile
         ? await uploadProductPhoto(input.venueId, input.photoFile)
         : null
@@ -125,6 +162,8 @@ export function useSaveProduct() {
         description: input.description.trim() || null,
         priceCents,
         imagePath: uploadedPath ?? input.imagePath,
+        stockQuantity,
+        lowStockThreshold,
       }
 
       try {
@@ -152,5 +191,102 @@ export function useSaveProduct() {
         await removeProductPhoto(input.previousImagePath)
       }
     },
+  )
+}
+
+/**
+ * Mutation qui retouche un seul produit, et le montre avant la réponse.
+ *
+ * Les gestes de stock se répètent — un « −1 » par bouteille servie, debout
+ * derrière le bar, sur une connexion mobile. Attendre l'aller-retour Supabase
+ * avant de bouger le chiffre transforme un compteur en formulaire : on appuie
+ * deux fois parce que rien n'a bougé. Le cache est donc corrigé sur-le-champ,
+ * remis en état si l'écriture échoue, et rechargé dans tous les cas.
+ *
+ * La retouche vise le préfixe `['menu']` comme l'invalidation, et pour la même
+ * raison : le composant qui appuie ne connaît pas le slug, et le lui faire
+ * redescendre reconstituerait le fil que le projet a coupé.
+ */
+function useOptimisticProductMutation<TVariables extends { productId: string }>(
+  mutationFn: (variables: TVariables) => Promise<void>,
+  patch: (product: Product, variables: TVariables) => Product,
+) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn,
+
+    onMutate: async (variables) => {
+      /*
+        Un chargement déjà en vol répondrait avec l'ancien niveau et écraserait
+        la correction : il est annulé avant, pas après.
+      */
+      await queryClient.cancelQueries({ queryKey: MENU_QUERY_KEY })
+
+      const snapshot = queryClient.getQueriesData<Menu>({
+        queryKey: MENU_QUERY_KEY,
+      })
+
+      queryClient.setQueriesData<Menu>({ queryKey: MENU_QUERY_KEY }, (menu) =>
+        menu
+          ? {
+              ...menu,
+              categories: menu.categories.map((category) => ({
+                ...category,
+                products: category.products.map((product) =>
+                  product.id === variables.productId
+                    ? patch(product, variables)
+                    : product,
+                ),
+              })),
+            }
+          : menu,
+      )
+
+      return { snapshot }
+    },
+
+    onError: (_error, _variables, context) => {
+      for (const [queryKey, data] of context?.snapshot ?? []) {
+        queryClient.setQueryData(queryKey, data)
+      }
+    },
+
+    /*
+      `onSettled` et non `onSuccess` : après un échec, le cache vient d'être
+      remis à sa valeur d'avant, laquelle peut elle-même être périmée si un
+      autre appareil a servi entre-temps. C'est le serveur qui tranche.
+    */
+    onSettled: () =>
+      queryClient.invalidateQueries({ queryKey: MENU_QUERY_KEY }),
+  })
+}
+
+/** Décompte ou recrédite le stock d'un produit. `delta` peut être négatif. */
+export function useAdjustProductStock() {
+  return useOptimisticProductMutation(
+    (input: { productId: string; delta: number }) =>
+      adjustProductStock(input.productId, input.delta),
+    (product, input) =>
+      product.stock_quantity === null
+        ? product
+        : {
+            ...product,
+            /*
+              Le même plancher que la fonction SQL. Sans lui, l'affichage
+              passerait par « −1 » le temps d'un aller-retour avant de revenir
+              à zéro — un chiffre que la base n'a jamais pu contenir.
+            */
+            stock_quantity: Math.max(product.stock_quantity + input.delta, 0),
+          },
+  )
+}
+
+/** Fixe le niveau de stock. `null` coupe le suivi du produit. */
+export function useSetProductStock() {
+  return useOptimisticProductMutation(
+    (input: { productId: string; quantity: number | null }) =>
+      setProductStock(input.productId, input.quantity),
+    (product, input) => ({ ...product, stock_quantity: input.quantity }),
   )
 }

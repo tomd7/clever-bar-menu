@@ -61,6 +61,21 @@ export async function fetchPublicMenu(venueSlug: string): Promise<Menu> {
       rendu au serveur.
     */
     .eq('is_available', true)
+    /*
+      Seconde cause de disparition, indépendante de la première : le stock est
+      épuisé. Elle est **déduite** et jamais écrite dans `is_available` — un
+      produit réapprovisionné revient donc tout seul, sans que personne ait à
+      rouvrir la carte pour le réactiver.
+
+      `stock_quantity is null` doit rester dans la condition : c'est l'immense
+      majorité des lignes, celles qu'on ne compte pas. Un filtre écrit
+      naïvement `gt.0` viderait la carte de tous les produits non suivis.
+
+      La règle est la même que `isHiddenFromCustomers` dans `stock.ts`, écrite
+      deux fois parce qu'elle s'applique de deux côtés — SQL ici, TypeScript
+      pour le back-office. Elles se modifient ensemble.
+    */
+    .or('stock_quantity.is.null,stock_quantity.gt.0')
     .order('position', { ascending: true })
     .order('name', { ascending: true })
 

@@ -45,6 +45,10 @@ type ProductRow = {
   price_cents: number | null
   image_path: string | null
   is_available: boolean
+  /** Niveau restant, ou `null` si le produit n'est pas suivi en stock. */
+  stock_quantity: number | null
+  /** Seuil d'alerte, ou `null` : le produit n'alerte alors qu'une fois épuisé. */
+  low_stock_threshold: number | null
   position: number
   created_at: string
   updated_at: string
@@ -95,13 +99,28 @@ export type Database = {
           | 'is_available'
           | 'image_path'
           | 'price_cents'
+          | 'stock_quantity'
+          | 'low_stock_threshold'
         >
         Update: Partial<ProductRow>
         Relationships: []
       }
     }
     Views: Record<never, never>
-    Functions: Record<never, never>
+    Functions: {
+      /**
+       * Décompte atomique du stock (migration `0007`).
+       *
+       * Une fonction plutôt qu'un `update` parce que PostgREST ne sait pas
+       * écrire `stock_quantity = stock_quantity - 1` : sans elle, deux
+       * appareils derrière le même bar perdraient un décompte sur deux. Elle
+       * renvoie le niveau restant, déjà planché à zéro.
+       */
+      adjust_product_stock: {
+        Args: { product_id: string; delta: number }
+        Returns: number
+      }
+    }
     Enums: Record<never, never>
     CompositeTypes: Record<never, never>
   }

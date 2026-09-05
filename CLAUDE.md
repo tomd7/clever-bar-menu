@@ -174,6 +174,12 @@ Rules that are easy to get wrong here:
   inside a policy, but a `DEFAULT` rejects any subquery outright (`0A000: cannot use subquery
 in DEFAULT expression`). Column defaults must use bare `sql\`auth.uid()\``.
 - **Prices are integer cents** (`price_cents`), never floats. Currency lives on the venue.
+- **`adjust_product_stock` is the one Postgres function the app calls** (migration `0007`,
+  hand-written — drizzle-kit doesn't describe functions, same reason as `0004`). It is
+  `security invoker` with `set search_path = ''`, so RLS still applies and every name inside
+  it is schema-qualified (`public.products`). Making it `security definer` would let any
+  signed-in account decrement another venue's stock. `execute` is revoked from `public` —
+  Postgres grants it by default — then granted to `authenticated` alone.
 - **RLS is enabled on all three tables, and the policies live in `src/db/schema.ts`**
   (`pgPolicy` + `anonRole`/`authenticatedRole` from `drizzle-orm/supabase`), not in
   hand-written SQL — the schema stays the source of truth. `drizzle.config.ts` sets
@@ -460,9 +466,9 @@ the relevant skill first and follows its `SKILL.md`.** This is not optional, and
 
 ## Project status
 
-The data layer, the back office, the customer-facing menu (`/m/$venueSlug`) and the printable
-QR sheet (`/admin/$venueSlug/qr`) all exist — each has its own section below. What is left is
-in `README.md`'s Roadmap.
+The data layer, the back office, the customer-facing menu (`/m/$venueSlug`), the printable
+QR sheet (`/admin/$venueSlug/qr`) and the stock screen (`/admin/$venueSlug/stock`) all exist —
+each has its own section below. What is left is in `README.md`'s Roadmap.
 
 The **"ardoise" theme** (slate + chalk + bottle green, day and night variants) is in place
 across `styles.css`, the home page, `/login`, the back office and the public menu — see the
@@ -491,8 +497,8 @@ both guards and provides the shell. Constraints that are easy to get wrong:
   composes `<VenueNav ownerId activeVenueSlug>`, reading the slug with
   `useParams({ strict: false })` — the layout route has no `$venueSlug` of its own, and
   "where are we" is a routing question, which keeps `VenueNav` a function of its props.
-  The tree never repeats a destination: the **open** venue becomes a group label and its two
-  sections (Carte, QR code) carry the links, while the other venues stay plain links. It
+  The tree never repeats a destination: the **open** venue becomes a group label and its
+  sections (Carte, Stock, QR code) carry the links, while the other venues stay plain links. It
   replaced a column holding a single `/admin` link that every screen already offered as a
   back link — 256px for a destination the content gave away for free.
 - **The in-page back links are `lg:hidden`, not deleted.** The sidebar only exists from `lg`;
@@ -559,6 +565,58 @@ both guards and provides the shell. Constraints that are easy to get wrong:
   category collects its products' paths _before_ the DB cascade wipes them. Order matters: an
   orphan file is invisible, a row pointing at a deleted file shows a broken image to a customer.
 
+### Stock tracking
+
+`products.stock_quantity` and `products.low_stock_threshold` (both nullable integers,
+migration `0006`) plus the `adjust_product_stock` function (migration `0007`). The screen is
+`/admin/$venueSlug/stock`; the domain rules are in `src/features/menu/stock.ts`.
+
+- **`null` means "not tracked", and it is the default.** Most lines of a bar's menu have no
+  finite stock over a service — a coffee, a draught beer, a dish of the day. `0` means
+  _sold out_ and hides the product, so the two must never be collapsed: `parseOptionalStock`
+  returns `null` for a blank field, exactly like `parseOptionalEurosToCents`.
+- **Sold-out is derived, never written.** `is_available` stays the manager's manual gesture;
+  a zero stock hides the product through a query filter, and a restock brings it back with no
+  further action. Writing `is_available = false` at zero would force a product-by-product
+  reactivation after every delivery, and would clobber a decision taken for another reason
+  entirely. The rule is stated twice — `isHiddenFromCustomers` in `stock.ts` for the back
+  office, `.or('stock_quantity.is.null,stock_quantity.gt.0')` in `fetchPublicMenu` for the
+  customer menu — because it applies on both sides of the wire. **They change together**, and
+  the `is null` half is not optional: a naive `gt.0` empties the menu of every untracked
+  product.
+- **The decrement goes through the RPC, the level set through a plain `update`.** `−1` is
+  _relative_: read-then-write from the browser loses one tap in two the day the manager's
+  phone and the counter's tablet serve at once. Typing a level is _absolute_ — two concurrent
+  writes can't cancel out, last one wins, which is what's wanted. `greatest(..., 0)` floors it
+  inside the statement so a tap too many on an empty product isn't a constraint error; the
+  `products_stock_quantity_non_negative` check is the backstop, not the mechanism.
+- **The stock mutations are optimistic** (`useOptimisticProductMutation` in `mutations.ts`),
+  and that is not polish: a counter that waits for a Supabase round-trip behind a bar gets
+  tapped twice. It patches every `['menu']` query by prefix — same reason the invalidation
+  does — cancels in-flight fetches first, rolls back on error, and invalidates `onSettled`
+  rather than `onSuccess`, because the rolled-back value may itself be stale.
+- **The stock page reads `menuQueryOptions`, not a query of its own.** Stock isn't another
+  collection, it is the same menu seen through the quantity column. A second query would mean
+  a second cache to invalidate, and a `−1` here wouldn't show on the menu open in the next tab.
+- **The list is in menu order and never re-sorts.** Sorting by urgency would lift a row away
+  at the very moment a thumb presses its `−1`, and the second tap would land on its
+  neighbour. Urgency lives in the header band instead, which holds **shortcuts only** — the
+  counter for a product exists exactly once, in the list.
+- **Low stock is carried by words, not by colour.** The "ardoise" theme has no warning token
+  on purpose (the amber that played that part was removed for looking like a default warning
+  state). `StockBadge` writes « Plus que 2 » / « 12 en stock »; only _épuisé_ takes the
+  destructive tint, because it has a visible consequence — the product has left the menu.
+- The product form's stock fields sit **below a rule**, under a « Suivi de stock » kicker:
+  the fields above describe what a customer reads, these what the bar counts.
+- **The form only writes a stock column the manager actually touched.** Stock is the one part
+  of a product another screen changes while a form is open; saving a typo fix in a
+  description must not restore the level the field held when the form was drawn, undoing the
+  three `−1` tapped at the counter meanwhile. `ProductDraft.stockQuantity` is therefore
+  `number | null | undefined`, `undefined` meaning "leave the column alone" — it disappears
+  from the payload because `JSON.stringify` drops undefined properties. The comparison is
+  against a `useRef` snapshot taken at mount, **not** against the props: those move when the
+  counter decrements, and comparing to them would read an untouched field as an edit.
+
 ### Soft-deleting a venue
 
 `venues.deleted_at` (nullable timestamp) marks a venue as binned; the row, its menu, its
@@ -609,8 +667,8 @@ back office is `ssr: false`. Consequences worth keeping in mind:
 - The route loads through `context.queryClient.ensureQueryData(publicMenuQueryOptions(...))`,
   so the query dehydrates to the client instead of being refetched on hydration.
 - `fetchPublicMenu` (`src/features/menu/public-api.ts`) is deliberately **not** `fetchMenu`:
-  it filters `is_available` **in the query** — a hidden product must never reach the browser —
-  and drops categories left empty. It lives in `features/menu` because a separate feature
+  it filters `is_available` **and** an exhausted `stock_quantity` **in the query** — a hidden
+  product must never reach the browser — and drops categories left empty. It lives in `features/menu` because a separate feature
   would have to import `VenueNotFoundError` and `CategoryWithProducts` from it, which the
   no-cross-feature-imports rule forbids.
 - An unknown slug throws `notFound()` so the response is a real **404**: these URLs are printed
