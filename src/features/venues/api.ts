@@ -1,5 +1,6 @@
 import { queryOptions } from '@tanstack/react-query'
 
+import { describeError } from '#/lib/postgrest-error'
 import { supabase } from '#/lib/supabase'
 
 import type { Venue } from '#/lib/supabase'
@@ -49,7 +50,7 @@ export function venuesQueryOptions(ownerId: string) {
         .eq('owner_id', ownerId)
         .order('created_at', { ascending: true })
 
-      if (error) throw new Error(error.message)
+      if (error) throw new Error(describeError(error))
       return data
     },
   })
@@ -68,7 +69,7 @@ export async function archiveVenue(venueId: string): Promise<void> {
     .update({ deleted_at: new Date().toISOString() })
     .eq('id', venueId)
 
-  if (error) throw new Error(error.message)
+  if (error) throw new Error(describeError(error))
 }
 
 /** Remet un établissement archivé en service, carte et photos comprises. */
@@ -78,7 +79,7 @@ export async function restoreVenue(venueId: string): Promise<void> {
     .update({ deleted_at: null })
     .eq('id', venueId)
 
-  if (error) throw new Error(error.message)
+  if (error) throw new Error(describeError(error))
 }
 
 /**
@@ -99,7 +100,7 @@ export function venueBySlugQueryOptions(venueSlug: string) {
         .eq('slug', venueSlug)
         .maybeSingle()
 
-      if (error) throw new Error(error.message)
+      if (error) throw new Error(describeError(error))
       if (!data) throw new Error("Cet établissement n'existe pas.")
       return data
     },
@@ -122,11 +123,15 @@ export async function createVenue(name: string): Promise<void> {
     .insert({ name: name.trim(), slug })
 
   if (error) {
-    // 23505 = violation de contrainte d'unicité (le slug est déjà pris).
+    /*
+      Le seul cas que `describeError` ne peut pas traiter aussi bien : elle rend
+      « Cet élément existe déjà. » là où le slug fautif est connu ici, et le
+      nommer dit au gérant quoi changer. Tout le reste lui revient.
+    */
     throw new Error(
       error.code === '23505'
         ? `L'adresse « ${slug} » est déjà utilisée. Choisissez un autre nom.`
-        : error.message,
+        : describeError(error),
     )
   }
 }

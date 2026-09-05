@@ -1,10 +1,12 @@
 import { Link } from '@tanstack/react-router'
 import { ArrowLeft, Download, Printer } from 'lucide-react'
 import { useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 
 import { ActionButton } from '#/components/buttons/action-button'
 import { ErrorNote } from '#/components/error-note'
 import { isLocalOrigin, publicMenuUrl, venueQrSvg } from '#/features/venues/qr'
+import { venueBySlugQueryOptions } from '#/features/venues/api'
 
 import type { Venue } from '#/lib/supabase'
 
@@ -16,11 +18,32 @@ import type { Venue } from '#/lib/supabase'
  * distinguer les tables n'apporterait rien tant qu'aucune fonctionnalité ne
  * lit ce numéro.
  *
- * `origin` est passé plutôt que lu ici : le composant reste rendu identique
- * quel que soit l'environnement, et c'est la route qui sait d'où elle est
- * servie.
+ * L'écran prend le slug et fait sa requête, comme `MenuEditor` : le fichier de
+ * route ne porte que du routage. `window.location.origin` est lu au rendu et
+ * non stocké — `_authenticated` est en `ssr: false`, ce composant ne s'exécute
+ * donc que dans le navigateur, où `window` existe toujours.
  */
-export function VenueQr({ venue, origin }: { venue: Venue; origin: string }) {
+export function VenueQr({ venueSlug }: { venueSlug: string }) {
+  const venueQuery = useQuery(venueBySlugQueryOptions(venueSlug))
+
+  if (venueQuery.isPending) {
+    return <p className="text-sm text-ink-soft">Chargement…</p>
+  }
+
+  if (venueQuery.isError) {
+    return <ErrorNote>{venueQuery.error.message}</ErrorNote>
+  }
+
+  return <QrSheet venue={venueQuery.data} origin={window.location.origin} />
+}
+
+/**
+ * La feuille elle-même, une fois l'établissement connu.
+ *
+ * Séparée pour que les hooks de rendu — `useMemo` sur l'encodage — ne soient
+ * pas appelés derrière les retours anticipés de chargement et d'erreur.
+ */
+function QrSheet({ venue, origin }: { venue: Venue; origin: string }) {
   const url = publicMenuUrl(origin, venue.slug)
 
   /*

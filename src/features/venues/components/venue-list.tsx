@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Store } from 'lucide-react'
 
 import { EmptyState } from '#/components/empty-state'
+import { ErrorNote } from '#/components/error-note'
 import { VenueCard } from '#/features/venues/components/venue-card'
 import { VenueTrash } from '#/features/venues/components/venue-trash'
 import { venuesQueryOptions } from '#/features/venues/api'
@@ -15,11 +16,7 @@ export function VenueList({ ownerId }: { ownerId: string }) {
   }
 
   if (venuesQuery.isError) {
-    return (
-      <p role="alert" className="text-sm text-destructive">
-        {venuesQuery.error.message}
-      </p>
-    )
+    return <ErrorNote>{venuesQuery.error.message}</ErrorNote>
   }
 
   /*
