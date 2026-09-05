@@ -471,6 +471,17 @@ the one duplicated utility it saves. Note the rule sits **outside any `@layer`**
 `display` stays at the call sites, since the sidebar needs `flex` where the others want
 `inline-flex`.
 
+**A nav link draws two boxes, and the underline hangs on the inner one.** The tapped box is
+44px tall; the underlined box is the height of the text. `.nav-link-label` — the span
+`nav-link.tsx` wraps around `children` — carries the `::after`, at `bottom: -2px` under the
+label. Hung on the `<a>` instead, the line landed a dozen pixels below a 14px label centred in
+44px, and ran under the leading icon as well. Consequence to know: **`.nav-link` written by
+hand on a tag gives the colour and the target but no underline** — every call site goes through
+the component (`venue-qr.tsx` was the last one that didn't). The label is `inline-flex` with
+`gap: inherit` because a trailing icon can be a child (the public address carries its
+new-tab arrow), and Tailwind's preflight renders `svg` as `display: block`, which would break
+the line inside an inline container.
+
 **Never hand-write `htmlFor` / `id` again.** It was the one part of a field that breaks in
 silence: a typo raises no error and fails no type — it just leaves the input nameless to a
 screen reader and stops the label from focusing it. The category rename input had no accessible

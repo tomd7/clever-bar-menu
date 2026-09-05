@@ -2,7 +2,6 @@
    son icône et le typage de la destination ; l'identité visuelle est ici. */
 
 .nav-link {
-  position: relative;
   text-decoration: none;
   color: var(--ink-soft);
   /*
@@ -19,11 +18,41 @@
   min-height: 2.75rem;
 }
 
-.nav-link::after {
+/*
+  Le trait appartient au **libellé**, pas à la boîte du lien.
+
+  Il était posé sur le `<a>`, dont la hauteur est celle de la cible tactile :
+  sur un texte de 14px centré dans 44px, il tombait une douzaine de pixels
+  sous les lettres, détaché du mot qu'il est censé souligner — et il courait
+  aussi sous l'icône de tête. Accroché au libellé, il se règle sur la ligne de
+  texte quelle que soit la hauteur que prend la cible autour, et s'arrête où
+  s'arrête le mot.
+
+  D'où l'élément supplémentaire dans le composant : la boîte à souligner n'est
+  pas celle qu'on veut taper, et aucune des deux ne se déduit de l'autre en
+  CSS. `.nav-link` seul, posé à la main sur une balise, n'a donc plus de trait
+  — c'est `nav-link.tsx` qui les pose tous les deux.
+
+  `inline-flex` parce qu'un enfant peut être une icône de fin (l'adresse
+  publique d'un établissement porte sa flèche « nouvel onglet ») : la
+  préflight de Tailwind rend les `svg` en `display: block`, et dans un
+  conteneur inline il casserait la ligne. `gap: inherit` reprend l'écart déjà
+  déclaré au point d'appel, pour que le libellé espace ses propres morceaux
+  comme le lien espace les siens.
+*/
+.nav-link-label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: inherit;
+  min-width: 0;
+}
+
+.nav-link-label::after {
   content: '';
   position: absolute;
   left: 0;
-  bottom: -8px;
+  bottom: -2px;
   width: 100%;
   height: 2px;
   transform: scaleX(0);
@@ -37,7 +66,7 @@
   color: var(--ink);
 }
 
-.nav-link:hover::after,
-.nav-link.is-active::after {
+.nav-link:hover .nav-link-label::after,
+.nav-link.is-active .nav-link-label::after {
   transform: scaleX(1);
 }
