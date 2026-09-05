@@ -416,6 +416,7 @@ icon, the wording and the behaviour can't diverge between two screens:
 | `EditButton`   | `Pencil`, icon only             | **required** `label`: the icon is shared, what it edits is not                                                                                  |
 | `DeleteButton` | `Trash2` + confirmation popover | There is no path that deletes on the first click. Focus lands on **Annuler**                                                                    |
 | `MoveButtons`  | `ChevronUp`/`ChevronDown` pair  | Both `aria-label`s, `disabled` at the list's ends                                                                                               |
+| `CopyButton`   | `Copy`, icon only               | The confirmation: green check + a `role="status"` announcement for 2s, a destructive cross if the clipboard refuses. **required** `label`       |
 
 Under them sit the two **shape** primitives, for genuine one-offs only (« Se connecter »,
 « Déconnexion ») — anything recurring deserves a wrapper instead:
@@ -544,6 +545,17 @@ both guards and provides the shell. Constraints that are easy to get wrong:
 - **The in-page back links are `lg:hidden`, not deleted.** The sidebar only exists from `lg`;
   below it, `← Établissements` and `← Retour à la carte` are the only way out. Removing them
   outright would strand every phone.
+- **The public address is a control, not a caption.** `MenuAddress`
+  (`src/components/back-office/menu-address.tsx`) draws `/m/<slug>` as a link that opens the
+  customer menu in a **new tab** — the manager checks the result and comes back to the form
+  they left — next to a `CopyButton` that copies the **absolute** URL, since `/m/x` pasted in
+  a message leads nowhere. It lives in `src/components/` because both `features/venues` (the
+  venue card) and `features/menu` (the editor's header) render it. The venue card's whole
+  surface is still clickable, but through a stretched `after:absolute` pseudo-element on a
+  link wrapping the name alone: the address is itself an `<a>`, and nesting two anchors is
+  invalid HTML the browser silently repairs by closing the first. The **binned** venues in
+  `VenueTrash` keep the inert `<code>`: their public menu answers 404, a link there would lie.
+
 - **A `beforeLoad` guard protects the screen, not the data.** Under the RLS design the real
   boundary is Postgres; bypassing the guard grants nothing.
 - **`router.invalidate()` must follow sign-in and sign-out**, otherwise `beforeLoad` keeps its
@@ -683,7 +695,10 @@ photos and its slug all stay. Migration `0005`.
 menu is identical everywhere, and a table number would be inert until something reads it.
 
 - **`uqr`** does the encoding (approved dependency: 0 transitive deps, 77 KB, MIT, runtime
-  agnostic). `src/features/venues/qr.ts` is the only place that touches it.
+  agnostic). `src/features/venues/qr.ts` is the only place that touches it — but the
+  address it encodes comes from `src/lib/public-menu-url.ts`, which is the single place
+  the `/m/<slug>` shape is written. It sits in `lib/` because three callers need it and
+  two of them are in different features (same reasoning as `describeError`).
 - **Error correction `Q`, and SVG output.** Measured with Chrome's `BarcodeDetector`: the
   code survives up to **15 %** of its area covered by a solid blot, failing at 20 % — below
   the 25 % the spec advertises, because contiguous damage is harder to correct than scattered

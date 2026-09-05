@@ -35,17 +35,6 @@ const ERROR_CORRECTION = 'Q' as const
 const QUIET_ZONE = 4
 
 /**
- * URL absolue de la carte publique.
- *
- * Absolue et non relative : un QR code est scanné par un appareil qui n'a
- * aucun contexte de navigation. `origin` est passé plutôt que lu ici, pour que
- * la fonction reste vérifiable sans navigateur.
- */
-export function publicMenuUrl(origin: string, venueSlug: string): string {
-  return `${origin}/m/${venueSlug}`
-}
-
-/**
  * Rend le QR code en SVG.
  *
  * La chaîne est ensuite injectée telle quelle dans le document. C'est sans

@@ -5,7 +5,8 @@ import { useQuery } from '@tanstack/react-query'
 
 import { ActionButton } from '#/components/buttons/action-button'
 import { ErrorNote } from '#/components/error-note'
-import { isLocalOrigin, publicMenuUrl, venueQrSvg } from '#/features/venues/qr'
+import { isLocalOrigin, venueQrSvg } from '#/features/venues/qr'
+import { publicMenuUrl } from '#/lib/public-menu-url'
 import { venueBySlugQueryOptions } from '#/features/venues/api'
 
 import type { Venue } from '#/lib/supabase'
