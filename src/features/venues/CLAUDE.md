@@ -18,6 +18,9 @@ it as a `nav` prop because `src/components/` must not import from `#/features/`.
 **The tree never repeats a destination**: the open venue becomes a group label and its
 sections (Carte, Stock, QR code) carry the links, while the other venues stay plain links.
 
+**« Corbeille » only enters the column once the bin is non-empty.** A permanent entry
+pointing at an empty screen takes the place of a real destination.
+
 Items use `.rail-link`, **not** `.nav-link` — that underline sits 8px below its box and
 would land inside the next item of a vertical list.
 
@@ -32,13 +35,31 @@ photos and its slug all stay. The policy pair that makes this work is in
   a far more confusing failure.
 - The public menu needs **no code change**: SSR reads as `anon`, RLS hides the venue, the
   lookup returns nothing and the route already throws `notFound()`.
-- `venuesQueryOptions` returns **active and binned together**; `VenueList` splits them. It
-  filters with `Boolean(venue.deleted_at)`, not `!== null`, so a database that hasn't run
-  migration `0005` yet doesn't dump every venue into the bin.
+- `venuesQueryOptions` returns **active and binned together**, and **both screens read
+  that one query** — `VenueList` keeps the active ones, `VenueTrash` the binned ones. A
+  query of its own for the bin would mean a second cache to invalidate, and restoring
+  would not refresh the list behind it. Both filter with `Boolean(venue.deleted_at)`, not
+  `!== null`, so a database that hasn't run migration `0005` yet doesn't dump every venue
+  into the bin.
 - The bin's date comes from the client (`new Date().toISOString()`): PostgREST can't
   express `now()` in an update. Harmless for an archive marker, not for anything billed.
 - **Binned venues keep the inert `<code>`** in `VenueTrash` rather than `MenuAddress`:
   their public menu answers 404, a link there would lie.
+
+### The bin is a screen — `/admin/corbeille`
+
+`VenueTrash` is a page, not a section at the bottom of `VenueList`. Unfolded by default it
+took as much of the page as the venues actually in service, which is the reverse of what a
+manager does there; and a page can be bookmarked, opened in a tab and reached from the
+column, where a fold has to be found and unfolded on every visit.
+
+- **The venues list links to it only when the bin is non-empty**, and gives the count
+  (« Corbeille (2) »). The link therefore appears on the first deletion — the exact moment
+  the manager needs to learn the bin exists — and nothing announces an empty screen.
+- **`corbeille` is a reserved slug** (`RESERVED_SLUGS` in `api.ts`). `/admin/corbeille` is
+  a static segment and the router puts it before `/admin/$venueSlug`, so a venue with that
+  slug would be created without any error and then be unreachable — its public menu
+  working, its editor not. Any new static child of `/admin` goes into that set.
 
 ## Venue card
 
