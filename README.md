@@ -77,7 +77,7 @@ DATABASE_URL=            # requis : connexion Postgres Supabase (pooler transact
 MIGRATION_DATABASE_URL=  # optionnel : connexion dédiée aux migrations (voir ci-dessous)
 
 # Côté client (préfixe VITE_ obligatoire) — src/env.ts
-VITE_APP_TITLE=          # optionnel : titre affiché dans l'application
+VITE_APP_TITLE=          # requis : nom du produit (onglet, pied de page, back-office)
 VITE_SUPABASE_URL=       # requis : https://<ref>.supabase.co
 VITE_SUPABASE_ANON_KEY=  # requis : clé publiable (sb_publishable_...)
 ```

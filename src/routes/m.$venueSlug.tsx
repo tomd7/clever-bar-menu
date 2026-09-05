@@ -2,6 +2,7 @@ import { createFileRoute, notFound } from '@tanstack/react-router'
 import { QrCode } from 'lucide-react'
 
 import { EmptyState } from '#/components/empty-state'
+import { env } from '#/env'
 import { PublicMenu } from '#/features/menu/components/public-menu'
 import { VenueNotFoundError } from '#/features/menu/api'
 import { publicMenuQueryOptions } from '#/features/menu/public-api'
@@ -50,8 +51,8 @@ export const Route = createFileRoute('/m/$venueSlug')({
   notFoundComponent: () => (
     <main className="page-wrap py-20">
       <EmptyState icon={QrCode} title="Cette carte n’existe pas">
-        L’adresse est peut-être incomplète, ou l’établissement n’utilise plus
-        Clever Bar Menu.
+        L’adresse est peut-être incomplète, ou l’établissement n’utilise plus{' '}
+        {env.VITE_APP_TITLE}.
       </EmptyState>
     </main>
   ),

@@ -16,7 +16,15 @@ export const env = createEnv({
   clientPrefix: 'VITE_',
 
   client: {
-    VITE_APP_TITLE: z.string().min(1).optional(),
+    /**
+     * Nom du produit, tel qu'il s'affiche dans l'onglet, le pied de page et
+     * l'en-tête du back-office. Requis, et non optionnel avec une valeur de
+     * repli : un repli écrit dans le code réintroduirait le titre en dur que
+     * cette variable existe pour supprimer, et le jour où l'application est
+     * déployée sous un autre nom, l'oubli passerait inaperçu au lieu d'échouer
+     * à la validation.
+     */
+    VITE_APP_TITLE: z.string().min(1),
 
     /** URL du projet Supabase hébergé (`https://<ref>.supabase.co`). */
     VITE_SUPABASE_URL: z.url(),

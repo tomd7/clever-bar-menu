@@ -1,6 +1,7 @@
 import { LogOut } from 'lucide-react'
 
 import { ActionButton } from '#/components/buttons/action-button'
+import { env } from '#/env'
 
 import type { ReactNode } from 'react'
 
@@ -54,7 +55,7 @@ export function BackOfficeShell({
           <div className="lg:flex-1">
             <p className="island-kicker">Back-office</p>
             <p className="display-title text-lg leading-tight">
-              Clever Bar Menu
+              {env.VITE_APP_TITLE}
             </p>
 
             <div className="mt-6 hidden lg:block">{nav}</div>
