@@ -7,6 +7,7 @@ import {
 } from '@tanstack/react-router'
 
 import { BackOfficeShell } from '#/components/back-office/back-office-shell'
+import { OpenOrdersCount } from '#/features/orders/components/open-orders-count'
 import { VenueNav } from '#/features/venues/components/venue-nav'
 import { VenueTrashRailLink } from '#/features/venues/components/venue-trash-link'
 import { supabase } from '#/lib/supabase'
@@ -67,7 +68,23 @@ function BackOfficeLayout() {
     <BackOfficeShell
       email={user.email}
       onSignOut={handleSignOut}
-      nav={<VenueNav ownerId={user.id} activeVenueSlug={venueSlug} />}
+      nav={
+        <VenueNav
+          ownerId={user.id}
+          activeVenueSlug={venueSlug}
+          /*
+            L'assemblage des deux features : `features/venues` dessine la
+            colonne, `features/orders` compte les commandes, et aucune des
+            deux n'a le droit d'importer l'autre — c'est donc ici que le
+            compteur se pose. L'élément n'est créé que si un établissement est
+            ouvert, et il ne se monte que là où `VenueNav` lit son créneau,
+            sous cet établissement : ailleurs, aucune requête ne part.
+          */
+          ordersBadge={
+            venueSlug ? <OpenOrdersCount venueSlug={venueSlug} /> : null
+          }
+        />
+      }
       navFooter={<VenueTrashRailLink ownerId={user.id} />}
     >
       <Outlet />

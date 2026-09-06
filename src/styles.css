@@ -44,6 +44,7 @@
 @import './features/venues/components/venue-nav.css';
 @import './features/menu/components/menu-nav.css';
 @import './features/menu/components/public-menu.css';
+@import './features/orders/components/open-orders-count.css';
 
 /* L'impression en dernier : elle défait à peu près tout ce qui précède. */
 @import './styles/print.css';

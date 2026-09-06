@@ -10,13 +10,21 @@ mirroring it into `useState`, and **no cross-feature imports**.
 
 ## Sidebar — `venue-nav.tsx`
 
-`VenueNav` is a function of its props (`ownerId`, `activeVenueSlug`); `_authenticated.tsx`
-composes it, reading the slug with `useParams({ strict: false })` — the layout route has no
-`$venueSlug` of its own, and "where are we" is a routing question. `BackOfficeShell` takes
+`VenueNav` is a function of its props (`ownerId`, `activeVenueSlug`, `ordersBadge`);
+`_authenticated.tsx` composes it, reading the slug with `useParams({ strict: false })` —
+the layout route has no `$venueSlug` of its own, and "where are we" is a routing question. `BackOfficeShell` takes
 it as a `nav` prop because `src/components/` must not import from `#/features/`.
 
 **The tree never repeats a destination**: the open venue becomes a group label and its
 sections (Carte, Stock, QR code) carry the links, while the other venues stay plain links.
+
+**`ordersBadge` is a slot, not a number.** Counting open orders belongs to
+`features/orders`, which this feature may not import, so the route composes the two — the
+same assembly as `productAction` on the public menu. It is read **only under the open
+venue**, the one venue that unfolds its sections: a count on every venue in the list would
+mean as many queues polled at once. `OpenOrdersCount` lives in
+`features/orders/components/`; see that feature's CLAUDE.md for what it counts and why it
+polls.
 
 **The bin is not in `VenueNav`.** It belongs to the tool rather than to the work, so it
 sits in the column's bottom zone (`BackOfficeShell`'s `navFooter`), above the identity and
@@ -100,9 +108,12 @@ column, where a fold has to be found and unfolded on every visit.
   looking for the bin has just deleted something, and putting the link under the grid
   would make them scroll past everything still in service. `VenueTrashRailLink` sits at
   the **bottom of the column**, in `navFooter`.
-- **Only the header link carries the count.** In the column, Carte / Stock / QR code carry
-  none, and a lone number in a list of destinations reads as an alert when there is
-  nothing to deal with.
+- **Only the header link carries the count.** A lone number in a list of destinations
+  reads as an alert, and an empty bin is nothing to deal with — the rail link therefore
+  says « Corbeille » and nothing else. This is **not** contradicted by the orders count
+  next to « Commandes »: that badge exists only while there is something to serve, so it
+  is never a number sitting there with nothing behind it. The rule is not "no numbers in
+  the column", it is "no number for a destination that has nothing waiting".
 - Both read the count through `select` on `venuesQueryOptions` — same cache as the list
   and the column, one request, and a re-render only when the count itself moves.
 - **The separator above the rail link belongs to the link**, not to the shell's zone:

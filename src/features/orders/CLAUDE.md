@@ -244,6 +244,23 @@ saving eight lines.
   would be more exact and double the traffic of a screen that refreshes every ten seconds.
   What the cap costs: past a hundred recent orders the tail of the history drops. What it
   does not cost: an open order cannot vanish without a hundred arriving after it.
+- **The count in the sidebar is a second channel, and it counts something else.**
+  `OpenOrdersCount` (`components/open-orders-count.tsx`) puts a badge next to « Commandes »
+  in the back-office column, so a manager editing a price sees an order arrive without
+  leaving the screen. It counts **open** orders — `isOpenOrder`, the same set the screen's
+  « En cours » section lists — because a number that did not match the cards under that
+  title would put both in doubt. The tab title below counts only what is _not yet
+  accepted_: the title is an alert, the badge is a state of the queue.
+
+  It reads `ordersQueryOptions` through `select`, so on this screen it costs nothing, and
+  it renders `null` at zero rather than a grey « 0 » — a permanent zero stops being read,
+  which is exactly what makes the « 1 » missed. `features/venues` draws the column but may
+  not import this feature: `VenueNav` takes an `ordersBadge` slot and `_authenticated.tsx`
+  fills it. The consequence to know: from any back-office screen the queue is now polled
+  every ten seconds, which is the point of a counter in a permanent column. There is
+  deliberately **no `aria-live`** on it — the column is on screen all day, and an
+  announcement on every poll would talk over a manager typing.
+
 - **The waiting count goes into the tab title.** It is the only channel available — a counter
   tablet shows something else half the time, and a background tab can display nothing but its
   title. Only orders **not yet accepted** count; the ones being prepared are already in

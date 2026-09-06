@@ -22,6 +22,8 @@ src/
   features/menu/components/
     menu-nav.css     .scrollbar-none, .rail-fade (stock-page reuses the pair)
     public-menu.css  .menu-leader
+  features/orders/components/
+    open-orders-count.css  .orders-count
 ```
 
 - **A class only one screen uses lives next to that screen**; a class two screens share

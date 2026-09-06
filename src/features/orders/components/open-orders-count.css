@@ -1,0 +1,44 @@
+/*
+  La pastille de comptage posée dans la colonne du back-office
+  (`open-orders-count.tsx`).
+
+  Elle prend l'aplat `--bottle`, l'accent de l'application, et non une teinte
+  d'avertissement : le thème « ardoise » n'en a pas, délibérément (voir
+  `stock-badge.tsx`). Un aplat clair aurait de toute façon été invisible sur
+  l'élément actif de la colonne, dont le fond est déjà `--surface-raised`.
+
+  `margin-inline-start: auto` la pousse au bord droit de l'élément : alignées
+  entre elles, ces pastilles se lisent en descendant la colonne sans avoir à
+  lire les libellés.
+
+  L'animation ne joue qu'une fois — le composant reste monté tant qu'il reste
+  une commande, et un nombre qui change ne fait que remplacer son texte. Ce
+  qui s'anime est donc le passage de rien à quelque chose, la première
+  commande du service, et elle est là pour que ce ne soit pas brutal, pas pour
+  être remarquée. Elle part de `scale(0.85)` et non de zéro : rien n'apparaît
+  de nulle part.
+*/
+.orders-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-inline-start: auto;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding-inline: 0.375rem;
+  border-radius: 999px;
+  background: var(--bottle);
+  color: var(--on-bottle);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  animation: orders-count-in 180ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+@keyframes orders-count-in {
+  from {
+    opacity: 0;
+    scale: 0.85;
+  }
+}
