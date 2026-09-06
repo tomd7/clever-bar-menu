@@ -126,6 +126,18 @@ export const venues = pgTable(
     currency: text('currency').notNull().default('EUR'),
 
     /**
+     * La prise de commande est-elle ouverte sur la carte publique ?
+     *
+     * `false` par défaut, et ce défaut n'est pas une prudence de principe :
+     * l'inverse ferait apparaître un bouton « Commander » sur la carte de tous
+     * les établissements existants à la minute où la migration passe, sans que
+     * personne au bar ne soit prévenu qu'il faut désormais surveiller un écran.
+     * L'ouverture est une décision de gérant, elle se prend depuis l'écran des
+     * commandes.
+     */
+    ordersEnabled: boolean('orders_enabled').notNull().default(false),
+
+    /**
      * Archivage — suppression logique.
      *
      * Une date plutôt qu'un booléen : elle répond à « archivé ? » comme à
@@ -232,6 +244,26 @@ export const products = pgTable(
     description: text('description'),
 
     /**
+     * Serving format — « 25cl », « 50cl », « au fût », « pichet ».
+     *
+     * Free text, and nullable, which is the resting state: most lines of a bar
+     * menu are served one way only, and repeating « 1 verre » on thirty of them
+     * would turn an information into noise.
+     *
+     * A closed enumeration was rejected. A bar's formats are its own — a
+     * « demi », a « pichet 50cl », a 4cl measure — and a list would have to be
+     * redeployed the day one is missing. The form offers the usual ones as
+     * chips (`features/menu/size.ts`); it does not restrict what can be typed.
+     *
+     * It qualifies the product, it does not price it: two formats of the same
+     * beer are two products, exactly as a printed menu lists them. Carrying
+     * several formats on one line would mean a table of its own, a cart that
+     * points at a format rather than at a product, and a rewritten
+     * `place_order` — for a menu that reads the same either way.
+     */
+    size: text('size'),
+
+    /**
      * Prix dans la plus petite unité de la devise (2450 = 24,50 €).
      * Un entier plutôt qu'un flottant : aucun arrondi ne peut se glisser dans
      * un total. La devise vit sur l'établissement, pas ici.
@@ -331,8 +363,247 @@ export const products = pgTable(
   ],
 )
 
+/**
+ * Les états d'une commande, dans l'ordre où elle les traverse.
+ *
+ * Du texte contraint plutôt qu'un `pgEnum` : ajouter un état à une énumération
+ * Postgres est une migration de type, que `drizzle-kit` ne sait pas produire
+ * seul, alors qu'ici c'est une contrainte à réécrire. Le vocabulaire d'un
+ * service est exactement le genre de chose qui bouge une fois le produit en
+ * salle.
+ *
+ * `preparing` est le pivot : c'est là que le bar prend la commande à son
+ * compte, et donc là que le stock est décompté. `ready` est celui qui compte
+ * pour le client — c'est lui qui le fait venir au comptoir.
+ */
+export const ORDER_STATUSES = [
+  'received',
+  'preparing',
+  'ready',
+  'collected',
+  'cancelled',
+] as const
+
+export type OrderStatus = (typeof ORDER_STATUSES)[number]
+
+/**
+ * Commande passée depuis la carte publique, à retirer au comptoir.
+ *
+ * Elle n'est **jamais écrite ni lue directement** par le client : il est
+ * `anon`, et aucune policy ne lui ouvre cette table. Tout passe par deux
+ * fonctions `security definer` (migration `0009`) — `place_order` pour
+ * déposer, `get_order` pour suivre. C'est le contraire du choix fait pour
+ * `adjust_product_stock`, et pour la raison inverse : là il fallait que le RLS
+ * s'applique à un compte identifié, ici il faut une porte étroite pour
+ * quelqu'un qui n'a aucun droit et ne doit pas en recevoir.
+ */
+export const orders = pgTable(
+  'orders',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+
+    venueId: uuid('venue_id')
+      .notNull()
+      .references(() => venues.id, { onDelete: 'cascade' }),
+
+    /**
+     * Le prénom donné au comptoir. C'est la référence de la commande : un
+     * numéro d'ordre demanderait un compteur par établissement, et un prénom
+     * s'appelle à voix haute, ce qu'un numéro fait mal.
+     */
+    customerName: text('customer_name').notNull(),
+
+    /** Mot du client : « sans glace », « à emporter ». Facultatif. */
+    note: text('note'),
+
+    status: text('status').notNull().default('received'),
+
+    /**
+     * Qui a annulé, quand la commande l'a été. `null` sinon.
+     *
+     * Sans cette colonne, une commande disparaîtrait de la file du bar sans que
+     * personne sache pourquoi — un barman qui voit s'effacer une ligne qu'il
+     * n'a pas touchée suppose une fausse manœuvre d'un collègue, et va
+     * demander. C'est le prix de laisser le client annuler.
+     *
+     * `guest` : le client, depuis la carte, et seulement tant que le bar ne
+     * l'a pas prise en charge. `venue` : le comptoir, à n'importe quel moment.
+     */
+    cancelledBy: text('cancelled_by'),
+
+    /**
+     * Total figé à l'envoi, en centimes.
+     *
+     * Recalculé par `place_order` à partir des prix en base, jamais repris du
+     * navigateur — un total transmis par le client est un total négociable.
+     * Figé parce qu'une carte se retarife : l'historique doit dire ce qui a été
+     * dû ce soir-là, pas ce que coûterait la même commande aujourd'hui.
+     *
+     * Ne compte que les lignes qui portaient un prix. Les autres — un plat du
+     * jour, une suggestion — s'ajustent au comptoir, et `place_order` ne les
+     * refuse pas : la carte les affiche déjà sans prix.
+     */
+    totalCents: integer('total_cents').notNull().default(0),
+
+    /**
+     * Le secret qui permet au client de relire sa commande.
+     *
+     * Sans lui, suivre une commande par son seul identifiant laisserait lire
+     * celle du voisin en changeant un chiffre. Il est gardé dans le
+     * `localStorage` du téléphone et n'apparaît dans aucune URL.
+     */
+    accessToken: uuid('access_token').notNull().defaultRandom(),
+
+    ...timestamps,
+  },
+  (table) => [
+    /*
+      L'écran du bar lit toujours « les commandes de cet établissement, les
+      plus récentes d'abord ». L'index suit cette lecture-là.
+    */
+    index('orders_venue_id_created_at_idx').on(table.venueId, table.createdAt),
+
+    check(
+      'orders_status_valid',
+      sql`${table.status} in ('received', 'preparing', 'ready', 'collected', 'cancelled')`,
+    ),
+    check('orders_total_cents_non_negative', sql`${table.totalCents} >= 0`),
+    check(
+      'orders_cancelled_by_valid',
+      sql`${table.cancelledBy} is null or ${table.cancelledBy} in ('guest', 'venue')`,
+    ),
+
+    /*
+      Aucune policy pour `anon` : le client passe par les fonctions, jamais par
+      la table. Le gérant, lui, lit et fait avancer les siennes.
+
+      Pas d'`insert` non plus, même pour lui : une commande naît d'un client.
+      Et pas de `delete` — un historique qui s'efface d'un clic n'est pas un
+      historique. Une purge viendra avec la rétention, si elle est demandée.
+    */
+    pgPolicy('orders_owner_read', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`exists (
+        select 1 from ${venues}
+        where ${venues.id} = ${table.venueId}
+          and ${venues.ownerId} = ${authUid}
+      )`,
+    }),
+    pgPolicy('orders_owner_update', {
+      for: 'update',
+      to: authenticatedRole,
+      using: sql`exists (
+        select 1 from ${venues}
+        where ${venues.id} = ${table.venueId}
+          and ${venues.ownerId} = ${authUid}
+      )`,
+      withCheck: sql`exists (
+        select 1 from ${venues}
+        where ${venues.id} = ${table.venueId}
+          and ${venues.ownerId} = ${authUid}
+      )`,
+    }),
+  ],
+)
+
+/**
+ * Une ligne de commande.
+ *
+ * Tout y est **recopié** du produit au moment de l'envoi — nom et prix
+ * unitaire. Une commande est une trace, pas une vue : le produit sera renommé,
+ * retarifé, retiré de la carte, et l'addition d'hier doit continuer de dire ce
+ * qu'elle disait. C'est aussi pourquoi `productId` peut devenir `null`.
+ */
+export const orderItems = pgTable(
+  'order_items',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+
+    orderId: uuid('order_id')
+      .notNull()
+      .references(() => orders.id, { onDelete: 'cascade' }),
+
+    /**
+     * Le produit d'origine, s'il existe encore. `set null` et non `cascade` :
+     * supprimer un produit de la carte ne doit pas amputer les commandes
+     * passées. Le lien sert au décompte du stock, le nom recopié à l'affichage.
+     */
+    productId: uuid('product_id').references(() => products.id, {
+      onDelete: 'set null',
+    }),
+
+    /** Nom du produit au moment de la commande. */
+    name: text('name').notNull(),
+
+    /**
+     * Serving format at the time of the order, copied like the name. `null`
+     * when the product carried none.
+     *
+     * Copied rather than read back through `productId`, for the same reason as
+     * the name: the line is a trace. But the reason it is copied *at all* is
+     * the counter — « Blonde » twice on a ticket, once in 25cl and once in
+     * 50cl, is a ticket that has to be guessed at. The format is half of what
+     * identifies a line as soon as the menu carries one.
+     */
+    size: text('size'),
+
+    /** Prix unitaire figé, ou `null` si le produit était sans prix affiché. */
+    unitPriceCents: integer('unit_price_cents'),
+
+    quantity: smallint('quantity').notNull(),
+
+    ...timestamps,
+  },
+  (table) => [
+    index('order_items_order_id_idx').on(table.orderId),
+
+    check('order_items_quantity_positive', sql`${table.quantity} > 0`),
+    check(
+      'order_items_unit_price_cents_non_negative',
+      sql`${table.unitPriceCents} is null or ${table.unitPriceCents} >= 0`,
+    ),
+
+    /*
+      Les lignes suivent leur commande : mêmes droits, retrouvés par
+      sous-requête. Elles ne sont jamais modifiées après l'envoi, d'où la seule
+      policy de lecture.
+    */
+    pgPolicy('order_items_owner_read', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`exists (
+        select 1 from ${orders}
+        join ${venues} on ${venues.id} = ${orders.venueId}
+        where ${orders.id} = ${table.orderId}
+          and ${venues.ownerId} = ${authUid}
+      )`,
+    }),
+  ],
+)
+
 export const venuesRelations = relations(venues, ({ many }) => ({
   categories: many(categories),
+  orders: many(orders),
+}))
+
+export const ordersRelations = relations(orders, ({ one, many }) => ({
+  venue: one(venues, {
+    fields: [orders.venueId],
+    references: [venues.id],
+  }),
+  items: many(orderItems),
+}))
+
+export const orderItemsRelations = relations(orderItems, ({ one }) => ({
+  order: one(orders, {
+    fields: [orderItems.orderId],
+    references: [orders.id],
+  }),
+  product: one(products, {
+    fields: [orderItems.productId],
+    references: [products.id],
+  }),
 }))
 
 export const categoriesRelations = relations(categories, ({ one, many }) => ({
@@ -356,3 +627,7 @@ export type Category = typeof categories.$inferSelect
 export type NewCategory = typeof categories.$inferInsert
 export type Product = typeof products.$inferSelect
 export type NewProduct = typeof products.$inferInsert
+export type Order = typeof orders.$inferSelect
+export type NewOrder = typeof orders.$inferInsert
+export type OrderItem = typeof orderItems.$inferSelect
+export type NewOrderItem = typeof orderItems.$inferInsert

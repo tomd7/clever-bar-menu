@@ -20,6 +20,11 @@ gère ses catégories, ses produits et ses prix depuis un back-office.
 - **Suivi de stock** — activable produit par produit, avec un seuil d'alerte et une page
   faite pour être tenue debout derrière le bar. Un produit épuisé quitte la carte des
   clients et y revient de lui-même au réapprovisionnement.
+- **Commande au comptoir** — le client compose son panier depuis la carte scannée, laisse
+  un prénom, et suit l'état de sa commande jusqu'à « prête ». Le bar la voit arriver dans
+  une file qui se rafraîchit toute seule. **Sans paiement en ligne** : le règlement se fait
+  au comptoir, et aucune donnée bancaire ne transite. Fermé par défaut sur chaque
+  établissement, à ouvrir depuis l'écran des commandes.
 - **Multi-établissements** — un même déploiement héberge plusieurs bars. Un gérant en
   possède autant qu'il veut, chacun avec sa carte, son adresse publique et son QR code.
   L'isolation est portée par Postgres : un gérant ne voit et ne modifie que ses
@@ -165,14 +170,15 @@ navigateur, donc l'évaluer pendant le rendu serveur conclurait « non connecté
 requête. La carte publique, elle, est en SSR — c'est une page scannée au QR code, sa vitesse de
 premier affichage compte.
 
-| Route                     | Rôle                                                       |
-| ------------------------- | ---------------------------------------------------------- |
-| `/login`                  | Connexion                                                  |
-| `/admin`                  | Liste des établissements du gérant, et création            |
-| `/admin/$venueSlug`       | Édition de la carte : catégories, produits, prix, ruptures |
-| `/admin/$venueSlug/stock` | Suivi de stock : niveaux, alertes, décompte                |
-| `/admin/$venueSlug/qr`    | Feuille de QR code à imprimer                              |
-| `/m/$venueSlug`           | **Carte publique** — la page que vise le QR code           |
+| Route                         | Rôle                                                       |
+| ----------------------------- | ---------------------------------------------------------- |
+| `/login`                      | Connexion                                                  |
+| `/admin`                      | Liste des établissements du gérant, et création            |
+| `/admin/$venueSlug`           | Édition de la carte : catégories, produits, prix, ruptures |
+| `/admin/$venueSlug/stock`     | Suivi de stock : niveaux, alertes, décompte                |
+| `/admin/$venueSlug/qr`        | Feuille de QR code à imprimer                              |
+| `/admin/$venueSlug/commandes` | File des commandes et historique                           |
+| `/m/$venueSlug`               | **Carte publique** — la page que vise le QR code           |
 
 Les prix sont saisis en euros et stockés en **centimes entiers**
 ([`src/features/menu/price.ts`](src/features/menu/price.ts)) : la saisie accepte la virgule comme le point, et
@@ -187,6 +193,14 @@ navigateur avant l'envoi — 1200 px de côté au maximum, en WebP.
 Le prix est **facultatif** : un champ laissé vide vaut « pas de prix affiché », pour un plat
 du jour ou un tarif selon arrivage. C'est distinct de `0`, qui reste un prix valide pour un
 article offert.
+
+La **taille** d'un produit — « 25cl », « 50cl », « au fût », « pichet » — est un champ libre,
+facultatif lui aussi. Le formulaire propose les formats courants en une pastille, sans pour
+autant fermer la liste : les formats d'un bar sont les siens. Deux tailles d'une même bière
+sont **deux produits**, comme sur une carte imprimée, et le format se lit à la suite du nom,
+avant la conduite qui mène au prix. Il est recopié sur la ligne de commande à l'envoi : deux
+« Blonde » sur un ticket, l'une en 25cl et l'autre en 50cl, seraient sinon un ticket qu'il
+faut deviner.
 
 L'ordre des catégories et des produits est porté par une colonne `position`, avançant de 100
 en 100 pour permettre d'insérer entre deux voisines sans réécrire la liste. Un produit en
@@ -216,6 +230,45 @@ Deux points de conception valent d'être connus :
   `0007`). PostgREST ne sait pas écrire `stock_quantity = stock_quantity - 1` : sans elle, le
   navigateur devrait lire puis écrire, et deux appareils derrière le même bar perdraient un
   décompte sur deux. C'est aussi le point d'accroche prévu pour la commande à table.
+
+### Commande au comptoir
+
+Le client ajoute des produits depuis la carte scannée, ouvre son panier dans une feuille
+qui monte du bas de l'écran, donne un prénom et envoie. Il suit ensuite l'état de sa
+commande sur la même page, sans compte : **reçue → en préparation → prête**. Le prénom est
+la référence — c'est lui qu'on appelle au comptoir, ce qu'un numéro fait mal.
+
+Le client peut **annuler lui-même**, tant que le bar n'a pas pris la commande en charge.
+Passé ce point le stock est décompté et le verre est en préparation : l'annulation reste
+possible, mais au comptoir. La commande annulée indique laquelle des deux parties l'a fait.
+
+Côté bar, `/admin/$venueSlug/commandes` affiche la file, la plus ancienne en tête, et se
+relève toutes les dix secondes. Trois gestes : **Accepter** (qui décompte le stock),
+**Prête**, **Récupérée** — plus une annulation en deux temps. Le nombre de commandes non
+encore acceptées apparaît dans le titre de l'onglet, seul endroit qu'un onglet en
+arrière-plan peut faire voir.
+
+Trois points de conception qui expliquent le reste :
+
+- **La commande anonyme ne touche jamais la table.** Le client est `anon` et `orders` ne
+  lui ouvre aucune policy, pas même en lecture. Tout passe par deux fonctions Postgres
+  `security definer` (migration `0009`) : `place_order` valide et insère, `get_order`
+  relit. **Rien de ce qui a une conséquence ne vient du navigateur** — le client envoie des
+  identifiants de produits et des quantités, les prix et le total sont relus en base.
+- **Le suivi tient à un jeton secret**, gardé dans le navigateur et transmis en corps de
+  requête, jamais dans une URL. Sans lui, suivre une commande par son seul identifiant
+  laisserait lire celle du voisin en changeant un chiffre. Le navigateur en garde **une
+  liste** : commander une deuxième tournée pendant que la première arrive n'efface pas la
+  première. Le suivi les range en deux onglets — « En cours » et « Historique » — pour
+  qu'une commande déjà récupérée n'encombre pas ce qu'on attend encore.
+- **Le stock descend à l'acceptation, pas à l'envoi.** Une commande arrive anonymement
+  depuis un QR code affiché en salle : décompter à l'envoi laisserait vider un inventaire
+  depuis le trottoir. En contrepartie, deux clients peuvent commander la dernière bouteille
+  avant que le bar n'arbitre.
+
+Une limite connue : **`place_order` n'est pas limitée en débit**. C'est un point d'entrée
+d'écriture non authentifié, ouvert sur Internet. Les plafonds par ligne (20) et par
+commande (40 lignes) bornent ce qu'un appel peut écrire, rien ne borne le nombre d'appels.
 
 ### Création des comptes
 
@@ -364,27 +417,30 @@ node .output/server/index.mjs
 - [x] Modèle de données : établissement, catégorie, produit
 - [x] Carte publique responsive
 - [x] Génération du QR code (un par établissement)
-- [ ] Commande à table : panier côté client, envoi au bar depuis la carte scannée, suivi et
-      historique des commandes dans le back-office, et décompte du stock à la validation.
-      **Sans paiement en ligne** — le règlement se fait au comptoir, la commande ne
-      transporte aucune donnée bancaire
 - [x] Authentification du back-office (Supabase Auth, comptes créés par l'administrateur)
 - [x] CRUD de la carte (catégories, produits, prix, photos)
+- [x] Taille du produit : format servi (25cl, 50cl, au fût…), sur la carte comme sur les
+      tickets de commande
+- [x] Multi-établissements : un gérant, plusieurs bars
+- [x] Thème : variantes jour et nuit suivant le système
+- [x] Suppression d'un établissement (logique, avec corbeille et restauration)
 - [x] Gestion des ruptures de stock
 - [x] Gestion de l'inventaire : niveaux de stock activables par produit, seuils d'alerte,
-      décompte manuel et passage automatique en rupture. Le **décompte à la vente** attend la
-      commande à table : il appellera `adjust_product_stock`, la fonction qui sert déjà au
-      décompte manuel
+      décompte manuel et passage automatique en rupture
+- [x] Commande au comptoir : panier côté client, envoi au bar depuis la carte scannée,
+      suivi de l'état par le client, file et historique dans le back-office, décompte du
+      stock à l'acceptation. **Sans paiement en ligne** — le règlement se fait au comptoir,
+      la commande ne transporte aucune donnée bancaire
+- [ ] Commande **à table** : un QR code par table, pour que le numéro arrive dans l'URL au
+      lieu d'être saisi. Aujourd'hui le retrait se fait au comptoir, au prénom
+- [ ] Limitation de débit sur `place_order` — écriture non authentifiée ouverte sur Internet
 - [ ] Tableau de bord : nouvelle page d'accueil du back-office, à la place de la simple
       liste des établissements — chiffres de la journée, alertes (stocks bas, ruptures,
       commandes en attente) et accès direct à chaque carte
-- [x] Multi-établissements : un gérant, plusieurs bars, cloisonnés par le RLS
+- [ ] Personnalisation du thème par établissement
+- [ ] Internationalisation
 - [ ] Accès partagés : plusieurs comptes sur un même établissement, rôles, transfert de
       propriété
-- [x] Suppression d'un établissement (logique, avec corbeille et restauration)
-- [ ] Internationalisation
-- [x] Thème : variantes jour et nuit suivant le système
-- [ ] Personnalisation du thème par établissement
 
 ## Contribuer
 

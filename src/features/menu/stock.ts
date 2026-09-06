@@ -26,16 +26,38 @@ export class StockFormatError extends Error {}
 export type StockState = 'untracked' | 'out' | 'low' | 'ok'
 
 /**
- * Le produit a-t-il un niveau de stock renseigné ?
+ * Le produit est-il surveillé, c'est-à-dire présent sur la page Stock ?
  *
- * Générique plutôt que typée sur `{ stock_quantity }` : un prédicat qui
- * réduirait à ce seul champ ferait disparaître le nom et le prix du produit
- * après le test, ce qui est exactement l'inverse de l'effet recherché.
+ * Il faut une quantité, sinon il n'y a rien à décompter, et l'une des deux
+ * raisons de la montrer :
+ *
+ * - un **seuil d'alerte**, par lequel le gérant désigne les produits dont il
+ *   veut être prévenu. Sans seuil, la ligne ne pourrait jamais rien signaler,
+ *   et une page qu'on parcourt debout derrière un comptoir pour savoir quoi
+ *   réapprovisionner n'a rien à gagner à la porter ;
+ * - **un stock à zéro**, seuil ou pas. Le produit a quitté la carte des
+ *   clients : c'est le seul état qu'on ne peut pas se permettre de cacher, et
+ *   l'écran qui le répare est celui-ci. L'exclure reviendrait à masquer une
+ *   rupture parce que personne n'avait demandé à en être averti.
+ *
+ * Le produit épuisé sans seuil quitte donc la liste dès qu'il est
+ * réapprovisionné : il redevient un produit dont personne n'a demandé de
+ * nouvelles. Son niveau se règle alors depuis sa fiche, sur la carte, et le
+ * pied de la page Stock compte ces produits-là et y renvoie.
+ *
+ * Générique plutôt que typée sur ces deux champs : un prédicat qui y réduirait
+ * ferait disparaître le nom et le prix du produit après le test, ce qui est
+ * exactement l'inverse de l'effet recherché. Seule la quantité est resserrée —
+ * le seuil, lui, reste facultatif.
  */
-export function isTracked<TProduct extends { stock_quantity: number | null }>(
-  product: TProduct,
-): product is TProduct & { stock_quantity: number } {
-  return product.stock_quantity !== null
+export function isWatched<
+  TProduct extends {
+    stock_quantity: number | null
+    low_stock_threshold: number | null
+  },
+>(product: TProduct): product is TProduct & { stock_quantity: number } {
+  if (product.stock_quantity === null) return false
+  return product.low_stock_threshold !== null || product.stock_quantity <= 0
 }
 
 export function stockStateOf(product: {

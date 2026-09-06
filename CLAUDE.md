@@ -13,6 +13,7 @@ Guidance for Claude Code (claude.ai/code) working in this repository.
 | `src/components/CLAUDE.md`      | Button family, form fields, `surface.ts`, links              |
 | `src/features/auth/CLAUDE.md`   | Sign-in only, error translation                              |
 | `src/features/menu/CLAUDE.md`   | Prices, photos, stock, the customer menu                     |
+| `src/features/orders/CLAUDE.md` | Counter ordering: the two SQL doors, cart, queue             |
 | `src/features/venues/CLAUDE.md` | Sidebar, soft delete, QR code                                |
 
 ## Commands
@@ -70,9 +71,10 @@ queries and its domain rules in one directory.
 
 ```
 src/
-  features/    auth/  menu/  venues/       each: components/, api.ts, mutations.ts, domain modules
+  features/    auth/  menu/  orders/  venues/   each: components/, api.ts, mutations.ts, domain modules
   components/  ui/ (shadcn), buttons/, form/, back-office/, home/, cross-screen pieces
-  lib/         supabase.ts, postgrest-error.ts, public-menu-url.ts, utils.ts
+  lib/         supabase.ts, postgrest-error.ts, public-menu-url.ts, product-photos.ts,
+               money.ts, query-keys.ts, utils.ts
 ```
 
 - **Only business domains are features.** `back-office/` (the shell) and `home/` (the
@@ -86,12 +88,19 @@ src/
   hooks invalidate the key _prefix_ so no component needs to know the slug.
 - **Read `mutation.error`, don't mirror it into `useState`.** React Query already holds the
   error, clears it on the next mutation, and exposes `reset()`.
-- **Query keys live with their query function** — `menuQueryOptions` in
-  `features/menu/api.ts`, `venuesQueryOptions` in `features/venues/api.ts`. Read the key
-  from those helpers rather than retyping `['menu', slug]`, which is how an invalidation
-  ends up silently targeting a key nothing reads.
+- **Query keys live with their query function** — read the key from the `queryOptions`
+  helper rather than retyping `['menu', slug]`, which is how an invalidation ends up
+  silently targeting a key nothing reads. **One named exception**: a key a _second_ feature
+  must invalidate moves to `src/lib/query-keys.ts`, which currently holds `MENU_QUERY_KEY`
+  and `VENUES_QUERY_KEY` — `features/orders` writes stock and `venues.orders_enabled`
+  without being allowed to import either feature. A key only one feature invalidates does
+  not belong there.
 - **No cross-feature imports.** Anything two features need moves down to `src/components/`
-  or `src/lib/` — that is why `describeError` lives in `lib/postgrest-error.ts`.
+  or `src/lib/` — that is why `describeError` lives in `lib/postgrest-error.ts`, and why
+  `formatPrice` sits in `lib/money.ts` while the euro _parsing_ stayed in
+  `features/menu/price.ts`. When two features must be assembled, the **route** does it:
+  `PublicMenu` exposes a `productAction` slot that `m.$venueSlug.tsx` fills with an orders
+  component, exactly as `_authenticated.tsx` passes `<VenueNav>` to `BackOfficeShell`.
 - **Dependencies point one way**: routes → features → shared. A file under
   `src/components/` or `src/lib/` importing from `#/features/` is the inversion to catch in
   review — nothing enforces it, `import/no-cycle` is disabled.
@@ -225,9 +234,13 @@ normally. The personal file to ignore the day it appears is `.claude/settings.lo
 ## Project status
 
 The data layer, the back office, the customer-facing menu (`/m/$venueSlug`), the printable
-QR sheet (`/admin/$venueSlug/qr`) and the stock screen (`/admin/$venueSlug/stock`) all
-exist. The "ardoise" theme is in place across the home page, `/login`, the back office and
-the public menu.
+QR sheet (`/admin/$venueSlug/qr`), the stock screen (`/admin/$venueSlug/stock`) and counter
+ordering (`/admin/$venueSlug/commandes`, plus the order bar on the public menu) all exist.
+The "ardoise" theme is in place across the home page, `/login`, the back office and the
+public menu.
+
+**Ordering is off by default** on every venue (`venues.orders_enabled`), and turning it on
+is the manager's decision, taken from the orders screen.
 
 The home page is a landing page, **not** the customer menu: `/` markets the product,
 `/m/$venueSlug` is what a QR code points at.

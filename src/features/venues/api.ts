@@ -1,6 +1,8 @@
 import { queryOptions } from '@tanstack/react-query'
 
+import { VENUES_QUERY_KEY } from '#/lib/query-keys'
 import { describeError } from '#/lib/postgrest-error'
+import { removeVenuePhotos } from '#/lib/product-photos'
 import { supabase } from '#/lib/supabase'
 
 import type { Venue } from '#/lib/supabase'
@@ -33,8 +35,6 @@ export function slugify(value: string): string {
  * endroit où le problème est encore explicable.
  */
 const RESERVED_SLUGS = new Set(['corbeille'])
-
-export const VENUES_QUERY_KEY = ['venues'] as const
 
 /**
  * Les établissements d'un gérant, du plus ancien au plus récent.
@@ -91,6 +91,53 @@ export async function restoreVenue(venueId: string): Promise<void> {
     .eq('id', venueId)
 
   if (error) throw new Error(describeError(error))
+}
+
+/**
+ * Vide la corbeille : détruit pour de bon les établissements archivés.
+ *
+ * C'est la seule opération irréversible du back-office, et tout ici sert à ce
+ * qu'elle ne détruise que ce qu'elle doit.
+ *
+ * **La liste est relue en base plutôt que reçue en argument.** L'écran ne
+ * transmet pas les identifiants qu'il affiche : son cache peut dater de la
+ * veille, d'un autre onglet, d'une restauration faite entre-temps. Ce que la
+ * requête ci-dessous rapporte est ce qui est archivé maintenant.
+ *
+ * **Les photos partent avant la ligne, et l'ordre n'est pas négociable** — la
+ * raison est dans `removeVenuePhotos`. Une erreur de stockage interrompt donc
+ * la purge : l'établissement reste à la corbeille, et réessayer reprend là où
+ * l'on s'était arrêté.
+ *
+ * **La suppression revérifie `deleted_at`** : entre la lecture et l'écriture,
+ * un établissement restauré depuis un autre appareil ne doit pas être détruit
+ * par une purge décidée sur un état d'avant.
+ *
+ * Un établissement à la fois, sans `Promise.all` : la corbeille compte
+ * quelques lignes, l'ordre photos-puis-ligne se lit d'un coup d'œil, et le
+ * premier échec laisse un état simple à décrire — ce qui est passé est parti,
+ * le reste est intact.
+ */
+export async function purgeArchivedVenues(ownerId: string): Promise<void> {
+  const { data, error } = await supabase
+    .from('venues')
+    .select('id')
+    .eq('owner_id', ownerId)
+    .not('deleted_at', 'is', null)
+
+  if (error) throw new Error(describeError(error))
+
+  for (const venue of data) {
+    await removeVenuePhotos(venue.id)
+
+    const { error: deleteError } = await supabase
+      .from('venues')
+      .delete()
+      .eq('id', venue.id)
+      .not('deleted_at', 'is', null)
+
+    if (deleteError) throw new Error(describeError(deleteError))
+  }
 }
 
 /**

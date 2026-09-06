@@ -39,10 +39,12 @@
 /* Les composants, après le socle : une règle de composant doit pouvoir
    emporter la décision face au vocabulaire partagé, jamais l'inverse. */
 @import './components/nav-link.css';
+@import './components/skeleton.css';
 @import './components/site-footer.css';
 @import './features/venues/components/venue-nav.css';
 @import './features/menu/components/menu-nav.css';
 @import './features/menu/components/public-menu.css';
+@import './features/orders/components/open-orders-count.css';
 
 /* L'impression en dernier : elle défait à peu près tout ce qui précède. */
 @import './styles/print.css';

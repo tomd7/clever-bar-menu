@@ -57,6 +57,48 @@
       "when": 1788601614133,
       "tag": "0007_adjust_product_stock",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1788696607220,
+      "tag": "0008_worthless_pixie",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1788696669333,
+      "tag": "0009_order_functions",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788702803597,
+      "tag": "0010_lucky_the_anarchist",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1788702824783,
+      "tag": "0011_cancel_order",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1788715566661,
+      "tag": "0012_lush_phalanx",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1788715573241,
+      "tag": "0013_order_lines_size",
+      "breakpoints": true
     }
   ]
 }

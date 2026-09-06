@@ -1,8 +1,16 @@
 import { Link } from '@tanstack/react-router'
-import { Boxes, QrCode, Store, Trash2, UtensilsCrossed } from 'lucide-react'
+import {
+  Boxes,
+  ConciergeBell,
+  QrCode,
+  Store,
+  UtensilsCrossed,
+} from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 
 import { venuesQueryOptions } from '#/features/venues/api'
+
+import type { ReactNode } from 'react'
 
 /**
  * Navigation de la colonne du back-office.
@@ -18,6 +26,16 @@ import { venuesQueryOptions } from '#/features/venues/api'
  * intitulé de groupe, et ce sont ses sections qui portent les liens. Les
  * autres établissements restent de simples liens.
  *
+ * La corbeille n'est pas ici : elle relève de l'outil et non du travail, et
+ * `VenueTrashRailLink` la pose dans la zone basse de la colonne, au-dessus de
+ * la déconnexion.
+ *
+ * `ordersBadge` is a slot, not a number: counting open orders belongs to
+ * `features/orders`, which this feature may not import. The route assembles
+ * the two — the same wiring as `productAction` on the customer menu. The slot
+ * is only read under the open venue, the one that unfolds its sections: a pill
+ * per venue in the list would mean as many queues polled at once.
+ *
  * `activeVenueSlug` est passé par la route plutôt que lu ici : savoir où l'on
  * se trouve est une question de routage, et ce composant reste ainsi une
  * fonction de ses props.
@@ -25,9 +43,11 @@ import { venuesQueryOptions } from '#/features/venues/api'
 export function VenueNav({
   ownerId,
   activeVenueSlug,
+  ordersBadge,
 }: {
   ownerId: string
   activeVenueSlug: string | undefined
+  ordersBadge?: ReactNode
 }) {
   const venuesQuery = useQuery(venuesQueryOptions(ownerId))
 
@@ -39,15 +59,6 @@ export function VenueNav({
   */
   const venues = (venuesQuery.data ?? []).filter(
     (venue) => !venue.deleted_at || venue.slug === activeVenueSlug,
-  )
-
-  /*
-    La corbeille n'entre dans la colonne qu'une fois pleine : une entrée
-    permanente vers un écran vide occuperait la place d'une destination réelle,
-    et un gérant qui n'a jamais rien supprimé n'a rien à y faire.
-  */
-  const hasArchived = (venuesQuery.data ?? []).some((venue) =>
-    Boolean(venue.deleted_at),
   )
 
   return (
@@ -98,6 +109,18 @@ export function VenueNav({
                 </li>
                 <li>
                   <Link
+                    to="/admin/$venueSlug/commandes"
+                    params={{ venueSlug: venue.slug }}
+                    activeProps={{ className: 'is-active' }}
+                    className="rail-link"
+                  >
+                    <ConciergeBell className="size-4 shrink-0" />
+                    Commandes
+                    {ordersBadge}
+                  </Link>
+                </li>
+                <li>
+                  <Link
                     to="/admin/$venueSlug/stock"
                     params={{ venueSlug: venue.slug }}
                     activeProps={{ className: 'is-active' }}
@@ -133,17 +156,6 @@ export function VenueNav({
           ),
         )}
       </ul>
-
-      {hasArchived ? (
-        <Link
-          to="/admin/corbeille"
-          activeProps={{ className: 'is-active' }}
-          className="rail-link mt-1"
-        >
-          <Trash2 className="size-4 shrink-0" />
-          Corbeille
-        </Link>
-      ) : null}
     </nav>
   )
 }

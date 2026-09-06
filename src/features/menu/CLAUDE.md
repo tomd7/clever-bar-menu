@@ -2,11 +2,14 @@
 
 Owns the back-office menu editor, the stock screen and the customer-facing menu:
 `components/` (menu-editor, category-\*, product-\*, menu-nav, public-menu, photo-field),
-`api.ts`, `public-api.ts`, `mutations.ts`, `price.ts`, `photo.ts`, `stock.ts`.
+`api.ts`, `public-api.ts`, `mutations.ts`, `price.ts`, `size.ts`, `photo.ts`, `stock.ts`.
 
-**No cross-feature imports**: this feature must not reach into `features/venues`. Anything
-both need moves down to `src/components/` or `src/lib/` — that is why `describeError` is
-in `lib/postgrest-error.ts` and the `/m/<slug>` shape in `lib/public-menu-url.ts`.
+**No cross-feature imports**: this feature must not reach into `features/venues` or
+`features/orders`. Anything two need moves down to `src/components/` or `src/lib/` — that is
+why `describeError` is in `lib/postgrest-error.ts`, the `/m/<slug>` shape in
+`lib/public-menu-url.ts`, `formatPrice` in `lib/money.ts` and `MENU_QUERY_KEY` in
+`lib/query-keys.ts` (which `features/orders` invalidates when accepting an order decrements
+stock).
 
 ## Data access
 
@@ -47,6 +50,30 @@ in `lib/postgrest-error.ts` and the `/m/<slug>` shape in `lib/public-menu-url.ts
   `110.00000000000001` in JS. Accepts comma or dot, strips whitespace (`\s` covers
   non-breaking spaces).
 
+## Sizes — `size.ts`
+
+`products.size`, free text, nullable — « 25cl », « 50cl », « au fût », « pichet ».
+
+- **One size per product, not a list of formats.** Two sizes of the same beer are two
+  products, exactly as a printed carte lists them. Carrying several on one line would mean
+  a table of its own with its own RLS, a cart that points at a format rather than at a
+  product, and a rewritten `place_order` — for a menu that reads the same either way.
+- **Free text, and it stays free.** `SIZE_SUGGESTIONS` is what the form offers in one tap,
+  not what the column accepts: a bar's formats are its own (a « demi », a « pichet 50cl », a
+  4cl measure), and a closed list would have to be redeployed the day one is missing. The
+  chips toggle — tapping the active one clears the field, which is the only way to empty it
+  without going back to the keyboard.
+- **Blank is `null`, like a blank price**, and `parseOptionalSize` is the single place that
+  says so. An empty string would render as a phantom gap after every name.
+- **Nothing parses it.** « 50cl » is not a quantity here, and the moment the field parsed
+  one it would owe an answer for « au fût », which has none.
+- **The display lives in `components/product-size.tsx`**, not here: the cart, the counter's
+  queue and the customer's tracker all render a size, and `features/orders` may not import
+  from this feature. `productLabel(name, size)` is its text form, for the `aria-label`s
+  where « Ajouter Blonde » on two adjacent buttons says nothing.
+- **The size is copied onto the order line** (`order_items.size`, migration `0013`), like
+  the name and the unit price. See `features/orders/CLAUDE.md`.
+
 ## Photos — `photo.ts`
 
 - **Downscaled in the browser** before upload (canvas, max 1200px, WebP with a JPEG
@@ -59,6 +86,11 @@ in `lib/postgrest-error.ts` and the `/m/<slug>` shape in `lib/public-menu-url.ts
   a category collects its products' paths _before_ the DB cascade wipes them. Order
   matters: an orphan file is invisible, a row pointing at a deleted file shows a broken
   image to a customer.
+- **The bucket's name lives in `lib/product-photos.ts`, not here.** `features/venues`
+  wipes a venue's whole folder when the bin is emptied, so two features address the same
+  bucket and only one of them may own its name. That module also documents why a venue's
+  photos must go **before** its row, which is the reverse of the order above — the storage
+  policies find the owner by joining the path's first segment to `venues`.
 
 ## Stock — `stock.ts`, `/admin/$venueSlug/stock`
 
@@ -85,6 +117,15 @@ the `adjust_product_stock` function.
   every `['menu']` query by prefix, cancels in-flight fetches first, rolls back on error,
   and invalidates `onSettled` rather than `onSuccess`, because the rolled-back value may
   itself be stale.
+- **The stock page lists a product only if it has a level, and either a threshold or a
+  zero** (`isWatched`). The quantity says there is something to count down; the threshold
+  is how a manager designates the lines they want to be warned about — without one, a row
+  could never say anything on a page read to find out what to re-order. **Sold out is the
+  exception**, threshold or not: at zero the product has left the customer menu, and this
+  is the screen that repairs that. Hiding a rupture because nobody asked to be warned
+  about it is the one thing this page must not do. Restocking such a product drops it back
+  out of the list — it becomes again a line nobody asked for news of, and its level is set
+  from its card in the menu editor; the page's footer counts those and links there.
 - **The stock page reads `menuQueryOptions`, not a query of its own.** Stock is the same
   menu seen through the quantity column. A second query would mean a second cache to
   invalidate, and a `−1` here wouldn't show on the menu open in the next tab.
@@ -147,3 +188,13 @@ the `adjust_product_stock` function.
   editorial text a manager can put on this page. Note the back-office forms don't expose
   the field yet: it is writable through `createCategory` alone.
 - **The back-to-top link appears only where the rail does.**
+- **`PublicMenu` exposes a `productAction` slot** and knows nothing about what fills it.
+  Counter ordering puts its `+` there, and the assembly happens in `m.$venueSlug.tsx` — the
+  one file allowed to import both features, exactly as `_authenticated.tsx` passes
+  `<VenueNav>` to `BackOfficeShell`. `undefined` is the normal case, and the layout is then
+  unchanged.
+- **With an action, a photo-less product in a section that reserves a photo column renders an
+  explicit empty `<div>`.** `null` produces no element, and grid auto-placement would slide
+  the action into the image column — the prices on photo-less rows would stop lining up,
+  which is precisely what the reserved column exists to prevent. `itemLayout()` holds the
+  four cases flat rather than nesting ternaries at the call site.

@@ -6,6 +6,41 @@
   Le mouvement de ces mêmes surfaces est dans `motion.css`.
 */
 
+/*
+  The customer menu's reading column.
+
+  It lives here, and not next to `public-menu.tsx`, because three elements have
+  to agree on it: the card itself, the order bar docked at the bottom of the
+  viewport and the cart sheet that opens from it (`features/orders`). All three
+  are centred on the same axis, so any one of them drifting reads as a
+  misalignment rather than as a width choice.
+
+  Mobile-first: the phone is already narrower than the base value and never
+  sees it; the column only widens from `md` up, where the room actually exists.
+  It stays a *reading* column all the same — a menu line is walked from the
+  name to the price, and it is `.menu-leader` (the dotted leader) that keeps a
+  wider line trackable. Without it, widening would just be more empty space
+  between the two things the eye has to connect.
+
+  The two breakpoints are Tailwind's `md` and `lg` (48rem, 64rem); a media
+  query is what lets a single token follow them for every consumer at once.
+*/
+:root {
+  --menu-column: 36rem;
+}
+
+@media (width >= 48rem) {
+  :root {
+    --menu-column: 40rem;
+  }
+}
+
+@media (width >= 64rem) {
+  :root {
+    --menu-column: 44rem;
+  }
+}
+
 .page-wrap {
   width: min(1080px, calc(100% - 2rem));
   margin-inline: auto;

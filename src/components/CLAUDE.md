@@ -16,15 +16,15 @@ features: they carry no data and no domain rule.
 it names the action, so the icon, the wording and the behaviour can't diverge between two
 screens:
 
-| Wrapper        | Renders                         | What it owns for you                                                                                                                            |
-| -------------- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AddButton`    | `Plus` + « Ajouter »            | `pending` swaps the label (`pendingLabel`, default « Ajout… ») **and** disables. Pass children only to qualify the add (« Ajouter un produit ») |
-| `SaveButton`   | `Save` + « Enregistrer »        | `type="submit"`, « Enregistrement… » while `pending`, disables                                                                                  |
-| `CancelButton` | « Annuler »                     | `variant="ghost"`, non-overridable — a cancel must never weigh as much as the action                                                            |
-| `EditButton`   | `Pencil`, icon only             | **required** `label`: the icon is shared, what it edits is not                                                                                  |
-| `DeleteButton` | `Trash2` + confirmation popover | There is no path that deletes on the first click. Focus lands on **Annuler**                                                                    |
-| `MoveButtons`  | `ChevronUp`/`ChevronDown` pair  | Both `aria-label`s, `disabled` at the list's ends                                                                                               |
-| `CopyButton`   | `Copy`, icon only               | The confirmation: green check + a `role="status"` announcement for 2s, a destructive cross if the clipboard refuses. **required** `label`       |
+| Wrapper        | Renders                         | What it owns for you                                                                                                                                                                                                                                                                                                                   |
+| -------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AddButton`    | `Plus` + « Ajouter »            | `pending` swaps the label (`pendingLabel`, default « Ajout… ») **and** disables. Pass children only to qualify the add (« Ajouter un produit »)                                                                                                                                                                                        |
+| `SaveButton`   | `Save` + « Enregistrer »        | `type="submit"`, « Enregistrement… » while `pending`, disables                                                                                                                                                                                                                                                                         |
+| `CancelButton` | « Annuler »                     | `variant="ghost"`, non-overridable — a cancel must never weigh as much as the action                                                                                                                                                                                                                                                   |
+| `EditButton`   | `Pencil`, icon only             | **required** `label`: the icon is shared, what it edits is not                                                                                                                                                                                                                                                                         |
+| `DeleteButton` | `Trash2` + confirmation popover | There is no path that deletes on the first click. Focus lands on **Annuler**. `labelled` swaps the icon-only trigger for a labelled outline button (« Vider la corbeille ») — same single `label` prop, visible there, `aria-label` here. `icon` and `confirmLabel` name a destruction that isn't a deletion (« Annuler la commande ») |
+| `MoveButtons`  | `ChevronUp`/`ChevronDown` pair  | Both `aria-label`s, `disabled` at the list's ends                                                                                                                                                                                                                                                                                      |
+| `CopyButton`   | `Copy`, icon only               | The confirmation: green check + a `role="status"` announcement for 2s, a destructive cross if the clipboard refuses. **required** `label`                                                                                                                                                                                              |
 
 Under them sit the two **shape** primitives, for genuine one-offs only (« Se connecter »,
 « Déconnexion ») — anything recurring deserves a wrapper instead:
@@ -37,6 +37,11 @@ Under them sit the two **shape** primitives, for genuine one-offs only (« Se co
 Both wrap shadcn's `Button` rather than editing it — `ui/` stays regenerable.
 `ActionButton` defaults `type="button"`: inside a form, a missing `type` silently turns a
 cancel button into a submit.
+
+**One two-step control, not several.** `icon` / `confirmLabel` exist so that cancelling a
+customer's order can reuse `DeleteButton` instead of growing a second confirmation
+mechanism: it is the focus placement below that is the invariant, and duplicating the
+component would duplicate the way it breaks.
 
 **`DeleteButton`'s focus placement is a real invariant.** The popover opens from the
 keyboard too, and a reflex Enter must not destroy a category. If you touch that component,
@@ -67,6 +72,49 @@ in « Nouvelle catégorie » an input and an `AddButton` sit on the same row. `s
 where the control sits rather than its height, because only the desktop density varies —
 mobile is always 44px. Two tables maintained apart would drift by a pixel and put the row
 out of line.
+
+## Loading — `skeleton.tsx` / `skeleton.css`
+
+**No screen renders « Chargement… » as text.** Each waiting screen draws an ossature at
+the dimensions of what is coming, from `Skeleton` (one bar), `SkeletonScreen` (the
+`role="status"` wrapper), and the three shapes every back-office header shares —
+`SkeletonHeader`, `SkeletonAddress`, `SkeletonLine`.
+
+- **A screen's ossature lives in that screen's file**, below the component it replaces
+  (`MenuEditorSkeleton` in `menu-editor.tsx`, and so on). Its only job is to look like the
+  screen; filed anywhere else it would stop being updated with it.
+- **Measure lines in `h-[1lh]`, not in pixels.** The unit is the element's computed
+  line-height, so a bar given the real type classes (`text-2xl leading-tight sm:text-3xl`)
+  is exactly as tall as the line it stands for — at every breakpoint. The three headers
+  now land on the same pixel as the loaded screen; hard-coded heights were 46px short.
+- **`bg-skeleton` is the tint**, a translucent ink mix (see `src/styles/CLAUDE.md`): the
+  same bar sits on a white `.panel` and on the page ground, and no opaque colour works on
+  both. The QR sheet is the one override — `bg-neutral-200`, because that sheet is white
+  in both themes.
+- **Two movements, and only one loops**: each bar writes itself left-to-right once
+  (`clip-path`, staggered by `delay`), then a chalk sheen sweeps the screen in a single
+  wave — every bar shares the sweep's timing, so their phases coincide. Under
+  `prefers-reduced-motion` both stop and the ossature simply stands there.
+- **The ossature itself waits 140 ms** before fading in (`.skeleton-screen`), so a cached
+  response doesn't flash one.
+- **`SkeletonScreen` puts the layout in a child**, not on the status element: an `sr-only`
+  label glued in as the first child of a `divide-y` list or a grid would take a divider or
+  a cell.
+
+## `product-size.tsx`
+
+`ProductSize` draws a product's serving format — « 50cl », « au fût » — and `productLabel`
+is its text form for an `aria-label`. It sits here rather than in `features/menu` because a
+ticket names its lines the way the menu does: the cart sheet, the counter's queue and the
+customer's tracker all render one, and `features/orders` may not import from
+`features/menu`. Same move as `formatPrice` before it.
+
+**A qualifier, not a badge.** The format is set in the flow of the name — softer ink, a
+shade smaller, inside the name's own line box — and never in a pill: the bordered pill is
+`StockBadge`, and it means something is wrong. Being inside the line box is also what puts
+the customer menu's leader rule _after_ the format, the way a printed carte sets it. Its
+size is in `em`, not `rem`: the same span is rendered in a 14px ticket line and a 16px menu
+row, and in both it must read one notch below the name it follows.
 
 ## Links
 
@@ -106,6 +154,13 @@ an inline container.
 
 `BackOfficeShell` takes its navigation as a `nav` prop rather than building it: listing
 venues is the venues domain, and this directory must not import from `#/features/`.
+
+It takes a second slot, **`navFooter`** — the column's bottom zone, pinned above the
+identity and the sign-out, for what belongs to the tool rather than to the work (the bin,
+today). A separate prop and not the tail of `nav`, because the two zones are a full column
+apart: one stretched `nav` would make the shell responsible for the gap between its own
+items. Like `nav`, it only renders from `lg`, and it draws **no separator of its own** —
+that belongs to whatever is put in it, so an empty zone leaves no trace.
 
 `MenuAddress` (`back-office/menu-address.tsx`) draws `/m/<slug>` as a **control, not a
 caption**: a link opening the customer menu in a **new tab** — the manager checks the

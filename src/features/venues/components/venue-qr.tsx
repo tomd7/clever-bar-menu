@@ -5,6 +5,12 @@ import { useQuery } from '@tanstack/react-query'
 import { ActionButton } from '#/components/buttons/action-button'
 import { ErrorNote } from '#/components/error-note'
 import { NavLink } from '#/components/nav-link'
+import {
+  Skeleton,
+  SkeletonHeader,
+  SkeletonLine,
+  SkeletonScreen,
+} from '#/components/skeleton'
 import { isLocalOrigin, venueQrSvg } from '#/features/venues/qr'
 import { publicMenuUrl } from '#/lib/public-menu-url'
 import { venueBySlugQueryOptions } from '#/features/venues/api'
@@ -28,7 +34,7 @@ export function VenueQr({ venueSlug }: { venueSlug: string }) {
   const venueQuery = useQuery(venueBySlugQueryOptions(venueSlug))
 
   if (venueQuery.isPending) {
-    return <p className="text-sm text-ink-soft">Chargement…</p>
+    return <VenueQrSkeleton />
   }
 
   if (venueQuery.isError) {
@@ -141,5 +147,59 @@ function QrSheet({ venue, origin }: { venue: Venue; origin: string }) {
         taille, d’un sous-bock à une affiche.
       </p>
     </div>
+  )
+}
+
+/**
+ * L'attente de la feuille à imprimer.
+ *
+ * La feuille reste blanche pendant le chargement, comme après : c'est le carré
+ * qui part à l'imprimante, et le voir se poser d'emblée dit ce qu'on est venu
+ * chercher. Ses barres passent donc au gris neutre plutôt qu'à la surface du
+ * thème — sur un fond blanc en mode sombre, la teinte d'encre de `bg-skeleton`
+ * serait une tache d'ardoise sur du papier.
+ *
+ * Le carré du code garde son `aspect-square` et sa largeur maximale : c'est le
+ * plus grand bloc de l'écran, et le laisser se déplier après coup ferait
+ * descendre l'adresse et les deux boutons d'un tiers de page.
+ */
+function VenueQrSkeleton() {
+  return (
+    <SkeletonScreen label="Chargement du QR code…" className="page-wrap px-0">
+      <Skeleton className="h-4 w-40 rounded-full lg:hidden" />
+
+      {/* Deux lignes : la phrase d'explication tient sur deux à `max-w-prose`. */}
+      <SkeletonHeader>
+        <SkeletonLine className="mt-2 w-full max-w-prose" delay={110} />
+        <SkeletonLine className="mt-1 w-64 max-w-full" delay={140} />
+      </SkeletonHeader>
+
+      <section className="mt-6 rounded-2xl border border-line bg-white p-6 text-center sm:p-10">
+        <Skeleton
+          className="mx-auto h-6 w-48 max-w-full bg-neutral-200"
+          delay={200}
+        />
+        <Skeleton
+          className="mx-auto mt-2 h-3.5 w-56 max-w-full rounded-full bg-neutral-200"
+          delay={240}
+        />
+
+        <Skeleton
+          className="mx-auto mt-6 aspect-square w-full max-w-64 rounded-lg bg-neutral-200"
+          delay={280}
+        />
+
+        <Skeleton
+          className="mx-auto mt-6 h-3 w-64 max-w-full rounded-full bg-neutral-200"
+          delay={340}
+        />
+      </section>
+
+      {/* « Imprimer » et « Télécharger le SVG », à leur hauteur de doigt. */}
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Skeleton className="h-11 w-32" delay={400} />
+        <Skeleton className="h-11 w-44" delay={430} />
+      </div>
+    </SkeletonScreen>
   )
 }

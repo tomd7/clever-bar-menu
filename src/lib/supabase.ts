@@ -21,6 +21,8 @@ type VenueRow = {
   description: string | null
   owner_id: string
   currency: string
+  /** La prise de commande est-elle ouverte sur la carte publique ? */
+  orders_enabled: boolean
   /** Date d'archivage, ou `null` si l'établissement est actif. */
   deleted_at: string | null
   created_at: string
@@ -42,6 +44,8 @@ type ProductRow = {
   category_id: string
   name: string
   description: string | null
+  /** Format servi (« 50cl », « au fût »), ou `null` : la carte n'en dit rien. */
+  size: string | null
   price_cents: number | null
   image_path: string | null
   is_available: boolean
@@ -50,6 +54,51 @@ type ProductRow = {
   /** Seuil d'alerte, ou `null` : le produit n'alerte alors qu'une fois épuisé. */
   low_stock_threshold: number | null
   position: number
+  created_at: string
+  updated_at: string
+}
+
+/**
+ * Une commande déposée depuis la carte publique.
+ *
+ * `access_token` **n'y figure pas**. Le back-office lit ces lignes par
+ * PostgREST et n'a aucun usage du secret du client ; le sortir du type est ce
+ * qui empêche de l'afficher, de le journaliser ou de le sérialiser dans un
+ * cache par inadvertance. Le client, lui, ne lit jamais cette table : il passe
+ * par `get_order`, qui le lui redemande.
+ */
+type OrderRow = {
+  id: string
+  venue_id: string
+  customer_name: string
+  note: string | null
+  status: OrderStatusValue
+  /** Qui a annulé, si la commande l'a été : le client ou le comptoir. */
+  cancelled_by: 'guest' | 'venue' | null
+  total_cents: number
+  created_at: string
+  updated_at: string
+}
+
+/**
+ * Les états d'une commande. Recopiés depuis `src/db/schema.ts`, qui ne peut
+ * pas servir de source ici : ce fichier décrit ce que PostgREST renvoie, en
+ * `snake_case`, et importer le schéma Drizzle ferait entrer la persistance
+ * serveur dans le bundle du navigateur.
+ */
+type OrderStatusValue =
+  'received' | 'preparing' | 'ready' | 'collected' | 'cancelled'
+
+type OrderItemRow = {
+  id: string
+  order_id: string
+  /** `null` si le produit a été supprimé de la carte depuis. */
+  product_id: string | null
+  name: string
+  /** Format recopié à l'envoi, comme le nom : la ligne est une trace. */
+  size: string | null
+  unit_price_cents: number | null
+  quantity: number
   created_at: string
   updated_at: string
 }
@@ -78,7 +127,12 @@ export type Database = {
         Row: VenueRow
         Insert: Insert<
           VenueRow,
-          Timestamps | Nullable | 'owner_id' | 'currency' | 'deleted_at'
+          | Timestamps
+          | Nullable
+          | 'owner_id'
+          | 'currency'
+          | 'deleted_at'
+          | 'orders_enabled'
         >
         Update: Partial<VenueRow>
         Relationships: []
@@ -87,6 +141,38 @@ export type Database = {
         Row: CategoryRow
         Insert: Insert<CategoryRow, Timestamps | Nullable | 'position'>
         Update: Partial<CategoryRow>
+        Relationships: []
+      }
+      orders: {
+        Row: OrderRow
+        /*
+          Pas d'`Insert` utilisable : aucune policy n'ouvre l'écriture, une
+          commande naît de `place_order`. Le type reste déclaré parce que
+          `supabase-js` l'exige, avec la forme que la fonction produit.
+        */
+        Insert: Insert<
+          OrderRow,
+          Timestamps | 'note' | 'status' | 'total_cents' | 'cancelled_by'
+        >
+        /*
+          Le gérant ne change qu'une chose : où en est la commande — et, quand
+          il l'annule, qu'il en est l'auteur. Le client, lui, ne passe jamais
+          par la table : `cancel_order` écrit `cancelled_by` pour lui.
+        */
+        Update: Pick<
+          Partial<OrderRow>,
+          'status' | 'cancelled_by' | 'updated_at'
+        >
+        Relationships: []
+      }
+      order_items: {
+        Row: OrderItemRow
+        Insert: Insert<
+          OrderItemRow,
+          Timestamps | 'product_id' | 'size' | 'unit_price_cents'
+        >
+        /* Une ligne de commande ne se modifie pas : c'est une trace. */
+        Update: Record<never, never>
         Relationships: []
       }
       products: {
@@ -98,6 +184,7 @@ export type Database = {
           | 'position'
           | 'is_available'
           | 'image_path'
+          | 'size'
           | 'price_cents'
           | 'stock_quantity'
           | 'low_stock_threshold'
@@ -120,6 +207,73 @@ export type Database = {
         Args: { product_id: string; delta: number }
         Returns: number
       }
+
+      /**
+       * Dépose une commande (migration `0009`). Appelable sans compte.
+       *
+       * `security definer` : `orders` n'a aucune policy pour `anon`, et cette
+       * fonction est la seule porte. Elle relit les prix en base — le client
+       * n'envoie que des identifiants et des quantités.
+       */
+      place_order: {
+        Args: {
+          venue_slug: string
+          guest_name: string
+          guest_note: string | null
+          items: Array<{ product_id: string; quantity: number }>
+        }
+        Returns: { id: string; access_token: string }
+      }
+
+      /**
+       * Relit une commande pour le client qui la suit.
+       *
+       * Renvoie `null` — et non une erreur — si le jeton ne correspond pas :
+       * une erreur confirmerait que la commande existe.
+       */
+      get_order: {
+        Args: { lookup_id: string; lookup_token: string }
+        Returns: {
+          id: string
+          customer_name: string
+          note: string | null
+          status: OrderStatusValue
+          total_cents: number
+          created_at: string
+          updated_at: string
+          items: Array<{
+            id: string
+            name: string
+            size: string | null
+            unit_price_cents: number | null
+            quantity: number
+          }>
+        } | null
+      }
+
+      /**
+       * Le bar prend la commande : passage en préparation **et** décompte du
+       * stock, dans la même transaction.
+       *
+       * `security invoker`, contrairement aux deux précédentes : c'est le RLS
+       * qui vérifie que la commande appartient à l'appelant.
+       */
+      accept_order: {
+        Args: { target_id: string }
+        Returns: undefined
+      }
+
+      /**
+       * Le client annule sa propre commande (migration `0011`).
+       *
+       * N'agit que sur une commande encore en attente : passé l'acceptation,
+       * le stock est décompté et le verre est en train d'être servi. Lève un
+       * message unique pour « trop tard », « mauvais jeton » et « inexistante ».
+       */
+      cancel_order: {
+        Args: { lookup_id: string; lookup_token: string }
+        Returns: undefined
+      }
     }
     Enums: Record<never, never>
     CompositeTypes: Record<never, never>
@@ -129,6 +283,9 @@ export type Database = {
 export type Venue = VenueRow
 export type Category = CategoryRow
 export type Product = ProductRow
+export type Order = OrderRow
+export type OrderItem = OrderItemRow
+export type OrderStatus = OrderStatusValue
 
 /**
  * Client Supabase du navigateur.

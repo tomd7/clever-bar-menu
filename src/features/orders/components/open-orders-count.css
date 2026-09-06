@@ -1,0 +1,43 @@
+/*
+  The counting pill dropped into the back-office column
+  (`open-orders-count.tsx`).
+
+  It takes the `--bottle` fill, the application's accent, and not a warning
+  hue: the "ardoise" theme deliberately has none (see `stock-badge.tsx`). A
+  light fill would in any case have been invisible on the column's active item,
+  whose background is already `--surface-raised`.
+
+  `margin-inline-start: auto` pushes it to the item's right edge: aligned with
+  each other, these pills can be read going down the column without reading the
+  labels.
+
+  The animation plays once only — the component stays mounted for as long as
+  one order remains, and a changing number merely swaps its text. What is
+  animated is therefore the step from nothing to something, the service's first
+  order, and it is there so that step is not abrupt, not to be noticed. It
+  starts from `scale(0.85)` and not from zero: nothing appears out of nowhere.
+*/
+.orders-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-inline-start: auto;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding-inline: 0.375rem;
+  border-radius: 999px;
+  background: var(--bottle);
+  color: var(--on-bottle);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  animation: orders-count-in 180ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+@keyframes orders-count-in {
+  from {
+    opacity: 0;
+    scale: 0.85;
+  }
+}
