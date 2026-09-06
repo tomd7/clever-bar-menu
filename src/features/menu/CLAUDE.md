@@ -59,6 +59,11 @@ in `lib/postgrest-error.ts` and the `/m/<slug>` shape in `lib/public-menu-url.ts
   a category collects its products' paths _before_ the DB cascade wipes them. Order
   matters: an orphan file is invisible, a row pointing at a deleted file shows a broken
   image to a customer.
+- **The bucket's name lives in `lib/product-photos.ts`, not here.** `features/venues`
+  wipes a venue's whole folder when the bin is emptied, so two features address the same
+  bucket and only one of them may own its name. That module also documents why a venue's
+  photos must go **before** its row, which is the reverse of the order above — the storage
+  policies find the owner by joining the path's first segment to `venues`.
 
 ## Stock — `stock.ts`, `/admin/$venueSlug/stock`
 

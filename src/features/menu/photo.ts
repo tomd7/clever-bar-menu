@@ -1,3 +1,4 @@
+import { PRODUCT_PHOTOS_BUCKET } from '#/lib/product-photos'
 import { supabase } from '#/lib/supabase'
 
 /**
@@ -9,7 +10,7 @@ import { supabase } from '#/lib/supabase'
  * segment du chemin est l'identifiant de l'établissement, et seul son
  * propriétaire peut y déposer quoi que ce soit.
  */
-const BUCKET = 'product-photos'
+const BUCKET = PRODUCT_PHOTOS_BUCKET
 
 /** Côté le plus long, en pixels, après réduction. */
 const MAX_SIDE = 1200

@@ -16,15 +16,15 @@ features: they carry no data and no domain rule.
 it names the action, so the icon, the wording and the behaviour can't diverge between two
 screens:
 
-| Wrapper        | Renders                         | What it owns for you                                                                                                                            |
-| -------------- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AddButton`    | `Plus` + « Ajouter »            | `pending` swaps the label (`pendingLabel`, default « Ajout… ») **and** disables. Pass children only to qualify the add (« Ajouter un produit ») |
-| `SaveButton`   | `Save` + « Enregistrer »        | `type="submit"`, « Enregistrement… » while `pending`, disables                                                                                  |
-| `CancelButton` | « Annuler »                     | `variant="ghost"`, non-overridable — a cancel must never weigh as much as the action                                                            |
-| `EditButton`   | `Pencil`, icon only             | **required** `label`: the icon is shared, what it edits is not                                                                                  |
-| `DeleteButton` | `Trash2` + confirmation popover | There is no path that deletes on the first click. Focus lands on **Annuler**                                                                    |
-| `MoveButtons`  | `ChevronUp`/`ChevronDown` pair  | Both `aria-label`s, `disabled` at the list's ends                                                                                               |
-| `CopyButton`   | `Copy`, icon only               | The confirmation: green check + a `role="status"` announcement for 2s, a destructive cross if the clipboard refuses. **required** `label`       |
+| Wrapper        | Renders                         | What it owns for you                                                                                                                                                                                                                     |
+| -------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AddButton`    | `Plus` + « Ajouter »            | `pending` swaps the label (`pendingLabel`, default « Ajout… ») **and** disables. Pass children only to qualify the add (« Ajouter un produit »)                                                                                          |
+| `SaveButton`   | `Save` + « Enregistrer »        | `type="submit"`, « Enregistrement… » while `pending`, disables                                                                                                                                                                           |
+| `CancelButton` | « Annuler »                     | `variant="ghost"`, non-overridable — a cancel must never weigh as much as the action                                                                                                                                                     |
+| `EditButton`   | `Pencil`, icon only             | **required** `label`: the icon is shared, what it edits is not                                                                                                                                                                           |
+| `DeleteButton` | `Trash2` + confirmation popover | There is no path that deletes on the first click. Focus lands on **Annuler**. `labelled` swaps the icon-only trigger for a labelled outline button (« Vider la corbeille ») — same single `label` prop, visible there, `aria-label` here |
+| `MoveButtons`  | `ChevronUp`/`ChevronDown` pair  | Both `aria-label`s, `disabled` at the list's ends                                                                                                                                                                                        |
+| `CopyButton`   | `Copy`, icon only               | The confirmation: green check + a `role="status"` announcement for 2s, a destructive cross if the clipboard refuses. **required** `label`                                                                                                |
 
 Under them sit the two **shape** primitives, for genuine one-offs only (« Se connecter »,
 « Déconnexion ») — anything recurring deserves a wrapper instead:

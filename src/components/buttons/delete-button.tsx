@@ -11,6 +11,8 @@ import {
   PopoverTrigger,
 } from '#/components/ui/popover'
 
+import type { Surface } from '#/components/surface'
+
 /**
  * Bouton de suppression — et donc, dans ce projet, suppression en deux temps.
  *
@@ -27,17 +29,28 @@ import {
  *
  * `window.confirm` restait l'autre option, mais il bloque le fil d'exécution et
  * ne se laisse pas mettre en forme.
+ *
+ * `labelled` change la forme du déclencheur, pas la règle : icône seule dans
+ * une ligne dense, bouton libellé quand la suppression est une action de page —
+ * « Vider la corbeille » n'a pas de ligne à laquelle s'accrocher, et une
+ * corbeille dessinée seule au-dessus d'une liste de corbeilles ne dirait pas ce
+ * qu'elle vide. Un seul `label` dans les deux cas : visible ici, lu par un
+ * lecteur d'écran là, jamais deux formulations à tenir d'accord.
  */
 export function DeleteButton({
   label,
   question,
   pending,
   onConfirm,
+  labelled = false,
+  surface = 'panel',
 }: {
   label: string
   question: string
   pending: boolean
   onConfirm: () => void
+  labelled?: boolean
+  surface?: Surface
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const cancelRef = useRef<HTMLButtonElement>(null)
@@ -45,12 +58,30 @@ export function DeleteButton({
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <IconButton
-          icon={Trash2}
-          label={label}
-          tone="destructive"
-          disabled={pending}
-        />
+        {labelled ? (
+          /*
+            Teinte destructive sur un contour, et non `variant="destructive"` :
+            l'aplat rouge est réservé au bouton qui confirme. Un écran qui
+            crie avant même d'avoir posé la question fait hésiter sur ce qui
+            est déjà fait.
+          */
+          <ActionButton
+            icon={Trash2}
+            variant="outline"
+            tone="destructive"
+            surface={surface}
+            disabled={pending}
+          >
+            {label}
+          </ActionButton>
+        ) : (
+          <IconButton
+            icon={Trash2}
+            label={label}
+            tone="destructive"
+            disabled={pending}
+          />
+        )}
       </PopoverTrigger>
 
       <PopoverContent

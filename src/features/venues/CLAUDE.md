@@ -47,6 +47,45 @@ photos and its slug all stay. The policy pair that makes this work is in
 - **Binned venues keep the inert `<code>`** in `VenueTrash` rather than `MenuAddress`:
   their public menu answers 404, a link there would lie.
 
+### Emptying the bin — `purgeArchivedVenues`
+
+The one irreversible action in the back office. It is reached from the bin screen only,
+through `DeleteButton labelled`, so it still cannot fire on a first click, and the
+confirmation names the count (« Supprimer définitivement 3 établissements ? ») — the
+manager who expected one must be able to see it before confirming.
+
+- **The photos go before the row, and the order is not negotiable.** The
+  `storage.objects` policies find the owner by joining the path's first segment back to
+  `public.venues`; once the venue row is gone the join finds nothing and the files become
+  **indestructible** while still being served by the CDN — the bucket is public for reads.
+  This is the reverse of the product order, where the row goes first because its venue
+  stays. `removeVenuePhotos` (`lib/product-photos.ts`) carries the same warning.
+- **A storage failure aborts the purge and surfaces**, unlike `removeProductPhoto` which
+  swallows its errors: here the venue is still in the bin, retrying is free and resumes
+  where it stopped. Swallowing would leave photos online with no remaining way to remove
+  them.
+- **The list is re-read from the database, not taken from the screen.** The client's
+  cache can be a day old, or from another tab; `ownerId` is all the mutation takes. The
+  `delete` then re-checks `deleted_at is not null`, so a venue restored from another
+  device between the read and the write is not destroyed by a purge decided on an older
+  state.
+- The paging in `removeVenuePhotos` deliberately has **no `offset`** — each page is
+  deleted before the next is listed, so the next page is always the first. An offset
+  walking a shrinking list would skip every other photo. A page that comes back with
+  nothing deleted (a policy refusal returns an empty `data`, not an error) raises rather
+  than looping forever.
+- **The button sits on the title's line from `lg`, under the description below it.**
+  The header is a two-column grid at `lg` only — the title and the description share the
+  left column so the prose keeps its reading width, and the button takes the right one.
+  Below `lg` nothing is repositioned: the DOM order (title, description, button) is
+  already the order a single column reads, which happens to put the sentence promising a
+  restore before the button that removes it. It keeps its natural width there rather than
+  stretching — full width, it would carry the weight of the screen's main action, which
+  is « Restaurer ».
+- **Nothing optimistic**, unlike the stock counters: the purge crosses storage before the
+  database and can take a second, and removing the rows in advance would claim a success a
+  storage error would then have to take back.
+
 ### The bin is a screen — `/admin/corbeille`
 
 `VenueTrash` is a page, not a section at the bottom of `VenueList`. Unfolded by default it

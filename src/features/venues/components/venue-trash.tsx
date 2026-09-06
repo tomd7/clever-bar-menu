@@ -2,11 +2,25 @@ import { ArrowLeft, RotateCcw, Trash2 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 
 import { ActionButton } from '#/components/buttons/action-button'
+import { DeleteButton } from '#/components/buttons/delete-button'
 import { EmptyState } from '#/components/empty-state'
 import { ErrorNote } from '#/components/error-note'
 import { NavLink } from '#/components/nav-link'
-import { useRestoreVenue } from '#/features/venues/mutations'
+import {
+  usePurgeVenueTrash,
+  useRestoreVenue,
+} from '#/features/venues/mutations'
 import { venuesQueryOptions } from '#/features/venues/api'
+
+/**
+ * « 1 établissement », « 3 établissements » — la question de confirmation dit
+ * ce qu'elle détruit, et le nombre est ce qui distingue une purge d'un
+ * dérapage : le gérant qui en attendait un seul doit pouvoir le voir avant de
+ * confirmer.
+ */
+function describeCount(count: number): string {
+  return `${count} établissement${count > 1 ? 's' : ''}`
+}
 
 /**
  * La corbeille des établissements : un écran à part, `/admin/corbeille`.
@@ -30,6 +44,7 @@ import { venuesQueryOptions } from '#/features/venues/api'
 export function VenueTrash({ ownerId }: { ownerId: string }) {
   const venuesQuery = useQuery(venuesQueryOptions(ownerId))
   const restore = useRestoreVenue()
+  const purge = usePurgeVenueTrash()
 
   /*
     `Boolean(...)` plutôt qu'une comparaison à `null` : tant que la migration
@@ -51,16 +66,55 @@ export function VenueTrash({ ownerId }: { ownerId: string }) {
         Établissements
       </NavLink>
 
-      <header className="mt-2 lg:mt-0">
-        <p className="island-kicker">Corbeille</p>
-        <h1 className="display-title mt-1 text-2xl leading-tight sm:text-3xl">
-          Établissements supprimés
-        </h1>
-        <p className="mt-2 max-w-prose text-sm text-ink-soft">
+      {/*
+        Une grille à partir de `lg` seulement, et le flux ordinaire en dessous.
+
+        Sur large, le vidage se pose au bout de la ligne du titre — c'est là
+        qu'on cherche l'action d'un écran, et la colonne de gauche garde sa
+        largeur de lecture parce que la description reste sous le titre plutôt
+        que de partager sa ligne avec le bouton.
+
+        Sur téléphone, l'ordre du DOM suffit : titre, description, bouton. Il
+        arrive donc après la phrase qui promet qu'on peut restaurer — l'ordre
+        que la lecture impose de toute façon sur une colonne unique, et le bon
+        pour la seule action irréversible du back-office. Aligné à gauche et à
+        sa largeur naturelle : pleine largeur, il aurait le poids de l'action
+        principale de l'écran, laquelle est « Restaurer ».
+      */}
+      <header className="mt-2 lg:mt-0 lg:grid lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:gap-x-6">
+        <div className="lg:col-start-1 lg:row-start-1">
+          <p className="island-kicker">Corbeille</p>
+          <h1 className="display-title mt-1 text-2xl leading-tight sm:text-3xl">
+            Établissements supprimés
+          </h1>
+        </div>
+
+        <p className="mt-2 max-w-prose text-sm text-ink-soft lg:col-start-1 lg:row-start-2">
           Leur carte publique ne répond plus, mais rien n'est perdu : restaurer
           un établissement le remet en service tel qu'il était, avec ses
           catégories, ses produits et son adresse.
         </p>
+
+        {/*
+          Rien sur une corbeille vide : il n'y aurait rien à vider, et un
+          bouton destructeur inerte n'est qu'une menace sans objet.
+        */}
+        {archived.length > 0 ? (
+          <div className="mt-5 lg:col-start-2 lg:row-start-1 lg:mt-0 lg:justify-self-end">
+            <DeleteButton
+              labelled
+              surface="page"
+              label={purge.isPending ? 'Suppression…' : 'Vider la corbeille'}
+              question={`Supprimer définitivement ${describeCount(archived.length)} ? Leur carte, leurs photos et leur adresse seront perdues, et cette fois sans retour possible.`}
+              pending={purge.isPending}
+              onConfirm={() => purge.mutate(ownerId)}
+            />
+          </div>
+        ) : null}
+
+        {purge.error ? (
+          <ErrorNote className="lg:col-span-2">{purge.error.message}</ErrorNote>
+        ) : null}
       </header>
 
       <section className="mt-6">
