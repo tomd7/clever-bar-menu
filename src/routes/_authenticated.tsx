@@ -8,6 +8,7 @@ import {
 
 import { BackOfficeShell } from '#/components/back-office/back-office-shell'
 import { VenueNav } from '#/features/venues/components/venue-nav'
+import { VenueTrashRailLink } from '#/features/venues/components/venue-trash-link'
 import { supabase } from '#/lib/supabase'
 
 /**
@@ -67,6 +68,7 @@ function BackOfficeLayout() {
       email={user.email}
       onSignOut={handleSignOut}
       nav={<VenueNav ownerId={user.id} activeVenueSlug={venueSlug} />}
+      navFooter={<VenueTrashRailLink ownerId={user.id} />}
     >
       <Outlet />
     </BackOfficeShell>

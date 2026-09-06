@@ -1,9 +1,8 @@
-import { Store, Trash2 } from 'lucide-react'
+import { Store } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 
 import { EmptyState } from '#/components/empty-state'
 import { ErrorNote } from '#/components/error-note'
-import { NavLink } from '#/components/nav-link'
 import { VenueCard } from '#/features/venues/components/venue-card'
 import { venuesQueryOptions } from '#/features/venues/api'
 
@@ -23,8 +22,9 @@ export function VenueList({ ownerId }: { ownerId: string }) {
     Une seule requête ramène les deux listes : la policy `venues_owner_read`
     laisse un gérant voir ses archivés, que le tri sépare ici plutôt que par un
     second aller-retour. Cet écran n'affiche que les actifs — les archivés ont
-    leur page, `/admin/corbeille` — mais il en compte assez pour annoncer si
-    elle vaut le détour.
+    leur page, `/admin/corbeille`, annoncée depuis l'en-tête. Il lui reste à
+    savoir s'il y en a, pour distinguer « rien n'a jamais été créé » de « tout
+    est à la corbeille » : deux vides qui n'appellent pas la même phrase.
 
     `Boolean(...)` plutôt qu'une comparaison à `null` : tant que la migration
     `0005` n'est pas passée, `select('*')` renvoie des lignes sans la colonne,
@@ -58,21 +58,6 @@ export function VenueList({ ownerId }: { ownerId: string }) {
           ))}
         </ul>
       )}
-
-      {/*
-        Le lien n'apparaît qu'une fois la corbeille non vide, et il en donne le
-        nombre. C'est ce qui remplace la section dépliée d'office : tant que
-        rien n'a été supprimé, il n'y a rien à annoncer — et la première
-        suppression fait apparaître le lien, ce qui est le moment exact où le
-        gérant a besoin d'apprendre que la corbeille existe.
-      */}
-      {archivedCount > 0 ? (
-        <p className="mt-6">
-          <NavLink to="/admin/corbeille" icon={Trash2}>
-            Corbeille ({archivedCount})
-          </NavLink>
-        </p>
-      ) : null}
     </>
   )
 }

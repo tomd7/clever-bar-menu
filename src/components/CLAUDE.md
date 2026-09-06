@@ -107,6 +107,13 @@ an inline container.
 `BackOfficeShell` takes its navigation as a `nav` prop rather than building it: listing
 venues is the venues domain, and this directory must not import from `#/features/`.
 
+It takes a second slot, **`navFooter`** — the column's bottom zone, pinned above the
+identity and the sign-out, for what belongs to the tool rather than to the work (the bin,
+today). A separate prop and not the tail of `nav`, because the two zones are a full column
+apart: one stretched `nav` would make the shell responsible for the gap between its own
+items. Like `nav`, it only renders from `lg`, and it draws **no separator of its own** —
+that belongs to whatever is put in it, so an empty zone leaves no trace.
+
 `MenuAddress` (`back-office/menu-address.tsx`) draws `/m/<slug>` as a **control, not a
 caption**: a link opening the customer menu in a **new tab** — the manager checks the
 result and comes back to the form they left — next to a `CopyButton` that copies the

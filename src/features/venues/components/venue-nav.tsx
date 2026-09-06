@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { Boxes, QrCode, Store, Trash2, UtensilsCrossed } from 'lucide-react'
+import { Boxes, QrCode, Store, UtensilsCrossed } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 
 import { venuesQueryOptions } from '#/features/venues/api'
@@ -17,6 +17,10 @@ import { venuesQueryOptions } from '#/features/venues/api'
  * L'arbre ne répète jamais une destination : l'établissement ouvert devient un
  * intitulé de groupe, et ce sont ses sections qui portent les liens. Les
  * autres établissements restent de simples liens.
+ *
+ * La corbeille n'est pas ici : elle relève de l'outil et non du travail, et
+ * `VenueTrashRailLink` la pose dans la zone basse de la colonne, au-dessus de
+ * la déconnexion.
  *
  * `activeVenueSlug` est passé par la route plutôt que lu ici : savoir où l'on
  * se trouve est une question de routage, et ce composant reste ainsi une
@@ -39,15 +43,6 @@ export function VenueNav({
   */
   const venues = (venuesQuery.data ?? []).filter(
     (venue) => !venue.deleted_at || venue.slug === activeVenueSlug,
-  )
-
-  /*
-    La corbeille n'entre dans la colonne qu'une fois pleine : une entrée
-    permanente vers un écran vide occuperait la place d'une destination réelle,
-    et un gérant qui n'a jamais rien supprimé n'a rien à y faire.
-  */
-  const hasArchived = (venuesQuery.data ?? []).some((venue) =>
-    Boolean(venue.deleted_at),
   )
 
   return (
@@ -133,17 +128,6 @@ export function VenueNav({
           ),
         )}
       </ul>
-
-      {hasArchived ? (
-        <Link
-          to="/admin/corbeille"
-          activeProps={{ className: 'is-active' }}
-          className="rail-link mt-1"
-        >
-          <Trash2 className="size-4 shrink-0" />
-          Corbeille
-        </Link>
-      ) : null}
     </nav>
   )
 }

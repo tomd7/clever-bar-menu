@@ -21,15 +21,24 @@ import type { ReactNode } from 'react'
  * La navigation ne s'affiche qu'à partir de `lg` : sur téléphone la barre
  * supérieure n'a pas la place d'une arborescence, et les écrans y gardent
  * leurs propres liens de retour.
+ *
+ * `navFooter` est la zone basse de cette colonne, collée au bloc identité et
+ * déconnexion : ce qui relève de l'outil plutôt que du travail — la corbeille
+ * aujourd'hui. Une prop distincte de `nav` et non le bas de celle-ci, parce
+ * que ces deux zones sont séparées par toute la hauteur de la colonne, et
+ * qu'un seul `nav` étiré jusqu'en bas rendrait la coquille responsable de
+ * l'écart entre ses éléments.
  */
 export function BackOfficeShell({
   email,
   nav,
+  navFooter,
   onSignOut,
   children,
 }: {
   email: string | undefined
   nav?: ReactNode
+  navFooter?: ReactNode
   onSignOut: () => void
   children: ReactNode
 }) {
@@ -62,6 +71,16 @@ export function BackOfficeShell({
           </div>
 
           <div className="flex items-center gap-2 lg:flex-col lg:items-stretch lg:gap-3">
+            {/*
+              Comme `nav`, réservé à `lg` : la barre supérieure du téléphone
+              n'a pas la place, et les écrans y gardent leurs propres liens.
+              Le filet qui sépare cette zone du reste appartient à ce qu'on y
+              pose — vide, elle ne doit laisser aucune trace.
+            */}
+            {navFooter ? (
+              <div className="hidden lg:block">{navFooter}</div>
+            ) : null}
+
             <p className="hidden truncate text-xs text-ink-soft lg:block">
               {email}
             </p>

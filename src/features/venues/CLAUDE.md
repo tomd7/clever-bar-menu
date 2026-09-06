@@ -18,8 +18,9 @@ it as a `nav` prop because `src/components/` must not import from `#/features/`.
 **The tree never repeats a destination**: the open venue becomes a group label and its
 sections (Carte, Stock, QR code) carry the links, while the other venues stay plain links.
 
-**« Corbeille » only enters the column once the bin is non-empty.** A permanent entry
-pointing at an empty screen takes the place of a real destination.
+**The bin is not in `VenueNav`.** It belongs to the tool rather than to the work, so it
+sits in the column's bottom zone (`BackOfficeShell`'s `navFooter`), above the identity and
+the sign-out — `VenueTrashRailLink` in `venue-trash-link.tsx`.
 
 Items use `.rail-link`, **not** `.nav-link` — that underline sits 8px below its box and
 would land inside the next item of a vertical list.
@@ -53,9 +54,20 @@ took as much of the page as the venues actually in service, which is the reverse
 manager does there; and a page can be bookmarked, opened in a tab and reached from the
 column, where a fold has to be found and unfolded on every visit.
 
-- **The venues list links to it only when the bin is non-empty**, and gives the count
-  (« Corbeille (2) »). The link therefore appears on the first deletion — the exact moment
-  the manager needs to learn the bin exists — and nothing announces an empty screen.
+- **Two entry points, both in `venue-trash-link.tsx`, both silent while the bin is
+  empty** — nothing should announce an empty screen, and the first deletion makes them
+  appear, which is the exact moment the manager needs to learn the bin exists.
+  `VenueTrashLink` sits in the venues page **header**, on the title's line: a manager
+  looking for the bin has just deleted something, and putting the link under the grid
+  would make them scroll past everything still in service. `VenueTrashRailLink` sits at
+  the **bottom of the column**, in `navFooter`.
+- **Only the header link carries the count.** In the column, Carte / Stock / QR code carry
+  none, and a lone number in a list of destinations reads as an alert when there is
+  nothing to deal with.
+- Both read the count through `select` on `venuesQueryOptions` — same cache as the list
+  and the column, one request, and a re-render only when the count itself moves.
+- **The separator above the rail link belongs to the link**, not to the shell's zone:
+  drawn by the shell it would survive an empty bin and separate the sign-out from nothing.
 - **`corbeille` is a reserved slug** (`RESERVED_SLUGS` in `api.ts`). `/admin/corbeille` is
   a static segment and the router puts it before `/admin/$venueSlug`, so a venue with that
   slug would be created without any error and then be unreachable — its public menu
