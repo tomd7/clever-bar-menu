@@ -5,6 +5,7 @@ import { ActionButton } from '#/components/buttons/action-button'
 import { BottomSheet } from '#/features/orders/components/bottom-sheet'
 import { ErrorNote } from '#/components/error-note'
 import { IconButton } from '#/components/buttons/icon-button'
+import { ProductSize, productLabel } from '#/components/product-size'
 import { TextAreaField } from '#/components/form/textarea-field'
 import { TextField } from '#/components/form/text-field'
 import { cartTotal, setCartQuantity, useCart } from '#/features/orders/cart'
@@ -97,7 +98,10 @@ export function CartSheet({
         {lines.map(({ line, product }) => (
           <li key={line.productId} className="flex items-center gap-3 py-3">
             <div className="min-w-0 flex-1">
-              <p className="font-medium">{product.name}</p>
+              <p className="font-medium">
+                {product.name}
+                <ProductSize size={product.size} />
+              </p>
               <p className="mt-0.5 text-sm text-ink-soft tabular-nums">
                 {product.price_cents === null
                   ? 'Prix au comptoir'
@@ -114,10 +118,13 @@ export function CartSheet({
             <div className="flex items-center rounded-lg border border-line bg-surface-raised">
               <IconButton
                 icon={Minus}
+                /* `productLabel` et non `product.name` : deux compteurs
+                   voisins annoncés « Une Blonde de moins » ne se distinguent
+                   pas quand la carte porte la 25cl et la 50cl. */
                 label={
                   line.quantity === 1
-                    ? `Retirer ${product.name} de la commande`
-                    : `Une ${product.name} de moins`
+                    ? `Retirer ${productLabel(product.name, product.size)} de la commande`
+                    : `Une ${productLabel(product.name, product.size)} de moins`
                 }
                 onClick={() =>
                   setCartQuantity(venueSlug, line.productId, line.quantity - 1)
@@ -131,7 +138,7 @@ export function CartSheet({
               </span>
               <IconButton
                 icon={Plus}
-                label={`Une ${product.name} de plus`}
+                label={`Une ${productLabel(product.name, product.size)} de plus`}
                 onClick={() =>
                   setCartQuantity(venueSlug, line.productId, line.quantity + 1)
                 }

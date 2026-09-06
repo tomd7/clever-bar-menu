@@ -18,6 +18,7 @@ import {
   parseOptionalEurosToCents,
 } from '#/features/menu/price'
 import { StockFormatError, parseOptionalStock } from '#/features/menu/stock'
+import { parseOptionalSize } from '#/features/menu/size'
 import { removeProductPhoto, uploadProductPhoto } from '#/features/menu/photo'
 
 import type { Menu } from '#/features/menu/api'
@@ -105,6 +106,8 @@ export function useSaveProduct() {
       position: number
       name: string
       description: string
+      /** Format saisi, en texte. Vide = la carte n'affiche pas de format. */
+      size: string
       price: string
       /** Niveau de stock saisi, en texte. Vide = produit non suivi. */
       stock: string
@@ -160,6 +163,7 @@ export function useSaveProduct() {
       const draft = {
         name: input.name.trim(),
         description: input.description.trim() || null,
+        size: parseOptionalSize(input.size),
         priceCents,
         imagePath: uploadedPath ?? input.imagePath,
         stockQuantity,

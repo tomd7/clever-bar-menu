@@ -246,6 +246,8 @@ export async function deleteCategory(categoryId: string): Promise<void> {
 export type ProductDraft = {
   name: string
   description: string | null
+  /** Format servi (« 50cl », « au fût »), ou `null` si la carte n'en dit rien. */
+  size: string | null
   priceCents: number | null
   /** Chemin dans le bucket, jamais une URL : celle-ci dépend du projet. */
   imagePath: string | null
@@ -268,6 +270,7 @@ function toProductRow(draft: ProductDraft) {
   return {
     name: draft.name,
     description: draft.description,
+    size: draft.size,
     price_cents: draft.priceCents,
     image_path: draft.imagePath,
     /*

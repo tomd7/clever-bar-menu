@@ -6,6 +6,7 @@ import { ErrorNote } from '#/components/error-note'
 import { TextAreaField } from '#/components/form/textarea-field'
 import { PhotoField } from '#/features/menu/components/photo-field'
 import { TextField } from '#/components/form/text-field'
+import { SIZE_MAX_LENGTH, SIZE_SUGGESTIONS } from '#/features/menu/size'
 import { centsToInput } from '#/features/menu/price'
 import { stockToInput } from '#/features/menu/stock'
 import { useSaveProduct } from '#/features/menu/mutations'
@@ -37,6 +38,7 @@ export function ProductForm({
 }) {
   const [name, setName] = useState(product?.name ?? '')
   const [description, setDescription] = useState(product?.description ?? '')
+  const [size, setSize] = useState(product?.size ?? '')
   const [price, setPrice] = useState(
     product ? centsToInput(product.price_cents) : '',
   )
@@ -85,6 +87,7 @@ export function ProductForm({
         position,
         name,
         description,
+        size,
         price,
         stock,
         lowStockThreshold,
@@ -103,10 +106,17 @@ export function ProductForm({
       onSubmit={handleSubmit}
       className="mt-3 rounded-xl border border-line bg-surface-raised p-3 sm:p-4"
     >
-      {/* Deux colonnes dès lg : le back-office doit exploiter la largeur, pas empiler. */}
-      <div className="grid gap-3 lg:grid-cols-[2fr_1fr]">
+      {/*
+        Le nom prend toute la largeur, la taille et le prix se partagent la
+        ligne suivante dès `sm`, et les trois s'alignent à partir de `lg` : le
+        back-office doit exploiter la largeur, pas empiler. Taille et prix sont
+        voisins parce qu'ils se lisent ensemble — « 50cl à 5,50 € » est une
+        seule décision.
+      */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr]">
         <TextField
           label="Nom"
+          className="sm:col-span-2 lg:col-span-1"
           autoFocus
           required
           maxLength={120}
@@ -114,6 +124,68 @@ export function ProductForm({
           value={name}
           onChange={(event) => setName(event.target.value)}
         />
+
+        <div>
+          <TextField
+            label={
+              <>
+                Taille{' '}
+                <span className="font-normal text-ink-soft">(facultatif)</span>
+              </>
+            }
+            maxLength={SIZE_MAX_LENGTH}
+            placeholder="50cl"
+            value={size}
+            onChange={(event) => setSize(event.target.value)}
+          />
+
+          {/*
+            Des suggestions, pas une liste fermée : le champ accepte n'importe
+            quoi — « pichet », « demi », « 4cl » — et ces pastilles ne font
+            qu'épargner six caractères au clavier pour les formats que tous les
+            bars partagent. Une pastille active se retire d'un second appui :
+            c'est le seul moyen de vider le champ sans revenir au clavier, et
+            personne ne cherche une croix qu'il n'a pas vue apparaître.
+
+            Le rail est celui de la carte client et de la page Stock
+            (`menu-nav.css`) : sept pastilles débordent la largeur d'un
+            téléphone, et le dégradé dit qu'il y a une suite là où une barre de
+            défilement ne ferait que salir la bande.
+          */}
+          <ul
+            aria-label="Formats courants"
+            className="scrollbar-none rail-fade mt-2 flex gap-2 overflow-x-auto"
+          >
+            {SIZE_SUGGESTIONS.map((suggestion) => {
+              const isActive = size.trim() === suggestion
+
+              return (
+                <li key={suggestion}>
+                  <button
+                    type="button"
+                    aria-pressed={isActive}
+                    onClick={() => setSize(isActive ? '' : suggestion)}
+                    /*
+                      44px de haut sur mobile, resserré à partir de `lg` comme
+                      tous les contrôles du back-office (`SURFACE_HEIGHT`) : ce
+                      formulaire se remplit aussi bien au pouce derrière le bar
+                      qu'à la souris. L'enfoncement au clic reprend celui des
+                      pastilles de la carte — la transition `transform` est
+                      globale (`motion.css`), le repos se fait en `--ease-out`.
+                    */
+                    className={
+                      isActive
+                        ? 'flex min-h-11 items-center rounded-full border border-bottle bg-bottle px-3 text-sm font-semibold whitespace-nowrap text-on-bottle active:scale-[0.97] lg:min-h-8'
+                        : 'flex min-h-11 items-center rounded-full border border-line bg-surface px-3 text-sm font-medium whitespace-nowrap text-ink-soft hover:text-ink active:scale-[0.97] lg:min-h-8'
+                    }
+                  >
+                    {suggestion}
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
 
         <TextField
           label={

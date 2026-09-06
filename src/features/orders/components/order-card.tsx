@@ -8,6 +8,7 @@ import {
 } from '#/features/orders/status'
 import { DeleteButton } from '#/components/buttons/delete-button'
 import { ErrorNote } from '#/components/error-note'
+import { ProductSize } from '#/components/product-size'
 import { formatPrice } from '#/lib/money'
 import { useAcceptOrder, useSetOrderStatus } from '#/features/orders/mutations'
 
@@ -75,7 +76,15 @@ export function OrderCard({
             <span className="w-6 shrink-0 font-semibold tabular-nums">
               {item.quantity}
             </span>
-            <span className="min-w-0 flex-1">{item.name}</span>
+            {/*
+              Le format tient dans la même boîte que le nom : sur un ticket,
+              « Blonde » deux fois — l'une en 25cl, l'autre en 50cl — est un
+              ticket qu'il faut deviner au moment de servir.
+            */}
+            <span className="min-w-0 flex-1">
+              {item.name}
+              <ProductSize size={item.size} />
+            </span>
           </li>
         ))}
       </ul>

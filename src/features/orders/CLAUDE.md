@@ -26,6 +26,12 @@ rights must not be given any.
 
 Invariants that hold the design up:
 
+- **The line copies the product's format too** (`order_items.size`, migration `0013`), next
+  to its name and unit price. Same reason as the rest — a line is a trace, and the product
+  will be renamed and re-sized — plus one of its own: « Blonde » twice on a ticket, once in
+  25cl and once in 50cl, is a ticket the counter has to guess at. It is read back through
+  `get_order` and rendered by `components/product-size.tsx`, the shared piece this feature
+  and `features/menu` both draw a size with.
 - **Nothing with a consequence comes from the browser.** The client sends product ids and
   quantities. Names, unit prices and the total are re-read from the database inside
   `place_order`. A total sent by the client is a total open to negotiation, and this

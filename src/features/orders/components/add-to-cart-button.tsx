@@ -1,6 +1,7 @@
 import { Plus } from 'lucide-react'
 
 import { addToCart, useCart } from '#/features/orders/cart'
+import { productLabel } from '#/components/product-size'
 
 import type { Product } from '#/lib/supabase'
 
@@ -52,8 +53,8 @@ export function AddToCartButton({
       */
       aria-label={
         quantity > 0
-          ? `Ajouter ${product.name} — ${quantity} au panier`
-          : `Ajouter ${product.name}`
+          ? `Ajouter ${productLabel(product.name, product.size)} — ${quantity} au panier`
+          : `Ajouter ${productLabel(product.name, product.size)}`
       }
     >
       {quantity > 0 ? quantity : <Plus className="size-5" aria-hidden="true" />}

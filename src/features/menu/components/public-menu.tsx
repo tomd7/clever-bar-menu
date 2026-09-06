@@ -1,6 +1,7 @@
 import { ArrowUp } from 'lucide-react'
 
 import { MenuNav, sectionId } from '#/features/menu/components/menu-nav'
+import { ProductSize } from '#/components/product-size'
 import { formatPrice } from '#/lib/money'
 import { productPhotoUrl } from '#/features/menu/photo'
 
@@ -320,7 +321,16 @@ function MenuItem({
     >
       <div className="min-w-0">
         <p className="flex items-baseline gap-2">
-          <span className="min-w-0 font-semibold">{product.name}</span>
+          {/*
+            Le format est dans la boîte du nom, avant la conduite : « Blonde
+            50cl ······ 5,50 € », comme sur une carte imprimée. Posé en frère
+            du nom, il aurait été un troisième objet à aligner sur une ligne
+            qui en compte déjà trois, et la conduite serait partie avant lui.
+          */}
+          <span className="min-w-0 font-semibold">
+            {product.name}
+            <ProductSize size={product.size} />
+          </span>
 
           {/*
             Un produit sans prix n'affiche rien du tout — ni prix, ni filet —

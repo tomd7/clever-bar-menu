@@ -12,6 +12,7 @@ import {
   GUEST_STATUS_LABEL,
   isOpenOrder,
 } from '#/features/orders/status'
+import { ProductSize } from '#/components/product-size'
 import { formatPrice } from '#/lib/money'
 import { forgetTickets } from '#/features/orders/ticket'
 import { guestOrderQueryOptions } from '#/features/orders/public-api'
@@ -336,7 +337,10 @@ function OrderBlock({
             <span className="w-6 shrink-0 font-semibold tabular-nums">
               {item.quantity}
             </span>
-            <span className="min-w-0 flex-1">{item.name}</span>
+            <span className="min-w-0 flex-1">
+              {item.name}
+              <ProductSize size={item.size} />
+            </span>
             <span className="shrink-0 text-sm text-ink-soft tabular-nums">
               {item.unitPriceCents === null
                 ? 'au comptoir'

@@ -2,7 +2,7 @@
 
 Owns the back-office menu editor, the stock screen and the customer-facing menu:
 `components/` (menu-editor, category-\*, product-\*, menu-nav, public-menu, photo-field),
-`api.ts`, `public-api.ts`, `mutations.ts`, `price.ts`, `photo.ts`, `stock.ts`.
+`api.ts`, `public-api.ts`, `mutations.ts`, `price.ts`, `size.ts`, `photo.ts`, `stock.ts`.
 
 **No cross-feature imports**: this feature must not reach into `features/venues` or
 `features/orders`. Anything two need moves down to `src/components/` or `src/lib/` — that is
@@ -49,6 +49,30 @@ stock).
   converts. It parses decimals as _text_ rather than multiplying a float — `1.10 * 100` is
   `110.00000000000001` in JS. Accepts comma or dot, strips whitespace (`\s` covers
   non-breaking spaces).
+
+## Sizes — `size.ts`
+
+`products.size`, free text, nullable — « 25cl », « 50cl », « au fût », « pichet ».
+
+- **One size per product, not a list of formats.** Two sizes of the same beer are two
+  products, exactly as a printed carte lists them. Carrying several on one line would mean
+  a table of its own with its own RLS, a cart that points at a format rather than at a
+  product, and a rewritten `place_order` — for a menu that reads the same either way.
+- **Free text, and it stays free.** `SIZE_SUGGESTIONS` is what the form offers in one tap,
+  not what the column accepts: a bar's formats are its own (a « demi », a « pichet 50cl », a
+  4cl measure), and a closed list would have to be redeployed the day one is missing. The
+  chips toggle — tapping the active one clears the field, which is the only way to empty it
+  without going back to the keyboard.
+- **Blank is `null`, like a blank price**, and `parseOptionalSize` is the single place that
+  says so. An empty string would render as a phantom gap after every name.
+- **Nothing parses it.** « 50cl » is not a quantity here, and the moment the field parsed
+  one it would owe an answer for « au fût », which has none.
+- **The display lives in `components/product-size.tsx`**, not here: the cart, the counter's
+  queue and the customer's tracker all render a size, and `features/orders` may not import
+  from this feature. `productLabel(name, size)` is its text form, for the `aria-label`s
+  where « Ajouter Blonde » on two adjacent buttons says nothing.
+- **The size is copied onto the order line** (`order_items.size`, migration `0013`), like
+  the name and the unit price. See `features/orders/CLAUDE.md`.
 
 ## Photos — `photo.ts`
 

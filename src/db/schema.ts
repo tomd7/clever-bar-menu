@@ -244,6 +244,26 @@ export const products = pgTable(
     description: text('description'),
 
     /**
+     * Serving format — « 25cl », « 50cl », « au fût », « pichet ».
+     *
+     * Free text, and nullable, which is the resting state: most lines of a bar
+     * menu are served one way only, and repeating « 1 verre » on thirty of them
+     * would turn an information into noise.
+     *
+     * A closed enumeration was rejected. A bar's formats are its own — a
+     * « demi », a « pichet 50cl », a 4cl measure — and a list would have to be
+     * redeployed the day one is missing. The form offers the usual ones as
+     * chips (`features/menu/size.ts`); it does not restrict what can be typed.
+     *
+     * It qualifies the product, it does not price it: two formats of the same
+     * beer are two products, exactly as a printed menu lists them. Carrying
+     * several formats on one line would mean a table of its own, a cart that
+     * points at a format rather than at a product, and a rewritten
+     * `place_order` — for a menu that reads the same either way.
+     */
+    size: text('size'),
+
+    /**
      * Prix dans la plus petite unité de la devise (2450 = 24,50 €).
      * Un entier plutôt qu'un flottant : aucun arrondi ne peut se glisser dans
      * un total. La devise vit sur l'établissement, pas ici.
@@ -515,6 +535,18 @@ export const orderItems = pgTable(
 
     /** Nom du produit au moment de la commande. */
     name: text('name').notNull(),
+
+    /**
+     * Serving format at the time of the order, copied like the name. `null`
+     * when the product carried none.
+     *
+     * Copied rather than read back through `productId`, for the same reason as
+     * the name: the line is a trace. But the reason it is copied *at all* is
+     * the counter — « Blonde » twice on a ticket, once in 25cl and once in
+     * 50cl, is a ticket that has to be guessed at. The format is half of what
+     * identifies a line as soon as the menu carries one.
+     */
+    size: text('size'),
 
     /** Prix unitaire figé, ou `null` si le produit était sans prix affiché. */
     unitPriceCents: integer('unit_price_cents'),

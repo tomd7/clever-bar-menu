@@ -4,6 +4,7 @@ import { EditButton } from '#/components/buttons/edit-button'
 import { ErrorNote } from '#/components/error-note'
 import { MoveButtons } from '#/components/buttons/move-buttons'
 import { ProductForm } from '#/features/menu/components/product-form'
+import { ProductSize, productLabel } from '#/components/product-size'
 import { StockBadge } from '#/features/menu/components/stock-badge'
 import { Switch } from '#/components/ui/switch'
 import {
@@ -84,6 +85,13 @@ export function ProductRow({
             }
           >
             {product.name}
+            {/*
+              La taille est dans le `<p>` du nom, et non à côté : c'est le nom
+              qui est barré quand le produit quitte la carte, et un « 50cl »
+              resté droit à côté d'un nom barré se lirait comme une seconde
+              information, encore valable.
+            */}
+            <ProductSize size={product.size} />
           </p>
           <StockBadge product={product} />
         </div>
@@ -149,7 +157,9 @@ export function ProductRow({
         />
         <DeleteButton
           label="Supprimer le produit"
-          question={`Supprimer « ${product.name} » ?`}
+          /* Le format fait partie de l'identité : « Supprimer « Blonde » ? »
+             ne dit pas laquelle des deux lignes va partir. */
+          question={`Supprimer « ${productLabel(product.name, product.size)} » ?`}
           pending={remove.isPending}
           onConfirm={() =>
             remove.mutate({ id: product.id, imagePath: product.image_path })

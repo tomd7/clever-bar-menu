@@ -100,6 +100,14 @@ written by hand and carry their own warnings inline:
   instant as a customer cancelling is arbitrated by the row lock — exactly one wins, and the
   loser's message is already right on both sides.
 
+- `0013_order_lines_size.sql` — `place_order` and `get_order` again, replaced whole so the
+  serving format travels with the line: the first copies `products.size` into
+  `order_items.size`, the second hands it back to the customer tracking their order. Column
+  and function are split across two files on purpose — `0012` is drizzle-kit's `alter
+table`, and this one assumes it has already run. Neither function changes signature, so a
+  `create or replace` is enough and the grants of `0009` stand; re-granting here would mask
+  a revocation made since.
+
 **Parameter names in these functions avoid every column name** (`guest_name` not
 `customer_name`, `lookup_id` not `order_id`). Not style: in plpgsql, a parameter that is a
 homonym of a column visible in the statement raises an ambiguity **at run time**, which is

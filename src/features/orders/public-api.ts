@@ -29,6 +29,8 @@ export type GuestOrder = {
   items: Array<{
     id: string
     name: string
+    /** Format recopié à l'envoi, ou `null` si le produit n'en portait pas. */
+    size: string | null
     unitPriceCents: number | null
     quantity: number
   }>
@@ -108,6 +110,7 @@ export async function fetchOrder(ticket: OrderTicket): Promise<GuestOrder> {
     items: data.items.map((item) => ({
       id: item.id,
       name: item.name,
+      size: item.size,
       unitPriceCents: item.unit_price_cents,
       quantity: item.quantity,
     })),

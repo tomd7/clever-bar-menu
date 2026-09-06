@@ -85,6 +85,20 @@
       "when": 1788702824783,
       "tag": "0011_cancel_order",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1788715566661,
+      "tag": "0012_lush_phalanx",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1788715573241,
+      "tag": "0013_order_lines_size",
+      "breakpoints": true
     }
   ]
 }

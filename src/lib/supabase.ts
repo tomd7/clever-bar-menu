@@ -44,6 +44,8 @@ type ProductRow = {
   category_id: string
   name: string
   description: string | null
+  /** Format servi (« 50cl », « au fût »), ou `null` : la carte n'en dit rien. */
+  size: string | null
   price_cents: number | null
   image_path: string | null
   is_available: boolean
@@ -93,6 +95,8 @@ type OrderItemRow = {
   /** `null` si le produit a été supprimé de la carte depuis. */
   product_id: string | null
   name: string
+  /** Format recopié à l'envoi, comme le nom : la ligne est une trace. */
+  size: string | null
   unit_price_cents: number | null
   quantity: number
   created_at: string
@@ -165,7 +169,7 @@ export type Database = {
         Row: OrderItemRow
         Insert: Insert<
           OrderItemRow,
-          Timestamps | 'product_id' | 'unit_price_cents'
+          Timestamps | 'product_id' | 'size' | 'unit_price_cents'
         >
         /* Une ligne de commande ne se modifie pas : c'est une trace. */
         Update: Record<never, never>
@@ -180,6 +184,7 @@ export type Database = {
           | 'position'
           | 'is_available'
           | 'image_path'
+          | 'size'
           | 'price_cents'
           | 'stock_quantity'
           | 'low_stock_threshold'
@@ -239,6 +244,7 @@ export type Database = {
           items: Array<{
             id: string
             name: string
+            size: string | null
             unit_price_cents: number | null
             quantity: number
           }>

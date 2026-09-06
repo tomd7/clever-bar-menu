@@ -101,6 +101,21 @@ the dimensions of what is coming, from `Skeleton` (one bar), `SkeletonScreen` (t
   label glued in as the first child of a `divide-y` list or a grid would take a divider or
   a cell.
 
+## `product-size.tsx`
+
+`ProductSize` draws a product's serving format — « 50cl », « au fût » — and `productLabel`
+is its text form for an `aria-label`. It sits here rather than in `features/menu` because a
+ticket names its lines the way the menu does: the cart sheet, the counter's queue and the
+customer's tracker all render one, and `features/orders` may not import from
+`features/menu`. Same move as `formatPrice` before it.
+
+**A qualifier, not a badge.** The format is set in the flow of the name — softer ink, a
+shade smaller, inside the name's own line box — and never in a pill: the bordered pill is
+`StockBadge`, and it means something is wrong. Being inside the line box is also what puts
+the customer menu's leader rule _after_ the format, the way a printed carte sets it. Its
+size is in `em`, not `rem`: the same span is rendered in a 14px ticket line and a 16px menu
+row, and in both it must read one notch below the name it follows.
+
 ## Links
 
 **Links are not buttons.** A destination gets an `<a>`, never a `<button>` calling

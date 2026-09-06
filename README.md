@@ -194,6 +194,14 @@ Le prix est **facultatif** : un champ laissé vide vaut « pas de prix affiché 
 du jour ou un tarif selon arrivage. C'est distinct de `0`, qui reste un prix valide pour un
 article offert.
 
+La **taille** d'un produit — « 25cl », « 50cl », « au fût », « pichet » — est un champ libre,
+facultatif lui aussi. Le formulaire propose les formats courants en une pastille, sans pour
+autant fermer la liste : les formats d'un bar sont les siens. Deux tailles d'une même bière
+sont **deux produits**, comme sur une carte imprimée, et le format se lit à la suite du nom,
+avant la conduite qui mène au prix. Il est recopié sur la ligne de commande à l'envoi : deux
+« Blonde » sur un ticket, l'une en 25cl et l'autre en 50cl, seraient sinon un ticket qu'il
+faut deviner.
+
 L'ordre des catégories et des produits est porté par une colonne `position`, avançant de 100
 en 100 pour permettre d'insérer entre deux voisines sans réécrire la liste. Un produit en
 rupture reste dans la carte du gérant, barré, et sera masqué côté client.
@@ -411,6 +419,8 @@ node .output/server/index.mjs
 - [x] Génération du QR code (un par établissement)
 - [x] Authentification du back-office (Supabase Auth, comptes créés par l'administrateur)
 - [x] CRUD de la carte (catégories, produits, prix, photos)
+- [x] Taille du produit : format servi (25cl, 50cl, au fût…), sur la carte comme sur les
+      tickets de commande
 - [x] Multi-établissements : un gérant, plusieurs bars
 - [x] Thème : variantes jour et nuit suivant le système
 - [x] Suppression d'un établissement (logique, avec corbeille et restauration)
