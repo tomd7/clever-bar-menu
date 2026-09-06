@@ -93,6 +93,15 @@ the `adjust_product_stock` function.
   every `['menu']` query by prefix, cancels in-flight fetches first, rolls back on error,
   and invalidates `onSettled` rather than `onSuccess`, because the rolled-back value may
   itself be stale.
+- **The stock page lists a product only if it has a level, and either a threshold or a
+  zero** (`isWatched`). The quantity says there is something to count down; the threshold
+  is how a manager designates the lines they want to be warned about — without one, a row
+  could never say anything on a page read to find out what to re-order. **Sold out is the
+  exception**, threshold or not: at zero the product has left the customer menu, and this
+  is the screen that repairs that. Hiding a rupture because nobody asked to be warned
+  about it is the one thing this page must not do. Restocking such a product drops it back
+  out of the list — it becomes again a line nobody asked for news of, and its level is set
+  from its card in the menu editor; the page's footer counts those and links there.
 - **The stock page reads `menuQueryOptions`, not a query of its own.** Stock is the same
   menu seen through the quantity column. A second query would mean a second cache to
   invalidate, and a `−1` here wouldn't show on the menu open in the next tab.

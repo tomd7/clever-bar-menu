@@ -199,7 +199,7 @@ export function ProductForm({
             value={lowStockThreshold}
             onChange={(event) => setLowStockThreshold(event.target.value)}
             inputClassName="tabular-nums"
-            hint="En dessous, le produit est signalé sur la page Stock."
+            hint="Sans seuil, le produit n’apparaît sur la page Stock qu’une fois épuisé ; en dessous, il y est signalé."
           />
         </div>
       </div>
