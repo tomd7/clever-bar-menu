@@ -99,6 +99,20 @@
       "when": 1788715573241,
       "tag": "0013_order_lines_size",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1788733605058,
+      "tag": "0014_sticky_stone_men",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1788733616088,
+      "tag": "0015_product_barcode_unique",
+      "breakpoints": true
     }
   ]
 }

@@ -38,6 +38,19 @@ Both wrap shadcn's `Button` rather than editing it — `ui/` stays regenerable.
 `ActionButton` defaults `type="button"`: inside a form, a missing `type` silently turns a
 cancel button into a submit.
 
+**`ActionButton` supports `asChild`, and only because its children are wrapped in
+`Slot.Slottable`.** It renders two nodes — the icon, then the label — while Radix's `Slot`
+accepts exactly one. Without the marker, `<ActionButton asChild>` around a `Link` does not
+degrade: it **throws** (« Slot failed to slot onto its children ») and takes the whole
+screen into its `CatchBoundary`. That is how the stock page's « Scanner un code-barres »
+entry broke on its first render. The marker names the child that receives the merge and
+leaves the icon beside it, which is the wanted layout; it is inert when `asChild` is
+absent. `IconButton` needs none — it has a single child by construction.
+
+That escape hatch does not license drawing every link as a button: **links are not
+buttons** (below). It is for a screen's primary call to action that happens to navigate —
+today, the one entry into the scanner, on the phone.
+
 **One two-step control, not several.** `icon` / `confirmLabel` exist so that cancelling a
 customer's order can reuse `DeleteButton` instead of growing a second confirmation
 mechanism: it is the focus placement below that is the invariant, and duplicating the

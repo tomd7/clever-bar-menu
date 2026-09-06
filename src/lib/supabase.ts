@@ -46,6 +46,12 @@ type ProductRow = {
   description: string | null
   /** Format servi (« 50cl », « au fût »), ou `null` : la carte n'en dit rien. */
   size: string | null
+  /**
+   * Code-barres fabricant, en GTIN de 14 chiffres complété de zéros, ou `null`.
+   * Toujours passé par `normalizeBarcode` (`features/menu/barcode.ts`) avant
+   * d'être écrit : lu tel quel, un même produit s'appairerait deux fois.
+   */
+  barcode: string | null
   price_cents: number | null
   image_path: string | null
   is_available: boolean
@@ -185,6 +191,7 @@ export type Database = {
           | 'is_available'
           | 'image_path'
           | 'size'
+          | 'barcode'
           | 'price_cents'
           | 'stock_quantity'
           | 'low_stock_threshold'

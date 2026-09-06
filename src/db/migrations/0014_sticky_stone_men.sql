@@ -1,0 +1,2 @@
+ALTER TABLE "products" ADD COLUMN "barcode" text;--> statement-breakpoint
+ALTER TABLE "products" ADD CONSTRAINT "products_barcode_format" CHECK ("products"."barcode" is null or "products"."barcode" ~ '^[0-9]{14}$');

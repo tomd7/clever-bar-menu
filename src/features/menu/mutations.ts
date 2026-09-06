@@ -9,6 +9,7 @@ import {
   deleteProduct,
   renameCategory,
   setProductAvailability,
+  setProductBarcode,
   setProductStock,
   swapPositions,
   updateProduct,
@@ -211,8 +212,18 @@ export function useSaveProduct() {
  * raison : le composant qui appuie ne connaît pas le slug, et le lui faire
  * redescendre reconstituerait le fil que le projet a coupé.
  */
-function useOptimisticProductMutation<TVariables extends { productId: string }>(
-  mutationFn: (variables: TVariables) => Promise<void>,
+function useOptimisticProductMutation<
+  TVariables extends { productId: string },
+  TData,
+>(
+  /*
+    Générique sur ce que l'écriture renvoie, et non figé à `void` :
+    `adjustProductStock` rend le niveau obtenu, dont l'écran de scan a besoin
+    pour savoir ce que le plancher à zéro a absorbé de sa demande. Le laisser
+    tomber ici obligerait l'appelant à le relire, donc à réintroduire le
+    lire-puis-écrire que la fonction SQL existe pour supprimer.
+  */
+  mutationFn: (variables: TVariables) => Promise<TData>,
   patch: (product: Product, variables: TVariables) => Product,
 ) {
   const queryClient = useQueryClient()
@@ -292,5 +303,25 @@ export function useSetProductStock() {
     (input: { productId: string; quantity: number | null }) =>
       setProductStock(input.productId, input.quantity),
     (product, input) => ({ ...product, stock_quantity: input.quantity }),
+  )
+}
+
+/**
+ * Associe un code-barres à un produit, ou le retire avec `null`.
+ *
+ * Optimiste comme les écritures de stock, et pour la même raison : l'appairage
+ * se fait une bouteille à la main, devant la caméra, et l'écran enchaîne
+ * aussitôt sur le mouvement de stock. Attendre l'aller-retour ferait patienter
+ * devant un panneau qui a déjà tout ce qu'il faut pour continuer.
+ *
+ * Le code doit avoir traversé `normalizeBarcode` : le patch écrit dans le cache
+ * ce que la base recevra, et deux formes du même code y feraient deux produits
+ * différents jusqu'à la prochaine invalidation.
+ */
+export function useSetProductBarcode() {
+  return useOptimisticProductMutation(
+    (input: { productId: string; barcode: string | null }) =>
+      setProductBarcode(input.productId, input.barcode),
+    (product, input) => ({ ...product, barcode: input.barcode }),
   )
 }

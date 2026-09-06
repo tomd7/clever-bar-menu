@@ -1,6 +1,8 @@
-import { ArrowLeft, PackageOpen } from 'lucide-react'
+import { ArrowLeft, PackageOpen, ScanBarcode } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 
+import { ActionButton } from '#/components/buttons/action-button'
 import { EmptyState } from '#/components/empty-state'
 import { NavLink } from '#/components/nav-link'
 import {
@@ -111,6 +113,26 @@ export function StockPage({ venueSlug }: { venueSlug: string }) {
           Un produit épuisé quitte la carte des clients et y revient dès qu'il
           est réapprovisionné.
         </p>
+
+        {/*
+          L'entrée du scanner est ici et nulle part ailleurs — pas dans la
+          colonne du back-office, qui n'existe qu'à partir de `lg`, c'est-à-dire
+          sur la machine sans caméra utilisable. Un lien permanent vers un écran
+          qui ne marche pas là où le lien se voit serait pire que pas de lien.
+        */}
+        <ActionButton
+          icon={ScanBarcode}
+          variant="outline"
+          className="mt-4"
+          asChild
+        >
+          <Link
+            to="/admin/$venueSlug/stock/scan"
+            params={{ venueSlug: venue.slug }}
+          >
+            Scanner un code-barres
+          </Link>
+        </ActionButton>
       </header>
 
       {alerts.length > 0 ? (
