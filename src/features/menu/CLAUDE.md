@@ -4,9 +4,12 @@ Owns the back-office menu editor, the stock screen and the customer-facing menu:
 `components/` (menu-editor, category-\*, product-\*, menu-nav, public-menu, photo-field),
 `api.ts`, `public-api.ts`, `mutations.ts`, `price.ts`, `photo.ts`, `stock.ts`.
 
-**No cross-feature imports**: this feature must not reach into `features/venues`. Anything
-both need moves down to `src/components/` or `src/lib/` — that is why `describeError` is
-in `lib/postgrest-error.ts` and the `/m/<slug>` shape in `lib/public-menu-url.ts`.
+**No cross-feature imports**: this feature must not reach into `features/venues` or
+`features/orders`. Anything two need moves down to `src/components/` or `src/lib/` — that is
+why `describeError` is in `lib/postgrest-error.ts`, the `/m/<slug>` shape in
+`lib/public-menu-url.ts`, `formatPrice` in `lib/money.ts` and `MENU_QUERY_KEY` in
+`lib/query-keys.ts` (which `features/orders` invalidates when accepting an order decrements
+stock).
 
 ## Data access
 
@@ -152,3 +155,13 @@ the `adjust_product_stock` function.
   editorial text a manager can put on this page. Note the back-office forms don't expose
   the field yet: it is writable through `createCategory` alone.
 - **The back-to-top link appears only where the rail does.**
+- **`PublicMenu` exposes a `productAction` slot** and knows nothing about what fills it.
+  Counter ordering puts its `+` there, and the assembly happens in `m.$venueSlug.tsx` — the
+  one file allowed to import both features, exactly as `_authenticated.tsx` passes
+  `<VenueNav>` to `BackOfficeShell`. `undefined` is the normal case, and the layout is then
+  unchanged.
+- **With an action, a photo-less product in a section that reserves a photo column renders an
+  explicit empty `<div>`.** `null` produces no element, and grid auto-placement would slide
+  the action into the image column — the prices on photo-less rows would stop lining up,
+  which is precisely what the reserved column exists to prevent. `itemLayout()` holds the
+  four cases flat rather than nesting ternaries at the call site.

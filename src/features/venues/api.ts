@@ -1,5 +1,6 @@
 import { queryOptions } from '@tanstack/react-query'
 
+import { VENUES_QUERY_KEY } from '#/lib/query-keys'
 import { describeError } from '#/lib/postgrest-error'
 import { removeVenuePhotos } from '#/lib/product-photos'
 import { supabase } from '#/lib/supabase'
@@ -34,8 +35,6 @@ export function slugify(value: string): string {
  * endroit où le problème est encore explicable.
  */
 const RESERVED_SLUGS = new Set(['corbeille'])
-
-export const VENUES_QUERY_KEY = ['venues'] as const
 
 /**
  * Les établissements d'un gérant, du plus ancien au plus récent.

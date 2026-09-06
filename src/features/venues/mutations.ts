@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 
+import { VENUES_QUERY_KEY } from '#/lib/query-keys'
 import {
-  VENUES_QUERY_KEY,
   archiveVenue,
   createVenue,
   purgeArchivedVenues,

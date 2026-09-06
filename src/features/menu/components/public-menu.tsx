@@ -1,11 +1,25 @@
 import { ArrowUp } from 'lucide-react'
 
 import { MenuNav, sectionId } from '#/features/menu/components/menu-nav'
-import { formatPrice } from '#/features/menu/price'
+import { formatPrice } from '#/lib/money'
 import { productPhotoUrl } from '#/features/menu/photo'
 
 import type { CategoryWithProducts, Menu } from '#/features/menu/api'
 import type { Product } from '#/lib/supabase'
+import type { ReactNode } from 'react'
+
+/**
+ * Ce que la carte accepte de poser en bout de ligne, sans savoir ce que c'est.
+ *
+ * C'est la prise de commande qui la remplit, et `features/menu` ne doit rien
+ * savoir de `features/orders` — la règle du projet interdit l'import. La route,
+ * elle, a le droit de connaître les deux : c'est exactement le montage que
+ * `_authenticated.tsx` fait déjà en passant `<VenueNav>` à `BackOfficeShell`.
+ *
+ * `undefined` est le cas normal : une carte dont l'établissement n'a pas ouvert
+ * la commande n'affiche rien de plus qu'avant.
+ */
+export type ProductAction = (product: Product) => ReactNode
 
 /**
  * Seuil à partir duquel le sommaire collant gagne sa place.
@@ -44,12 +58,35 @@ const MENU_TOP_ID = 'carte'
  * Le composant ne charge rien : la route s'en charge, ce qui la laisse préparer
  * les données côté serveur.
  */
-export function PublicMenu({ menu }: { menu: Menu }) {
+export function PublicMenu({
+  menu,
+  productAction,
+}: {
+  menu: Menu
+  productAction?: ProductAction
+}) {
   const { venue, categories } = menu
   const hasNav = categories.length >= NAV_MIN_CATEGORIES
 
   return (
-    <div className="flex min-h-dvh flex-col">
+    /*
+      La réserve du bas n'existe que lorsqu'une action est posée : c'est la
+      barre de commande, fixée au bord bas, qui recouvrirait sinon le dernier
+      produit de la carte — celui qu'on vient d'ajouter.
+
+      Elle est dimensionnée pour la barre à **deux lignes** — suivi de commande
+      *et* panier —, pas pour le cas courant à une seule. Cette page ne peut pas
+      savoir laquelle des deux est affichée, et se tromper par excès met un peu
+      de vide après la dernière catégorie, là où se tromper par défaut cache un
+      produit derrière un bandeau opaque.
+    */
+    <div
+      className={
+        productAction
+          ? 'flex min-h-dvh flex-col pb-36'
+          : 'flex min-h-dvh flex-col'
+      }
+    >
       {/*
         Largeur de lecture bornée, et non la pleine largeur de `page-wrap` :
         une carte est une colonne qui se parcourt du nom vers le prix. Étirée
@@ -130,6 +167,7 @@ export function PublicMenu({ menu }: { menu: Menu }) {
                     category={category}
                     currency={venue.currency}
                     isFirst={index === 0}
+                    productAction={productAction}
                   />
                 ))}
               </div>
@@ -164,10 +202,12 @@ function MenuSection({
   category,
   currency,
   isFirst,
+  productAction,
 }: {
   category: CategoryWithProducts
   currency: string
   isFirst: boolean
+  productAction?: ProductAction
 }) {
   /*
     La colonne d'image est réservée pour toute la section dès qu'un seul de ses
@@ -239,6 +279,7 @@ function MenuSection({
             product={product}
             currency={currency}
             withPhotoColumn={hasPhotos}
+            action={productAction?.(product)}
           />
         ))}
       </ul>
@@ -250,10 +291,12 @@ function MenuItem({
   product,
   currency,
   withPhotoColumn,
+  action,
 }: {
   product: Product
   currency: string
   withPhotoColumn: boolean
+  action?: ReactNode
 }) {
   return (
     <li
@@ -269,11 +312,7 @@ function MenuItem({
         l'œil ne comprend pas la cause. Centré, le nom fait face à sa photo, et
         un produit qui gagne trois lignes de description reste centré lui aussi.
       */
-      className={
-        withPhotoColumn
-          ? 'grid grid-cols-[minmax(0,1fr)_4rem] items-center gap-4 py-4 sm:grid-cols-[minmax(0,1fr)_5rem] sm:gap-5'
-          : 'py-4'
-      }
+      className={itemLayout(withPhotoColumn, action !== undefined)}
     >
       <div className="min-w-0">
         <p className="flex items-baseline gap-2">
@@ -303,6 +342,20 @@ function MenuItem({
         ) : null}
       </div>
 
+      {/*
+        Un placeholder explicite, et non `null`, quand la section réserve une
+        colonne d'image que ce produit ne remplit pas.
+
+        Ce n'est pas cosmétique : `null` ne produit aucun élément, et le
+        placement automatique de la grille ferait alors glisser l'action dans
+        la colonne de l'image. Les prix cesseraient de s'aligner sur les lignes
+        sans photo — c'est-à-dire exactement ce que la colonne réservée existe
+        pour empêcher.
+      */}
+      {withPhotoColumn && !product.image_path ? (
+        <div aria-hidden="true" />
+      ) : null}
+
       {withPhotoColumn && product.image_path ? (
         <img
           src={productPhotoUrl(product.image_path)}
@@ -322,6 +375,36 @@ function MenuItem({
           className="size-16 rounded-xl border border-line bg-surface-raised object-cover sm:size-20"
         />
       ) : null}
+      {action ? <div className="justify-self-end">{action}</div> : null}
     </li>
   )
+}
+
+/**
+ * La grille d'une ligne de produit, selon ce qu'elle doit loger.
+ *
+ * Quatre cas plutôt qu'un ternaire imbriqué à la volée : c'est la seule règle
+ * de mise en page de cette carte qui dépende de deux conditions, et l'écrire à
+ * plat rend visible qu'aucune n'est oubliée. Les largeurs de la colonne
+ * d'image sont celles de `size-16` / `sm:size-20`, en face desquelles la
+ * vignette est posée ; celle de l'action est `auto`, un bouton rond de 44px
+ * n'ayant pas de raison d'être déclaré deux fois.
+ *
+ * L'action est **toujours en dernière colonne**, au bord droit : c'est le
+ * pouce qui la vise, et la déplacer selon la présence d'une photo obligerait la
+ * main à chercher.
+ */
+function itemLayout(withPhotoColumn: boolean, withAction: boolean): string {
+  const base = 'items-center gap-4 py-4 sm:gap-5'
+
+  if (withPhotoColumn && withAction) {
+    return `grid grid-cols-[minmax(0,1fr)_4rem_auto] sm:grid-cols-[minmax(0,1fr)_5rem_auto] ${base}`
+  }
+  if (withPhotoColumn) {
+    return `grid grid-cols-[minmax(0,1fr)_4rem] sm:grid-cols-[minmax(0,1fr)_5rem] ${base}`
+  }
+  if (withAction) {
+    return `grid grid-cols-[minmax(0,1fr)_auto] ${base}`
+  }
+  return 'py-4'
 }

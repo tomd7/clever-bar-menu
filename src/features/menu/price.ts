@@ -4,6 +4,11 @@
  * La base ne connaît que des centimes entiers (`products.price_cents`), jamais
  * de flottants : aucun arrondi ne peut ainsi se glisser dans un total. Le
  * gérant, lui, saisit des euros. Toute la traduction entre les deux vit ici.
+ *
+ * L'**affichage** d'une somme, lui, est parti dans `lib/money.ts` : le panier
+ * et la commande en ont besoin autant que la carte, et `features/orders` ne
+ * peut pas importer d'ici. Ce module ne garde que ce qu'un seul écran fait —
+ * lire ce qu'un gérant tape.
  */
 
 /** Erreur de saisie, destinée à être affichée telle quelle. */
@@ -64,12 +69,4 @@ export function parseOptionalEurosToCents(input: string): number | null {
  */
 export function centsToInput(cents: number | null): string {
   return cents === null ? '' : (cents / 100).toFixed(2)
-}
-
-/** Rend des centimes pour l'affichage : « 450 », « EUR » → « 4,50 € ». */
-export function formatPrice(cents: number, currency: string): string {
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency,
-  }).format(cents / 100)
 }

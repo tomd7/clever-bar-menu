@@ -57,6 +57,20 @@
       "when": 1788601614133,
       "tag": "0007_adjust_product_stock",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1788696607220,
+      "tag": "0008_worthless_pixie",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1788696669333,
+      "tag": "0009_order_functions",
+      "breakpoints": true
     }
   ]
 }

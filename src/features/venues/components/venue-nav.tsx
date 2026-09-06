@@ -1,5 +1,11 @@
 import { Link } from '@tanstack/react-router'
-import { Boxes, QrCode, Store, UtensilsCrossed } from 'lucide-react'
+import {
+  Boxes,
+  ConciergeBell,
+  QrCode,
+  Store,
+  UtensilsCrossed,
+} from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 
 import { venuesQueryOptions } from '#/features/venues/api'
@@ -89,6 +95,17 @@ export function VenueNav({
                   >
                     <UtensilsCrossed className="size-4 shrink-0" />
                     Carte
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/admin/$venueSlug/commandes"
+                    params={{ venueSlug: venue.slug }}
+                    activeProps={{ className: 'is-active' }}
+                    className="rail-link"
+                  >
+                    <ConciergeBell className="size-4 shrink-0" />
+                    Commandes
                   </Link>
                 </li>
                 <li>

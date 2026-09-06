@@ -11,6 +11,7 @@ import {
   PopoverTrigger,
 } from '#/components/ui/popover'
 
+import type { LucideIcon } from 'lucide-react'
 import type { Surface } from '#/components/surface'
 
 /**
@@ -30,6 +31,14 @@ import type { Surface } from '#/components/surface'
  * `window.confirm` restait l'autre option, mais il bloque le fil d'exécution et
  * ne se laisse pas mettre en forme.
  *
+ * `icon` et `confirmLabel` ne changent pas davantage la règle : ils nomment une
+ * destruction qui n'est pas une suppression. Annuler la commande d'un client
+ * détruit quelque chose et mérite les deux temps, mais une corbeille et le mot
+ * « Supprimer » y désigneraient un geste que le bar ne fait pas. Deux props
+ * plutôt qu'un second composant : c'est le placement du focus sur « Annuler »
+ * qui est l'invariant, il traverse trois composants et aucun type ne dirait
+ * qu'il a cassé — le dupliquer serait le perdre.
+ *
  * `labelled` change la forme du déclencheur, pas la règle : icône seule dans
  * une ligne dense, bouton libellé quand la suppression est une action de page —
  * « Vider la corbeille » n'a pas de ligne à laquelle s'accrocher, et une
@@ -44,6 +53,8 @@ export function DeleteButton({
   onConfirm,
   labelled = false,
   surface = 'panel',
+  icon = Trash2,
+  confirmLabel = 'Supprimer',
 }: {
   label: string
   question: string
@@ -51,6 +62,10 @@ export function DeleteButton({
   onConfirm: () => void
   labelled?: boolean
   surface?: Surface
+  /** L'icône du déclencheur. Une corbeille par défaut. */
+  icon?: LucideIcon
+  /** Le mot du bouton qui confirme. Il doit reprendre le verbe de la question. */
+  confirmLabel?: string
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const cancelRef = useRef<HTMLButtonElement>(null)
@@ -66,7 +81,7 @@ export function DeleteButton({
             est déjà fait.
           */
           <ActionButton
-            icon={Trash2}
+            icon={icon}
             variant="outline"
             tone="destructive"
             surface={surface}
@@ -76,7 +91,7 @@ export function DeleteButton({
           </ActionButton>
         ) : (
           <IconButton
-            icon={Trash2}
+            icon={icon}
             label={label}
             tone="destructive"
             disabled={pending}
@@ -127,7 +142,7 @@ export function DeleteButton({
               onConfirm()
             }}
           >
-            Supprimer
+            {confirmLabel}
           </ActionButton>
         </div>
       </PopoverContent>

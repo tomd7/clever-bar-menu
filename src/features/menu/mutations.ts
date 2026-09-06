@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 
+import { MENU_QUERY_KEY } from '#/lib/query-keys'
 import {
-  MENU_QUERY_KEY,
   adjustProductStock,
   createCategory,
   createProduct,

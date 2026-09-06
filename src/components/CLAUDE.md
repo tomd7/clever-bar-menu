@@ -16,15 +16,15 @@ features: they carry no data and no domain rule.
 it names the action, so the icon, the wording and the behaviour can't diverge between two
 screens:
 
-| Wrapper        | Renders                         | What it owns for you                                                                                                                                                                                                                     |
-| -------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AddButton`    | `Plus` + « Ajouter »            | `pending` swaps the label (`pendingLabel`, default « Ajout… ») **and** disables. Pass children only to qualify the add (« Ajouter un produit »)                                                                                          |
-| `SaveButton`   | `Save` + « Enregistrer »        | `type="submit"`, « Enregistrement… » while `pending`, disables                                                                                                                                                                           |
-| `CancelButton` | « Annuler »                     | `variant="ghost"`, non-overridable — a cancel must never weigh as much as the action                                                                                                                                                     |
-| `EditButton`   | `Pencil`, icon only             | **required** `label`: the icon is shared, what it edits is not                                                                                                                                                                           |
-| `DeleteButton` | `Trash2` + confirmation popover | There is no path that deletes on the first click. Focus lands on **Annuler**. `labelled` swaps the icon-only trigger for a labelled outline button (« Vider la corbeille ») — same single `label` prop, visible there, `aria-label` here |
-| `MoveButtons`  | `ChevronUp`/`ChevronDown` pair  | Both `aria-label`s, `disabled` at the list's ends                                                                                                                                                                                        |
-| `CopyButton`   | `Copy`, icon only               | The confirmation: green check + a `role="status"` announcement for 2s, a destructive cross if the clipboard refuses. **required** `label`                                                                                                |
+| Wrapper        | Renders                         | What it owns for you                                                                                                                                                                                                                                                                                                                   |
+| -------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AddButton`    | `Plus` + « Ajouter »            | `pending` swaps the label (`pendingLabel`, default « Ajout… ») **and** disables. Pass children only to qualify the add (« Ajouter un produit »)                                                                                                                                                                                        |
+| `SaveButton`   | `Save` + « Enregistrer »        | `type="submit"`, « Enregistrement… » while `pending`, disables                                                                                                                                                                                                                                                                         |
+| `CancelButton` | « Annuler »                     | `variant="ghost"`, non-overridable — a cancel must never weigh as much as the action                                                                                                                                                                                                                                                   |
+| `EditButton`   | `Pencil`, icon only             | **required** `label`: the icon is shared, what it edits is not                                                                                                                                                                                                                                                                         |
+| `DeleteButton` | `Trash2` + confirmation popover | There is no path that deletes on the first click. Focus lands on **Annuler**. `labelled` swaps the icon-only trigger for a labelled outline button (« Vider la corbeille ») — same single `label` prop, visible there, `aria-label` here. `icon` and `confirmLabel` name a destruction that isn't a deletion (« Annuler la commande ») |
+| `MoveButtons`  | `ChevronUp`/`ChevronDown` pair  | Both `aria-label`s, `disabled` at the list's ends                                                                                                                                                                                                                                                                                      |
+| `CopyButton`   | `Copy`, icon only               | The confirmation: green check + a `role="status"` announcement for 2s, a destructive cross if the clipboard refuses. **required** `label`                                                                                                                                                                                              |
 
 Under them sit the two **shape** primitives, for genuine one-offs only (« Se connecter »,
 « Déconnexion ») — anything recurring deserves a wrapper instead:
@@ -37,6 +37,11 @@ Under them sit the two **shape** primitives, for genuine one-offs only (« Se co
 Both wrap shadcn's `Button` rather than editing it — `ui/` stays regenerable.
 `ActionButton` defaults `type="button"`: inside a form, a missing `type` silently turns a
 cancel button into a submit.
+
+**One two-step control, not several.** `icon` / `confirmLabel` exist so that cancelling a
+customer's order can reuse `DeleteButton` instead of growing a second confirmation
+mechanism: it is the focus placement below that is the invariant, and duplicating the
+component would duplicate the way it breaks.
 
 **`DeleteButton`'s focus placement is a real invariant.** The popover opens from the
 keyboard too, and a reflex Enter must not destroy a category. If you touch that component,

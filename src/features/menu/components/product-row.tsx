@@ -10,7 +10,7 @@ import {
   useDeleteProduct,
   useSetProductAvailability,
 } from '#/features/menu/mutations'
-import { formatPrice } from '#/features/menu/price'
+import { formatPrice } from '#/lib/money'
 import { isHiddenFromCustomers } from '#/features/menu/stock'
 import { productPhotoUrl } from '#/features/menu/photo'
 

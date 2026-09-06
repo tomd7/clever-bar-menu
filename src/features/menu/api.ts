@@ -1,5 +1,6 @@
 import { queryOptions } from '@tanstack/react-query'
 
+import { MENU_QUERY_KEY } from '#/lib/query-keys'
 import { describeError } from '#/lib/postgrest-error'
 import { removeProductPhoto } from '#/features/menu/photo'
 import { supabase } from '#/lib/supabase'
@@ -145,9 +146,13 @@ export async function swapPositions(
  * appel : la clé et la fonction de chargement restent solidaires, et
  * l'invalidation après mutation ne peut plus viser une clé légèrement
  * différente de celle qui a servi à lire.
+ *
+ * `MENU_QUERY_KEY` est la seule clé du projet à ne pas vivre dans ce
+ * fichier-ci : accepter une commande décompte le stock et périme donc la
+ * carte, ce qui oblige `features/orders` à l'invalider sans pouvoir importer
+ * d'ici. Elle est descendue dans `lib/query-keys.ts`, qui explique le
+ * déménagement.
  */
-export const MENU_QUERY_KEY = ['menu'] as const
-
 export function menuQueryOptions(venueSlug: string) {
   return queryOptions({
     queryKey: [...MENU_QUERY_KEY, venueSlug],

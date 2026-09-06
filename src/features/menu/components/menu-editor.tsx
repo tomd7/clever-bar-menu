@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, Boxes, QrCode } from 'lucide-react'
+import { ArrowLeft, Boxes, ConciergeBell, QrCode } from 'lucide-react'
 
 import { AddCategoryForm } from '#/features/menu/components/add-category-form'
 import { CategorySection } from '#/features/menu/components/category-section'
@@ -72,6 +72,14 @@ export function MenuEditor({ venueSlug }: { venueSlug: string }) {
 
         {/* Même raison : ces sections sont dans la colonne à partir de `lg`. */}
         <div className="flex flex-wrap gap-x-5 lg:hidden">
+          <NavLink
+            to="/admin/$venueSlug/commandes"
+            params={{ venueSlug: venue.slug }}
+            icon={ConciergeBell}
+            className="mt-1 font-medium"
+          >
+            Commandes
+          </NavLink>
           <NavLink
             to="/admin/$venueSlug/stock"
             params={{ venueSlug: venue.slug }}
