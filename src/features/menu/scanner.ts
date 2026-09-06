@@ -1,26 +1,37 @@
 /**
  * Reading a barcode off a camera frame — and the only file that knows how.
  *
- * The detection itself is `BarcodeDetector`, a browser API, which means the
- * feature's reach is the API's reach: **Chrome on Android**, ChromeOS and
- * Chrome on macOS. Not Safari — every browser on iOS is WebKit, and WebKit has
- * never shipped the Shape Detection API — not Firefox, and not Chrome on
- * Windows or Linux. The scan screen therefore always carries a manual field,
- * and `isScannerAvailable()` is what decides whether it is the fallback or the
- * whole screen.
+ * Two decoders sit behind one function. The browser's own `BarcodeDetector`
+ * when it exists — Chrome on Android, ChromeOS, Chrome on macOS — and a
+ * WebAssembly build of ZXing-C++ everywhere else, which in practice means
+ * **every iPhone**: all iOS browsers are WebKit, and WebKit has never shipped
+ * the Shape Detection API. Firefox and Chrome on Windows or Linux are in the
+ * same case.
  *
- * That reach is the reason this file exists as a seam rather than as three
- * lines inlined in the component. Swapping in a WebAssembly decoder — a lazy
- * `import()` of a zxing build, which is what would make the screen work on an
- * iPhone — has to be a change to `createScanner` and to nothing else. Hence the
- * **asynchronous factory**: a synchronous constructor would have to be widened
- * on the day of the swap, and widening it means touching the caller.
+ * The fallback is a *ponyfill of the same API*, which is what makes this file
+ * short. `barcode-detector/ponyfill` exposes the constructor, the static
+ * `getSupportedFormats()` and the `detect()` this module already spoke to, so
+ * the two branches differ by how they are obtained and by nothing else. That
+ * was the point of making `createScanner` asynchronous from the first version:
+ * the swap costs an `import()` here and no change anywhere else.
+ *
+ * **It is loaded lazily, and only when needed.** A phone that has the native
+ * detector never fetches a byte of it; a phone that doesn't pays ~430 Ko
+ * (brotli) once, on this screen alone. Nothing of it reaches the customer menu.
+ *
+ * **The `.wasm` is served from our own origin.** `zxing-wasm` defaults to
+ * fetching it from a public CDN at run time, which would put a third party
+ * between a manager and their stock count — over the cellar wifi that is a
+ * failure mode, and it is an outgoing request nobody asked for. Vite's `?url`
+ * import hashes the file into our build and `locateFile` points there.
  *
  * What comes out is a canonical GTIN, never a raw read. The screen's two entry
  * points — the camera and the typed field — have to agree on what a code *is*,
  * and two paths that disagree there disagree in production. `barcode.ts` holds
  * that rule; this file applies it before returning.
  */
+
+import wasmUrl from 'zxing-wasm/reader/zxing_reader.wasm?url'
 
 import { tryNormalizeBarcode } from '#/features/menu/barcode'
 
@@ -32,15 +43,17 @@ import { tryNormalizeBarcode } from '#/features/menu/barcode'
  * more work per frame on a phone that is already the slow part, and a decoder
  * told to look for everything finds a false positive on a printed pattern.
  *
- * **UPC-E is deliberately absent.** Its check digit is computed over the
- * expanded UPC-A, so `normalizeBarcode` would reject every one of them as a
- * malformed GTIN-8 — the code would be read and then silently dropped, which
- * looks exactly like a camera that does not work. Supporting it means writing
- * the expansion in `barcode.ts` first, not adding a string here.
+ * **UPC-E is deliberately absent**, and the reason is `barcode.ts`, not the
+ * decoder: its check digit is computed over the expanded UPC-A, so
+ * `normalizeBarcode` would reject every one of them as a malformed GTIN-8 — the
+ * code would be read and then silently dropped, which looks exactly like a
+ * camera that does not work. Supporting it means writing the expansion first.
  */
 export const SCAN_FORMATS = ['ean_13', 'ean_8', 'upc_a'] as const
 
-/** Raised by `createScanner` when the browser cannot decode a barcode. */
+type ScanFormat = (typeof SCAN_FORMATS)[number]
+
+/** Raised when no decoder could be obtained at all. */
 export class ScannerUnavailableError extends Error {}
 
 export type Scanner = {
@@ -52,49 +65,101 @@ export type Scanner = {
 }
 
 /**
- * Can this browser decode a barcode at all?
+ * Can this browser open a camera at all?
  *
- * Synchronous, and therefore approximate: it answers for the constructor, not
- * for the formats, which only `getSupportedFormats()` knows and which it will
- * not wait for. That is the right trade for a first render — the screen has to
- * decide immediately whether to show a camera or a text field, and
- * `createScanner` re-checks properly a moment later.
+ * This is now the only thing worth asking before the first render — the decoder
+ * itself is always available. `mediaDevices` is undefined outside a **secure
+ * context**, which is the trap of testing from a phone on `http://192.168.x.x`:
+ * the API does not fail, it is simply not there.
  */
-export function isScannerAvailable(): boolean {
-  return nativeDetector() !== undefined
+export function isCameraAvailable(): boolean {
+  /* Lu à travers un type plus étroit : `lib.dom` déclare `mediaDevices`
+     obligatoire, alors que c'est justement son absence qu'on teste. */
+  const api: { mediaDevices?: MediaDevices } = navigator
+
+  return typeof api.mediaDevices?.getUserMedia === 'function'
 }
 
 /**
- * Opens a decoder, or explains why it cannot.
+ * Opens a decoder — the browser's if it has one, ZXing otherwise.
  *
- * The format check is not ceremony: a browser may expose the constructor and
- * support none of the symbologies asked of it, in which case every frame would
- * come back empty and the screen would show a camera that never reads
- * anything. Failing here turns that into a sentence a manager can act on.
+ * The format check applies to both: a browser may expose the native
+ * constructor and support none of the symbologies asked of it, in which case
+ * every frame would come back empty and the screen would show a camera that
+ * never reads anything. Falling through to ZXing turns that into a scanner that
+ * works.
  */
 export async function createScanner(): Promise<Scanner> {
-  const BarcodeDetector = nativeDetector()
+  const native = await createNativeScanner()
+  if (native) return native
 
-  if (!BarcodeDetector) {
+  let BarcodeDetector: BarcodeDetectorLike
+
+  try {
+    const ponyfill = await import('barcode-detector/ponyfill')
+
+    /*
+      Pointe le binaire sur notre propre origine, et lance sa compilation sans
+      l'attendre : `fireImmediately` fait démarrer le téléchargement pendant
+      que la permission caméra est encore à l'écran, ce qui est le seul moment
+      creux de cet écran.
+    */
+    void ponyfill.prepareZXingModule({
+      overrides: { locateFile: () => wasmUrl },
+      fireImmediately: true,
+    })
+
+    BarcodeDetector = ponyfill.BarcodeDetector
+  } catch {
     throw new ScannerUnavailableError(
-      'Ce navigateur ne sait pas lire un code-barres. Saisissez le code à la main.',
+      'Le lecteur de code-barres n’a pas pu être chargé. Vérifiez votre connexion, ou saisissez le code à la main.',
     )
   }
 
-  const supported = await BarcodeDetector.getSupportedFormats()
+  const scanner = await scannerFrom(BarcodeDetector)
+
+  if (!scanner) {
+    throw new ScannerUnavailableError(
+      'Aucun format de code-barres n’est reconnu sur cet appareil. Saisissez le code à la main.',
+    )
+  }
+
+  return scanner
+}
+
+async function createNativeScanner(): Promise<Scanner | null> {
+  const native = (globalThis as { BarcodeDetector?: BarcodeDetectorLike })
+    .BarcodeDetector
+
+  if (!native) return null
+
+  try {
+    return await scannerFrom(native)
+  } catch {
+    /* Un natif présent mais défaillant n'est pas une impasse : ZXing suit. */
+    return null
+  }
+}
+
+/**
+ * Wraps either implementation into the one shape this feature speaks.
+ *
+ * Returns `null` — rather than throwing — when the decoder supports none of our
+ * formats, so the native branch can fall through to ZXing instead of failing.
+ */
+async function scannerFrom(
+  Detector: BarcodeDetectorLike,
+): Promise<Scanner | null> {
+  const supported = await Detector.getSupportedFormats()
   const formats = SCAN_FORMATS.filter((format) => supported.includes(format))
 
-  if (formats.length === 0) {
-    throw new ScannerUnavailableError(
-      'Ce navigateur ne reconnaît aucun format de code-barres. Saisissez le code à la main.',
-    )
-  }
+  if (formats.length === 0) return null
 
-  const detector = new BarcodeDetector({ formats })
+  const detector = new Detector({ formats })
 
   return {
     async detect(source) {
-      let found: Array<DetectedBarcode>
+      let found: Array<{ rawValue: string }>
 
       try {
         found = await detector.detect(source)
@@ -119,21 +184,21 @@ export async function createScanner(): Promise<Scanner> {
 }
 
 /*
-  `BarcodeDetector` n'est pas dans `lib.dom` : les types sont déclarés ici, au
-  plus près du seul appel, plutôt qu'en `declare global`. Un type global
+  `BarcodeDetector` n'est pas dans `lib.dom` : le type est déclaré ici, au plus
+  près des deux seuls appels, plutôt qu'en `declare global`. Un type global
   laisserait croire que l'API existe partout, ce qui est précisément le
-  contraire de ce que ce fichier raconte.
+  contraire de ce que ce fichier raconte — et c'est la forme structurelle, pas
+  la classe native, qui compte : le ponyfill s'y conforme aussi.
 */
-type DetectedBarcode = { rawValue: string }
-
-type BarcodeDetectorConstructor = {
-  new (options?: { formats?: Array<string> }): {
-    detect: (source: HTMLVideoElement) => Promise<Array<DetectedBarcode>>
+type BarcodeDetectorLike = {
+  /*
+    `formats` est typé sur nos seuls symbologies, et non sur `string`. Le
+    ponyfill n'accepte qu'une énumération fermée : un `Array<string>` ici
+    rendrait sa classe non assignable à ce type, alors qu'elle en est une
+    implémentation parfaitement valide.
+  */
+  new (options?: { formats?: Array<ScanFormat> }): {
+    detect: (source: HTMLVideoElement) => Promise<Array<{ rawValue: string }>>
   }
-  getSupportedFormats: () => Promise<Array<string>>
-}
-
-function nativeDetector(): BarcodeDetectorConstructor | undefined {
-  return (globalThis as { BarcodeDetector?: BarcodeDetectorConstructor })
-    .BarcodeDetector
+  getSupportedFormats: () => Promise<ReadonlyArray<string>>
 }
