@@ -433,7 +433,8 @@ node .output/server/index.mjs
       la commande ne transporte aucune donnée bancaire
 - [x] Scan du code-barres pour les mouvements de stock : entrées et sorties saisies devant
       la caméra depuis `/admin/<slug>/stock/scan`, avec appairage du code au premier scan.
-      Repose sur `BarcodeDetector` : Chrome sur Android, saisie manuelle ailleurs
+      Fonctionne sur tous les navigateurs, iOS compris : `BarcodeDetector` natif quand il
+      existe, sinon un décodeur ZXing en WebAssembly chargé à la demande sur ce seul écran
 - [ ] Commande **à table** : un QR code par table, pour que le numéro arrive dans l'URL au
       lieu d'être saisi. Aujourd'hui le retrait se fait au comptoir, au prénom
 - [ ] Tableau de bord : nouvelle page d'accueil du back-office, à la place de la simple

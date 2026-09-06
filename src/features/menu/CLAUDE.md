@@ -164,15 +164,31 @@ list.
   a typed one it is what makes a mistyped digit fail under the thumb instead of pairing a
   code no bottle carries. Same relationship to `products_barcode_format` that `stock.ts` has
   to `products_stock_quantity_non_negative`.
-- **`scanner.ts` is the only file that knows `BarcodeDetector` exists**, and the reach of
-  that API is the reach of the feature: Chrome on Android, ChromeOS, Chrome on macOS. **Not
-  Safari** — every iOS browser is WebKit, which never shipped Shape Detection — not Firefox,
-  not Chrome on Windows or Linux. Hence a manual field that is always present and always
-  takes the identical path, and hence the **asynchronous factory**: dropping in a lazy
-  `import()` of a WASM decoder has to be a change to `createScanner` and nothing else.
-  `SCAN_FORMATS` excludes UPC-E on purpose — its check digit is computed over the expanded
-  UPC-A, so it would be read and then silently dropped, which looks exactly like a broken
-  camera.
+- **`scanner.ts` is the only file that knows how a barcode is read**, and it holds two
+  decoders behind one function. The browser's own `BarcodeDetector` where it exists — Chrome
+  on Android, ChromeOS, Chrome on macOS — and **ZXing-C++ in WebAssembly everywhere else**,
+  which in practice means every iPhone: all iOS browsers are WebKit, and WebKit never
+  shipped Shape Detection. Firefox and Chrome on Windows or Linux are in the same case.
+  - The fallback is a **ponyfill of the same API** (`barcode-detector`), which is why the
+    two branches differ by how they are obtained and by nothing else. This is what the
+    asynchronous factory was for from the first version: the swap cost an `import()` in
+    `createScanner` and no change anywhere else.
+  - It is **lazy**: a phone with the native detector fetches none of it. A phone without
+    pays ~430 Ko (brotli) once, on this screen alone — nothing reaches the customer menu.
+  - The `.wasm` is **served from our own origin**. `zxing-wasm` defaults to a public CDN at
+    run time, which would put a third party between a manager and their stock count; over
+    cellar wifi that is a failure mode, and it is an outgoing request nobody asked for.
+    Vite's `?url` import hashes the binary into the build and `locateFile` points at it.
+    The library's own jsDelivr URL is still in the chunk as a dead default — verify by
+    watching the network, not by grepping the bundle.
+  - `isCameraAvailable()` is now the only thing asked before the first render, and it is
+    about the **camera**, not the decoder: `navigator.mediaDevices` is undefined outside a
+    secure context, which is exactly what testing from a phone on `http://192.168.x.x`
+    gives you — the API does not fail, it is simply absent.
+  - `SCAN_FORMATS` excludes UPC-E on purpose, and the reason is `barcode.ts`, not the
+    decoder: its check digit is computed over the expanded UPC-A, so `normalizeBarcode`
+    would reject every one of them — read, then silently dropped, which looks exactly like
+    a broken camera.
 - **A code resolves against the menu just read, never through a `where barcode = ?`.** No
   index to create, no enumeration opened to whoever holds the publishable key, no round-trip
   — and one property a query would not give for free: scoped to the open venue, a manager
