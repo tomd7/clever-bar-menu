@@ -92,8 +92,12 @@ export function PublicMenu({
         une carte est une colonne qui se parcourt du nom vers le prix. Étirée
         sur un écran large, la ligne sépare les deux par vingt centimètres de
         vide.
+
+        The value is `--menu-column` (`styles/vocabulary.css`), which widens at
+        `md` and `lg` and which the order bar and the cart sheet read too — the
+        three are centred on the same axis and must not drift apart.
       */}
-      <main className="mx-auto w-full max-w-[36rem] flex-1 sm:px-6 sm:py-10">
+      <main className="mx-auto w-full max-w-(--menu-column) flex-1 sm:px-6 sm:py-10">
         {/*
           `.island-shell` fournit la surface, le filet et l'élévation ; les
           trois sont retirés à la base et rendus à partir de `sm`. L'ordre est

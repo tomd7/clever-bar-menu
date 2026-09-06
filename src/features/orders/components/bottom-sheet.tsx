@@ -64,19 +64,22 @@ export function BottomSheet({
             les trois quarts de l'écran. Elle prend la place de son contenu et
             s'arrête là.
 
-            `max-w-[36rem]` : la même largeur que la carte, et centrée sur elle.
-            Sans cette borne, la feuille s'étalait sur toute la fenêtre d'un
-            écran large pendant que la carte, elle, restait au milieu dans sa
-            colonne — deux objets censés être le même s'en trouvaient
-            désolidarisés, et la ligne « nom … quantité » se lisait à un mètre
-            de distance. Le téléphone, lui, ne voit pas la différence : il est
-            déjà plus étroit que 36rem.
+            `max-w-(--menu-column)` : la même largeur que la carte, et centrée
+            sur elle. Sans cette borne, la feuille s'étalait sur toute la
+            fenêtre d'un écran large pendant que la carte, elle, restait au
+            milieu dans sa colonne — deux objets censés être le même s'en
+            trouvaient désolidarisés, et la ligne « nom … quantité » se lisait à
+            un mètre de distance. Le téléphone, lui, ne voit pas la différence :
+            il est déjà plus étroit que la valeur de base.
+
+            Reading the shared token rather than repeating a width is what keeps
+            the sheet aligned with the card once the column widens at `md`.
 
             Le rembourrage du bas ajoute `env(safe-area-inset-bottom)` : sur un
             iPhone, la barre d'accueil mange les derniers pixels, et c'est
             justement là qu'on a mis le bouton d'envoi.
           */
-          className="fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[85dvh] w-full max-w-[36rem] flex-col rounded-t-3xl border-x border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] shadow-[var(--shadow-2)] duration-[260ms] ease-(--ease-out) outline-none data-[state=closed]:duration-[180ms] data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom data-[state=open]:animate-in data-[state=open]:slide-in-from-bottom"
+          className="fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[85dvh] w-full max-w-(--menu-column) flex-col rounded-t-3xl border-x border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] shadow-[var(--shadow-2)] duration-[260ms] ease-(--ease-out) outline-none data-[state=closed]:duration-[180ms] data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom data-[state=open]:animate-in data-[state=open]:slide-in-from-bottom"
         >
           <header className="flex items-start justify-between gap-4 px-5 pt-5 sm:px-6">
             <div className="min-w-0">

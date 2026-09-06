@@ -277,11 +277,14 @@ function BarRow({
  *
  * `env(safe-area-inset-bottom)` : sur un iPhone, la barre d'accueil mange les
  * derniers pixels de l'écran, et c'est précisément là que se trouve le bouton.
+ *
+ * The inner column reads `--menu-column`, the same token as the card above it:
+ * the bar spans the viewport, its content stays on the card's axis.
  */
 function BarShell({ children }: { children: ReactNode }) {
   return (
     <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] duration-200 ease-(--ease-out) animate-in fade-in-0 slide-in-from-bottom-4">
-      <div className="mx-auto flex w-full max-w-[36rem] flex-col gap-2 px-4 py-3 sm:px-6">
+      <div className="mx-auto flex w-full max-w-(--menu-column) flex-col gap-2 px-4 py-3 sm:px-6">
         {children}
       </div>
     </div>
