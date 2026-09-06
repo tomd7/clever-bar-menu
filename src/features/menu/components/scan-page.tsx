@@ -11,7 +11,7 @@ import { ScanCamera } from '#/features/menu/components/scan-camera'
 import { ScanMovementPanel } from '#/features/menu/components/scan-movement-panel'
 import { ScanPairingPanel } from '#/features/menu/components/scan-pairing-panel'
 import { TextField } from '#/components/form/text-field'
-import { isScannerAvailable } from '#/features/menu/scanner'
+import { isCameraAvailable } from '#/features/menu/scanner'
 import { menuQueryOptions } from '#/features/menu/api'
 import {
   useAdjustProductStock,
@@ -100,7 +100,7 @@ export function ScanPage({ venueSlug }: { venueSlug: string }) {
   */
   const [direction, setDirection] = useState<MovementDirection>('in')
 
-  const scannerAvailable = isScannerAvailable()
+  const cameraAvailable = isCameraAvailable()
 
   async function readMenu(refresh: boolean): Promise<Menu> {
     const options = menuQueryOptions(venueSlug)
@@ -279,7 +279,7 @@ export function ScanPage({ venueSlug }: { venueSlug: string }) {
       </header>
 
       <div className="mt-6 space-y-4">
-        {scannerAvailable ? (
+        {cameraAvailable ? (
           <div className="relative">
             <ScanCamera
               paused={overlay !== null || busy}
@@ -324,10 +324,10 @@ export function ScanPage({ venueSlug }: { venueSlug: string }) {
         ) : (
           <div className="panel rounded-2xl p-4 sm:p-5">
             <p className="text-sm text-ink-soft">
-              Ce navigateur ne sait pas lire un code-barres par la caméra —
-              c’est le cas de Safari et de Firefox. Sur un téléphone Android,
-              ouvrez cet écran dans Chrome. En attendant, le code se saisit à la
-              main.
+              Aucune caméra n’est accessible depuis ce navigateur. C’est le cas
+              hors connexion sécurisée — une adresse en <code>http://</code>{' '}
+              autre que <code>localhost</code> —, où le navigateur ne propose
+              même pas la permission. Le code se saisit à la main ci-dessous.
             </p>
           </div>
         )}
