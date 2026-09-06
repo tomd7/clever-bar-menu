@@ -15,6 +15,7 @@ src/
   components/
     nav-link.css     .nav-link            (next to nav-link.tsx)
     site-footer.css  .site-footer
+    skeleton.css     .skeleton, .skeleton-screen  (l'ossature de chargement)
   features/venues/components/
     venue-nav.css    .rail-link
     venue-qr.css     .print-sheet
@@ -32,6 +33,13 @@ src/
   with `?url`, and the SSR'd public menu must not flash), and keeps the cascade order
   readable — it is the import list, top to bottom. A file imported through JS would need
   `@reference` and would land in the cascade wherever the bundler chose.
+- **`--skeleton` is the one palette token declared in the derivation block**
+  (`:root, .dark`) rather than in the two palettes: it is `color-mix(in oklab, var(--ink)
+11%, transparent)`, so a single expression follows both themes. A flat colour was tried
+  first and failed — `--surface-raised` reads on a white `.panel` and vanishes on the page
+  ground. `--chalk-sheen`, the sweep that crosses it, _is_ declared twice, and it is the
+  only token whose night value is not a restatement of its day value but its inverse:
+  white paper by day, chalk at very low opacity by night.
 - **The component imports come after the shared ones**, so a component rule can win
   against the shared vocabulary at equal specificity, never the other way round. Print is
   last: it undoes most of what precedes.

@@ -68,6 +68,34 @@ where the control sits rather than its height, because only the desktop density 
 mobile is always 44px. Two tables maintained apart would drift by a pixel and put the row
 out of line.
 
+## Loading — `skeleton.tsx` / `skeleton.css`
+
+**No screen renders « Chargement… » as text.** Each waiting screen draws an ossature at
+the dimensions of what is coming, from `Skeleton` (one bar), `SkeletonScreen` (the
+`role="status"` wrapper), and the three shapes every back-office header shares —
+`SkeletonHeader`, `SkeletonAddress`, `SkeletonLine`.
+
+- **A screen's ossature lives in that screen's file**, below the component it replaces
+  (`MenuEditorSkeleton` in `menu-editor.tsx`, and so on). Its only job is to look like the
+  screen; filed anywhere else it would stop being updated with it.
+- **Measure lines in `h-[1lh]`, not in pixels.** The unit is the element's computed
+  line-height, so a bar given the real type classes (`text-2xl leading-tight sm:text-3xl`)
+  is exactly as tall as the line it stands for — at every breakpoint. The three headers
+  now land on the same pixel as the loaded screen; hard-coded heights were 46px short.
+- **`bg-skeleton` is the tint**, a translucent ink mix (see `src/styles/CLAUDE.md`): the
+  same bar sits on a white `.panel` and on the page ground, and no opaque colour works on
+  both. The QR sheet is the one override — `bg-neutral-200`, because that sheet is white
+  in both themes.
+- **Two movements, and only one loops**: each bar writes itself left-to-right once
+  (`clip-path`, staggered by `delay`), then a chalk sheen sweeps the screen in a single
+  wave — every bar shares the sweep's timing, so their phases coincide. Under
+  `prefers-reduced-motion` both stop and the ossature simply stands there.
+- **The ossature itself waits 140 ms** before fading in (`.skeleton-screen`), so a cached
+  response doesn't flash one.
+- **`SkeletonScreen` puts the layout in a child**, not on the status element: an `sr-only`
+  label glued in as the first child of a `divide-y` list or a grid would take a divider or
+  a cell.
+
 ## Links
 
 **Links are not buttons.** A destination gets an `<a>`, never a `<button>` calling

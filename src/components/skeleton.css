@@ -1,0 +1,114 @@
+/*
+  L'ossature de chargement — « la carte s'écrit ».
+
+  Le back-office attend une réponse de Supabase à chaque écran. La phrase
+  « Chargement… » qui tenait cette place ne disait rien de plus que « patiente »,
+  et surtout elle ne réservait aucune place : l'écran sautait d'une ligne de
+  texte à une grille de cartes dès que la requête revenait.
+
+  Le remplacement est une ossature aux dimensions de l'écran attendu. Deux
+  mouvements, et un seul est en boucle :
+
+  1. **L'écriture**, une fois. Chaque barre se découvre de la gauche vers la
+     droite (`clip-path`), décalée de quelques dizaines de millisecondes sur sa
+     voisine. C'est le geste du thème : une carte de bar s'écrit à la craie,
+     ligne après ligne, elle n'apparaît pas d'un bloc.
+  2. **Le reflet**, en boucle. Un trait de craie balaie l'ossature pour dire que
+     le travail continue. Toutes les barres partagent la même animation et sont
+     montées ensemble : leurs phases coïncident, si bien que le reflet traverse
+     l'écran en une seule vague plutôt qu'en scintillements indépendants.
+
+  Un seul `transform` bouge pendant la boucle — le pseudo-élément du reflet —,
+  jamais une couleur ni une géométrie.
+*/
+
+/*
+  L'ossature elle-même ne paraît qu'au bout de 140 ms.
+
+  Une réponse déjà en cache revient en quelques millisecondes : sans ce délai,
+  chaque navigation entre deux écrans du back-office ferait clignoter une
+  ossature complète, ce qui est bien plus violent qu'un écran qui reste immobile
+  le temps d'un souffle. `both` la garde invisible pendant le délai.
+*/
+.skeleton-screen {
+  animation: skeleton-screen-in 220ms var(--ease-out) 140ms both;
+}
+
+@keyframes skeleton-screen-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.skeleton {
+  position: relative;
+  /* Le reflet déborde de la barre : c'est ce bord qui le découpe. */
+  overflow: hidden;
+  animation: skeleton-write 460ms var(--ease-out) both;
+}
+
+/*
+  `inset(0 100% 0 0)` et non `scaleX(0)` : une barre mise à l'échelle écrase son
+  arrondi et ses éventuels enfants, alors qu'un découpage laisse la géométrie
+  intacte — le trait se remplit, il ne s'étire pas.
+*/
+@keyframes skeleton-write {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(
+    100deg,
+    transparent 20%,
+    var(--chalk-sheen) 50%,
+    transparent 80%
+  );
+  animation: skeleton-sheen 2000ms linear infinite;
+}
+
+/*
+  La pause est dans les pourcentages plutôt que dans un `animation-delay` :
+  un délai ne joue qu'une fois, et la boucle repartirait ensuite sans respirer.
+  Le balayage occupe les six premiers dixièmes, le reste est un temps mort —
+  sans lui l'ossature papillote, et un écran qui papillote se lit comme une
+  erreur plutôt que comme une attente.
+*/
+@keyframes skeleton-sheen {
+  0% {
+    transform: translateX(-100%);
+  }
+  60%,
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/*
+  Mouvement réduit : ni écriture ni reflet. L'ossature est là, immobile — elle
+  garde son rôle principal, qui est de réserver la place, et le `role="status"`
+  du composant continue d'annoncer l'attente à qui ne la voit pas.
+
+  Les règles de `motion.css` ramèneraient déjà toute durée à 0,01 ms ; les
+  neutraliser ici nommément évite de laisser le reflet figé au hasard de sa
+  dernière image.
+*/
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+
+  .skeleton::after {
+    display: none;
+  }
+}

@@ -3,6 +3,12 @@ import { useQuery } from '@tanstack/react-query'
 
 import { EmptyState } from '#/components/empty-state'
 import { NavLink } from '#/components/nav-link'
+import {
+  Skeleton,
+  SkeletonHeader,
+  SkeletonLine,
+  SkeletonScreen,
+} from '#/components/skeleton'
 import { StockRow, stockRowId } from '#/features/menu/components/stock-row'
 import { isTracked, needsRestock, stockStateOf } from '#/features/menu/stock'
 import { menuQueryOptions } from '#/features/menu/api'
@@ -35,7 +41,7 @@ export function StockPage({ venueSlug }: { venueSlug: string }) {
   const menuQuery = useQuery(menuQueryOptions(venueSlug))
 
   if (menuQuery.isPending) {
-    return <p className="text-sm text-ink-soft">Chargement…</p>
+    return <StockPageSkeleton />
   }
 
   if (menuQuery.isError) {
@@ -202,4 +208,89 @@ function describeAlerts(
   if (low > 0) parts.push(low === 1 ? '1 stock bas' : `${low} stocks bas`)
 
   return `${parts.join(', ')}.`
+}
+
+/**
+ * L'attente de l'écran de stock.
+ *
+ * Elle réserve **la bande d'alerte**, alors que rien ne dit encore qu'il y en
+ * aura une. C'est le seul endroit de l'application où l'ossature promet un bloc
+ * qui peut ne pas venir, et c'est délibéré : une carte sans rupture est la
+ * bonne nouvelle, la disparition de la bande au chargement se lit comme un
+ * soulagement. L'inverse — une bande qui pousse la liste vers le bas juste
+ * après que le pouce s'est posé — décalerait un compteur au moment de l'appui.
+ *
+ * Les lignes gardent le compteur au bord droit, à ses 44px : c'est la cible que
+ * la main vise avant même d'avoir lu le nom du produit.
+ */
+function StockPageSkeleton() {
+  return (
+    <SkeletonScreen label="Chargement du stock…" className="page-wrap px-0">
+      {/* Propre au téléphone, comme le vrai lien de retour. */}
+      <Skeleton className="h-4 w-40 rounded-full lg:hidden" />
+
+      <SkeletonHeader>
+        <SkeletonLine className="mt-2 w-80 max-w-full" delay={110} />
+      </SkeletonHeader>
+
+      <section className="panel mt-6 rounded-2xl p-4 sm:p-5">
+        <Skeleton
+          className="h-[1lh] w-32 rounded-full text-[13px]/[1.5]"
+          delay={180}
+        />
+        <SkeletonLine className="mt-1 w-52 max-w-full" delay={215} />
+
+        {/* Les raccourcis, en pastilles de 44px sur une rangée qui défile. */}
+        <div className="mt-3 flex gap-2 overflow-hidden">
+          {['w-28', 'w-36', 'w-24'].map((width, chip) => (
+            <Skeleton
+              key={width}
+              className={`h-11 shrink-0 rounded-full ${width}`}
+              delay={250 + chip * 45}
+            />
+          ))}
+        </div>
+      </section>
+
+      <div className="mt-6 space-y-4">
+        {[3, 2].map((products, section) => (
+          <section key={section} className="panel rounded-2xl p-4 sm:p-5">
+            <Skeleton
+              className="h-[1lh] w-36 max-w-full text-lg leading-tight"
+              delay={380 + section * 120}
+            />
+
+            <div className="mt-3 divide-y divide-line border-t border-line">
+              {Array.from({ length: products }, (_, row) => (
+                <div key={row} className="flex items-center gap-3 py-3">
+                  <div className="min-w-0 flex-1">
+                    <Skeleton
+                      className="h-[1lh] w-40 max-w-full rounded-full"
+                      delay={440 + section * 120 + row * 55}
+                    />
+                    {/* La pastille de `StockBadge`, qui donne sa hauteur à la
+                        ligne autant que le compteur d'en face. */}
+                    <Skeleton
+                      className="mt-1 h-5 w-24 rounded-full"
+                      delay={470 + section * 120 + row * 55}
+                    />
+                  </div>
+                  {/*
+                    Le compteur d'un seul tenant, et non ses trois parties :
+                    « c'est l'encadré qui fait l'objet », dit `StockStepper`
+                    en donnant au champ le fond du groupe. Trois barres
+                    séparées dessineraient ici un objet que l'écran n'a pas.
+                  */}
+                  <Skeleton
+                    className="h-11 w-36 shrink-0 rounded-lg"
+                    delay={470 + section * 120 + row * 55}
+                  />
+                </div>
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+    </SkeletonScreen>
+  )
 }

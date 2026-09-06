@@ -6,6 +6,7 @@ import { DeleteButton } from '#/components/buttons/delete-button'
 import { EmptyState } from '#/components/empty-state'
 import { ErrorNote } from '#/components/error-note'
 import { NavLink } from '#/components/nav-link'
+import { Skeleton, SkeletonScreen } from '#/components/skeleton'
 import {
   usePurgeVenueTrash,
   useRestoreVenue,
@@ -119,7 +120,7 @@ export function VenueTrash({ ownerId }: { ownerId: string }) {
 
       <section className="mt-6">
         {venuesQuery.isPending ? (
-          <p className="text-sm text-ink-soft">Chargement…</p>
+          <VenueTrashSkeleton />
         ) : venuesQuery.isError ? (
           <ErrorNote>{venuesQuery.error.message}</ErrorNote>
         ) : archived.length === 0 ? (
@@ -166,5 +167,45 @@ export function VenueTrash({ ownerId }: { ownerId: string }) {
         {restore.error ? <ErrorNote>{restore.error.message}</ErrorNote> : null}
       </section>
     </div>
+  )
+}
+
+/**
+ * L'attente de la corbeille — l'ossature la plus courte de l'application, et
+ * c'est voulu.
+ *
+ * Deux lignes seulement : la corbeille est vide la plupart du temps, et une
+ * ossature de six lignes fabriquerait, le temps d'une requête, l'impression
+ * d'un désastre. L'en-tête, lui, n'attend rien — il ne lit aucune donnée et
+ * reste affiché au-dessus.
+ */
+function VenueTrashSkeleton() {
+  return (
+    <SkeletonScreen
+      label="Chargement de la corbeille…"
+      className="panel divide-y divide-line rounded-2xl"
+    >
+      {[0, 1].map((row) => (
+        <div
+          key={row}
+          className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3"
+        >
+          <div className="min-w-0 flex-1">
+            <Skeleton
+              className="h-[1lh] w-40 max-w-full rounded-full"
+              delay={row * 70}
+            />
+            {/* L'adresse réservée, en `<code>` : plus étroite et plus basse. */}
+            <Skeleton
+              className="mt-0.5 h-[1lh] w-28 rounded-full text-xs"
+              delay={row * 70 + 45}
+            />
+          </div>
+
+          {/* « Restaurer », l'action de l'écran. */}
+          <Skeleton className="h-11 w-32 shrink-0" delay={row * 70 + 90} />
+        </div>
+      ))}
+    </SkeletonScreen>
   )
 }
