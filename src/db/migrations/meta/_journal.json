@@ -71,6 +71,20 @@
       "when": 1788696669333,
       "tag": "0009_order_functions",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788702803597,
+      "tag": "0010_lucky_the_anarchist",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1788702824783,
+      "tag": "0011_cancel_order",
+      "breakpoints": true
     }
   ]
 }

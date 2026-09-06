@@ -3,7 +3,10 @@ import { useQueries } from '@tanstack/react-query'
 import { useState } from 'react'
 
 import { ActionButton } from '#/components/buttons/action-button'
+import { Ban } from 'lucide-react'
 import { BottomSheet } from '#/features/orders/components/bottom-sheet'
+import { DeleteButton } from '#/components/buttons/delete-button'
+import { ErrorNote } from '#/components/error-note'
 import {
   GUEST_STATUS_HINT,
   GUEST_STATUS_LABEL,
@@ -12,6 +15,7 @@ import {
 import { formatPrice } from '#/lib/money'
 import { forgetTickets } from '#/features/orders/ticket'
 import { guestOrderQueryOptions } from '#/features/orders/public-api'
+import { useCancelGuestOrder } from '#/features/orders/mutations'
 
 import type { GuestOrder } from '#/features/orders/public-api'
 import type { OrderTicket } from '#/features/orders/ticket'
@@ -221,7 +225,11 @@ function OrderList({
               {query.error.message}
             </p>
           ) : (
-            <OrderBlock order={query.data} currency={currency} />
+            <OrderBlock
+              order={query.data}
+              ticket={ticket}
+              currency={currency}
+            />
           )}
         </li>
       ))}
@@ -255,30 +263,72 @@ function ClearHistory({
 
 function OrderBlock({
   order,
+  ticket,
   currency,
 }: {
   order: GuestOrder
+  ticket: OrderTicket
   currency: string
 }) {
+  const cancel = useCancelGuestOrder()
+
   return (
     <>
       {/*
-        L'état d'abord, en gros, avant le détail : c'est la seule chose que le
-        client vient chercher en rouvrant cette feuille. L'addition, il l'a déjà
-        validée.
+        L'état et l'annulation sur la même ligne : le bouton porte sur la
+        commande entière, sa place est donc en regard de ce qui la nomme, et non
+        au bas d'une addition qu'il ne concerne pas.
+
+        `flex-wrap` : sur un téléphone étroit il passe sous le titre plutôt que
+        de comprimer « Reçue par le bar » en deux lignes hachées.
       */}
-      <p className="display-title text-xl leading-tight">
-        {GUEST_STATUS_LABEL[order.status]}
-      </p>
-      {/*
-        Le prénom, et non la consigne — celle-ci est en sous-titre de la feuille.
-        Deux commandes dans le même état afficheraient sinon deux fois le même
-        chapô mot pour mot, là où ce qui les distingue est justement le nom sous
-        lequel chacune sera appelée.
-      */}
-      <p className="mt-1 text-sm text-ink-soft">
-        Au nom de {order.customerName}.
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+        <div className="min-w-0">
+          {/*
+            L'état d'abord, en gros : c'est la seule chose que le client vient
+            chercher en rouvrant cette feuille. L'addition, il l'a déjà validée.
+          */}
+          <p className="display-title text-xl leading-tight">
+            {GUEST_STATUS_LABEL[order.status]}
+          </p>
+          {/*
+            Le prénom, et non la consigne — celle-ci est en sous-titre de la
+            feuille. Deux commandes dans le même état afficheraient sinon deux
+            fois le même chapô mot pour mot, là où ce qui les distingue est
+            justement le nom sous lequel chacune sera appelée.
+          */}
+          <p className="mt-1 text-sm text-ink-soft">
+            Au nom de {order.customerName}.
+          </p>
+        </div>
+
+        {/*
+          L'annulation n'existe que tant que le bar n'a pas pris la commande.
+          Passé ce point le verre est en train d'être servi et le stock a été
+          décompté sans recrédit : le bouton disparaît plutôt que de se griser,
+          parce qu'un bouton grisé laisse croire qu'il existe un chemin.
+
+          Le contrôle en deux temps est celui du projet — la fenêtre est courte,
+          et une annulation par mégarde ferait retaper toute la commande.
+        */}
+        {order.status === 'received' ? (
+          <DeleteButton
+            labelled
+            icon={Ban}
+            label="Annuler la commande"
+            /*
+              Pas « Annuler la commande » ici : le bouton de renoncement du
+              popover s'appelle « Annuler », et deux boutons voisins ouvrant
+              sur le même verbe font hésiter au moment précis où il ne faut
+              pas. « Confirmer » ne peut se lire que dans un sens.
+            */
+            confirmLabel="Confirmer l’annulation"
+            question="Annuler cette commande ? Le bar ne l’a pas encore prise en charge."
+            pending={cancel.isPending}
+            onConfirm={() => cancel.mutate(ticket)}
+          />
+        ) : null}
+      </div>
 
       <ul className="mt-3 divide-y divide-line-soft border-y border-line-soft">
         {order.items.map((item) => (
@@ -308,6 +358,8 @@ function OrderBlock({
           « {order.note} »
         </p>
       ) : null}
+
+      {cancel.error ? <ErrorNote>{cancel.error.message}</ErrorNote> : null}
     </>
   )
 }

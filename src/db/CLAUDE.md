@@ -55,7 +55,8 @@ policy for `anon` at all_ — not even read. The customer who orders is `anon`, 
 that table to them would publish a free `insert` on the internet (any total, any status,
 any venue) and let anyone read the neighbour's order by changing one digit. They reach the
 data only through the two `security definer` functions of migration `0009`. `orders` gets
-an owner `select` and an owner `update` (the bar advances the status); `order_items` gets
+an owner `select` and an owner `update` (the bar advances the status and signs its
+cancellations through `cancelled_by`); `order_items` gets
 an owner `select` alone — a line is a trace, it is never edited. Neither gets a `delete`:
 history that vanishes on a click is not history.
 
@@ -91,6 +92,13 @@ written by hand and carry their own warnings inline:
   `anon, authenticated` for the first two and `authenticated` for the third.
   `src/features/orders/CLAUDE.md` holds the security reasoning; read it before touching
   `place_order`.
+
+- `0011_cancel_order.sql` — `cancel_order`, the third door open to `anon`, built like the
+  other two. It only touches an order still in `received`: past acceptance the stock is
+  already down and the glass is being poured, and nothing credits it back. The status filter
+  sits **in the `where`**, as it does in `accept_order`, so a counter accepting at the same
+  instant as a customer cancelling is arbitrated by the row lock — exactly one wins, and the
+  loser's message is already right on both sides.
 
 **Parameter names in these functions avoid every column name** (`guest_name` not
 `customer_name`, `lookup_id` not `order_id`). Not style: in plpgsql, a parameter that is a

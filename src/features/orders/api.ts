@@ -188,7 +188,19 @@ export async function setOrderStatus(
   await write(
     supabase
       .from('orders')
-      .update({ status, updated_at: new Date().toISOString() })
+      .update({
+        status,
+        /*
+          Le comptoir signe ses annulations, comme `cancel_order` signe celles
+          du client. Sans cela une ligne disparaîtrait de la file sans que
+          personne sache qui l'a retirée. `null` sur les autres passages :
+          repasser une commande en préparation après l'avoir annulée doit
+          effacer la signature, sinon l'historique garderait une annulation qui
+          n'a plus eu lieu.
+        */
+        cancelled_by: status === 'cancelled' ? 'venue' : null,
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', orderId),
   )
 }

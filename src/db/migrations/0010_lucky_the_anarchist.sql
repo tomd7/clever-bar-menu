@@ -1,0 +1,2 @@
+ALTER TABLE "orders" ADD COLUMN "cancelled_by" text;--> statement-breakpoint
+ALTER TABLE "orders" ADD CONSTRAINT "orders_cancelled_by_valid" CHECK ("orders"."cancelled_by" is null or "orders"."cancelled_by" in ('guest', 'venue'));

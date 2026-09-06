@@ -14,6 +14,14 @@ export function describeError(error: {
       return 'Cet élément existe déjà.'
     case '42501':
       return "Vous n'avez pas les droits sur cet établissement."
+    case 'PGRST202':
+      /*
+        PostgREST ne trouve pas la fonction appelée : elle manque, ou son cache
+        de schéma n'a pas encore rechargé après une migration. Le message brut
+        cite la signature SQL en anglais — acceptable dans une console, pas sur
+        le téléphone d'un client à qui on vient de proposer un bouton.
+      */
+      return "Cette action n'est pas disponible pour le moment."
     case 'PGRST116':
       return 'Élément introuvable. Il a peut-être été supprimé entre-temps.'
     default:

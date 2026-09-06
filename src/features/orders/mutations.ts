@@ -1,6 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 
-import { GUEST_ORDER_QUERY_KEY, placeOrder } from '#/features/orders/public-api'
+import {
+  GUEST_ORDER_QUERY_KEY,
+  cancelGuestOrder,
+  placeOrder,
+} from '#/features/orders/public-api'
 import { MENU_QUERY_KEY, VENUES_QUERY_KEY } from '#/lib/query-keys'
 import {
   ORDERS_QUERY_KEY,
@@ -109,5 +113,30 @@ export function usePlaceOrder(venueSlug: string) {
       clearCart(venueSlug)
       queryClient.invalidateQueries({ queryKey: GUEST_ORDER_QUERY_KEY })
     },
+  })
+}
+
+/**
+ * Le client annule sa commande, tant que le bar ne l'a pas prise.
+ *
+ * N'invalide que le suivi client : la file du bar est rafraîchie par son propre
+ * sondage, et ces deux écrans ne sont jamais ouverts par la même personne.
+ */
+export function useCancelGuestOrder() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: cancelGuestOrder,
+
+    /*
+      `onSettled` et non `onSuccess`. Un refus vient toujours du même endroit :
+      le bar a pris la commande entre la dernière relève et l'appui. L'écran
+      affiche donc encore « Reçue par le bar » au moment où il annonce « trop
+      tard » — deux affirmations contradictoires côte à côte. Recharger même en
+      cas d'échec fait apparaître l'état qui a causé le refus, et le bouton
+      disparaît de lui-même.
+    */
+    onSettled: () =>
+      queryClient.invalidateQueries({ queryKey: GUEST_ORDER_QUERY_KEY }),
   })
 }

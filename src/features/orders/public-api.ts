@@ -114,6 +114,23 @@ export async function fetchOrder(ticket: OrderTicket): Promise<GuestOrder> {
   }
 }
 
+/**
+ * Le client annule sa commande.
+ *
+ * Le jeton repart par le même chemin que pour la lecture : en corps de requête,
+ * jamais dans une URL. La fenêtre — avant acceptation seulement — est vérifiée
+ * **en SQL** et pas seulement à l'affichage ; masquer un bouton n'a jamais fermé
+ * une API, et ici l'écran peut avoir quinze secondes de retard sur le comptoir.
+ */
+export async function cancelGuestOrder(ticket: OrderTicket): Promise<void> {
+  const { error } = await supabase.rpc('cancel_order', {
+    lookup_id: ticket.id,
+    lookup_token: ticket.accessToken,
+  })
+
+  if (error) throw new Error(describeError(error))
+}
+
 export const GUEST_ORDER_QUERY_KEY = ['guest-order'] as const
 
 /**

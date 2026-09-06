@@ -71,6 +71,30 @@ endpoint open to the internet. The per-line (20) and per-order (40 lines) caps l
 single call can write, and nothing limits how many calls arrive. If this becomes a problem
 the answer is a limit at the edge, not a policy.
 
+## Cancelling
+
+Both sides can cancel, and the two are not symmetric.
+
+- **The customer can cancel only while the order is still `received`.** Past acceptance the
+  stock is down and the glass is being poured; letting a phone trigger that from across the
+  room would open, in the inventory, exactly the gap the Stock screen exists to close. Before
+  acceptance nothing has moved — neither stock nor glass — so the customer's window is
+  precisely the one where cancelling is free. `cancel_order` enforces it in SQL, not only by
+  hiding a button: the tracker can be fifteen seconds behind the counter.
+- **The button disappears rather than greying out** once the bar has taken the order. A
+  greyed button says a path exists.
+- **The counter can cancel at any point**, and that one does not credit stock back — see
+  below.
+- **`orders.cancelled_by`** records which of the two it was (`'guest'` / `'venue'`, `null`
+  otherwise). Without it a line would vanish from the bar's queue with no explanation, and a
+  barman who did not touch it assumes a colleague misfired and goes asking. `setOrderStatus`
+  writes `null` on every other transition, so an order moved back out of `cancelled` does not
+  keep a signature for a cancellation that no longer happened.
+- **The race is settled by the row, not by a check.** `accept_order` and `cancel_order` both
+  filter `status = 'received'` inside the `where`. The counter's finger and the customer's
+  can land in the same millisecond; one wins, and the other reads a message that was already
+  written for it.
+
 ## Stock — accepting is the pivot
 
 `accept_order(target_id)` moves the order to `preparing` **and** decrements stock, in one

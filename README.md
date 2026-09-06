@@ -230,6 +230,10 @@ qui monte du bas de l'écran, donne un prénom et envoie. Il suit ensuite l'éta
 commande sur la même page, sans compte : **reçue → en préparation → prête**. Le prénom est
 la référence — c'est lui qu'on appelle au comptoir, ce qu'un numéro fait mal.
 
+Le client peut **annuler lui-même**, tant que le bar n'a pas pris la commande en charge.
+Passé ce point le stock est décompté et le verre est en préparation : l'annulation reste
+possible, mais au comptoir. La commande annulée indique laquelle des deux parties l'a fait.
+
 Côté bar, `/admin/$venueSlug/commandes` affiche la file, la plus ancienne en tête, et se
 relève toutes les dix secondes. Trois gestes : **Accepter** (qui décompte le stock),
 **Prête**, **Récupérée** — plus une annulation en deux temps. Le nombre de commandes non

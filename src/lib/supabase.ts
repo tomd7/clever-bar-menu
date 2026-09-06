@@ -71,6 +71,8 @@ type OrderRow = {
   customer_name: string
   note: string | null
   status: OrderStatusValue
+  /** Qui a annulé, si la commande l'a été : le client ou le comptoir. */
+  cancelled_by: 'guest' | 'venue' | null
   total_cents: number
   created_at: string
   updated_at: string
@@ -144,9 +146,19 @@ export type Database = {
           commande naît de `place_order`. Le type reste déclaré parce que
           `supabase-js` l'exige, avec la forme que la fonction produit.
         */
-        Insert: Insert<OrderRow, Timestamps | 'note' | 'status' | 'total_cents'>
-        /* Le gérant ne change qu'une chose : où en est la commande. */
-        Update: Pick<Partial<OrderRow>, 'status' | 'updated_at'>
+        Insert: Insert<
+          OrderRow,
+          Timestamps | 'note' | 'status' | 'total_cents' | 'cancelled_by'
+        >
+        /*
+          Le gérant ne change qu'une chose : où en est la commande — et, quand
+          il l'annule, qu'il en est l'auteur. Le client, lui, ne passe jamais
+          par la table : `cancel_order` écrit `cancelled_by` pour lui.
+        */
+        Update: Pick<
+          Partial<OrderRow>,
+          'status' | 'cancelled_by' | 'updated_at'
+        >
         Relationships: []
       }
       order_items: {
@@ -242,6 +254,18 @@ export type Database = {
        */
       accept_order: {
         Args: { target_id: string }
+        Returns: undefined
+      }
+
+      /**
+       * Le client annule sa propre commande (migration `0011`).
+       *
+       * N'agit que sur une commande encore en attente : passé l'acceptation,
+       * le stock est décompté et le verre est en train d'être servi. Lève un
+       * message unique pour « trop tard », « mauvais jeton » et « inexistante ».
+       */
+      cancel_order: {
+        Args: { lookup_id: string; lookup_token: string }
         Returns: undefined
       }
     }

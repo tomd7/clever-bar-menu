@@ -399,6 +399,19 @@ export const orders = pgTable(
     status: text('status').notNull().default('received'),
 
     /**
+     * Qui a annulé, quand la commande l'a été. `null` sinon.
+     *
+     * Sans cette colonne, une commande disparaîtrait de la file du bar sans que
+     * personne sache pourquoi — un barman qui voit s'effacer une ligne qu'il
+     * n'a pas touchée suppose une fausse manœuvre d'un collègue, et va
+     * demander. C'est le prix de laisser le client annuler.
+     *
+     * `guest` : le client, depuis la carte, et seulement tant que le bar ne
+     * l'a pas prise en charge. `venue` : le comptoir, à n'importe quel moment.
+     */
+    cancelledBy: text('cancelled_by'),
+
+    /**
      * Total figé à l'envoi, en centimes.
      *
      * Recalculé par `place_order` à partir des prix en base, jamais repris du
@@ -435,6 +448,10 @@ export const orders = pgTable(
       sql`${table.status} in ('received', 'preparing', 'ready', 'collected', 'cancelled')`,
     ),
     check('orders_total_cents_non_negative', sql`${table.totalCents} >= 0`),
+    check(
+      'orders_cancelled_by_valid',
+      sql`${table.cancelledBy} is null or ${table.cancelledBy} in ('guest', 'venue')`,
+    ),
 
     /*
       Aucune policy pour `anon` : le client passe par les fonctions, jamais par

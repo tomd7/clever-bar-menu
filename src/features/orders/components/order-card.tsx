@@ -51,8 +51,11 @@ export function OrderCard({
             {order.customer_name}
           </p>
           <p className="mt-0.5 text-xs text-ink-soft">
-            <StatusChip status={order.status} /> ·{' '}
-            {formatTime(order.created_at)}
+            <StatusChip
+              status={order.status}
+              cancelledBy={order.cancelled_by}
+            />{' '}
+            · {formatTime(order.created_at)}
           </p>
         </div>
 
@@ -145,7 +148,13 @@ export function OrderCard({
  * ressort — le même raisonnement que pour `StockBadge`, qui ne teinte que
  * l'épuisement.
  */
-function StatusChip({ status }: { status: OrderWithItems['status'] }) {
+function StatusChip({
+  status,
+  cancelledBy,
+}: {
+  status: OrderWithItems['status']
+  cancelledBy: OrderWithItems['cancelled_by']
+}) {
   return (
     <span
       className={
@@ -155,6 +164,16 @@ function StatusChip({ status }: { status: OrderWithItems['status'] }) {
       }
     >
       {BAR_STATUS_LABEL[status]}
+      {/*
+        Qui a annulé, et seulement quand la question se pose. Une ligne qui
+        disparaît de la file sans explication fait supposer une fausse manœuvre
+        d'un collègue — et va chercher quelqu'un pour en avoir le cœur net.
+      */}
+      {status === 'cancelled' && cancelledBy
+        ? cancelledBy === 'guest'
+          ? ' par le client'
+          : ' au comptoir'
+        : null}
     </span>
   )
 }
