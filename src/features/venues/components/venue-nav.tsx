@@ -30,13 +30,11 @@ import type { ReactNode } from 'react'
  * `VenueTrashRailLink` la pose dans la zone basse de la colonne, au-dessus de
  * la déconnexion.
  *
- * `ordersBadge` est un créneau, pas un nombre : compter les commandes en cours
- * appartient à `features/orders`, que cette feature n'a pas le droit
- * d'importer. C'est la route qui assemble les deux — même montage que
- * `productAction` sur la carte client. Le créneau n'est lu que sous
- * l'établissement ouvert, le seul qui déplie ses sections : une pastille par
- * établissement de la liste voudrait dire autant de files relevées en
- * permanence.
+ * `ordersBadge` is a slot, not a number: counting open orders belongs to
+ * `features/orders`, which this feature may not import. The route assembles
+ * the two — the same wiring as `productAction` on the customer menu. The slot
+ * is only read under the open venue, the one that unfolds its sections: a pill
+ * per venue in the list would mean as many queues polled at once.
  *
  * `activeVenueSlug` est passé par la route plutôt que lu ici : savoir où l'on
  * se trouve est une question de routage, et ce composant reste ainsi une

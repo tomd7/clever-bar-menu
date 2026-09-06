@@ -4,32 +4,30 @@ import { isOpenOrder } from '#/features/orders/status'
 import { ordersQueryOptions } from '#/features/orders/api'
 
 /**
- * Le nombre de commandes en cours d'un établissement, tel que la colonne du
- * back-office le porte à côté de « Commandes ».
+ * A venue's open-order count, as the back-office column carries it next to
+ * « Commandes ».
  *
- * Ce composant vit dans `features/orders` et non dans `features/venues`, qui
- * dessine pourtant la colonne : compter des commandes est une affaire de ce
- * domaine-ci, et les deux features n'ont pas le droit de s'importer. C'est
- * donc `_authenticated.tsx` qui l'assemble, dans le créneau `ordersBadge` de
- * `VenueNav` — le même montage que `productAction` sur la carte client.
+ * This component lives in `features/orders` and not in `features/venues`,
+ * which is what draws the column: counting orders belongs to this domain, and
+ * the two features may not import each other. `_authenticated.tsx` therefore
+ * assembles them, through `VenueNav`'s `ordersBadge` slot — the same wiring as
+ * `productAction` on the customer menu.
  *
- * « En cours » a ici le sens exact qu'il a sur l'écran des commandes : reçue,
- * en préparation ou prête (`isOpenOrder`). Un chiffre qui ne correspondrait
- * pas au nombre de cartes lues sous le titre « En cours » ferait douter des
- * deux.
+ * "Open" means here exactly what it means on the orders screen: received,
+ * preparing or ready (`isOpenOrder`). A number that did not match the cards
+ * listed under the « En cours » heading would put both in doubt.
  *
- * `select` sur `ordersQueryOptions` plutôt qu'une requête à part : c'est le
- * cache de l'écran des commandes — aucune requête supplémentaire quand on s'y
- * trouve — et la pastille ne se redessine que si le nombre bouge, pas à
- * chaque relève. La contrepartie assumée : depuis les autres écrans du
- * back-office, cette file se relève toutes les dix secondes. C'est exactement
- * ce qu'on demande à un compteur posé dans une colonne permanente — savoir
- * qu'une commande est arrivée pendant qu'on modifiait un prix.
+ * `select` on `ordersQueryOptions` rather than a query of its own: it is the
+ * orders screen's cache — no extra request while you are on it — and the badge
+ * only re-renders when the number itself moves, not on every poll. The
+ * accepted cost: from the other back-office screens, that queue is now polled
+ * every ten seconds. Which is precisely what a counter pinned in a permanent
+ * column is for — knowing an order arrived while you were editing a price.
  *
- * Rien n'est annoncé à voix haute : pas d'`aria-live`. La colonne est là toute
- * la journée, et une annonce à chaque relève couperait la parole au gérant en
- * train de saisir. Le canal d'alerte existe déjà et il est ailleurs — le titre
- * de l'onglet, sur l'écran des commandes.
+ * Nothing is announced out loud: no `aria-live`. The column is on screen all
+ * day, and an announcement on every poll would talk over a manager who is
+ * typing. The alert channel already exists and it is elsewhere — the tab
+ * title, on the orders screen.
  */
 export function OpenOrdersCount({ venueSlug }: { venueSlug: string }) {
   const { data: count } = useQuery({
@@ -39,9 +37,9 @@ export function OpenOrdersCount({ venueSlug }: { venueSlug: string }) {
   })
 
   /*
-    Rien à zéro, et pas une pastille grise à la place : une file vide n'a rien
-    à signaler, et un « 0 » permanent finirait par ne plus être lu du tout —
-    c'est précisément ce qui fait rater le « 1 ».
+    Nothing at zero, and no grey pill in its place: an empty queue has nothing
+    to signal, and a permanent « 0 » ends up not being read at all — which is
+    exactly what makes the « 1 » get missed.
   */
   if (!count) return null
 
@@ -51,9 +49,8 @@ export function OpenOrdersCount({ venueSlug }: { venueSlug: string }) {
         {count}
       </span>
       {/*
-        Le chiffre seul se lit « Commandes 3 » à la synthèse vocale, ce qui ne
-        veut rien dire. La pastille est donc masquée et la phrase écrite à
-        côté.
+        The number alone reads as "Commandes 3" to a screen reader, which means
+        nothing. The pill is hidden and the sentence written next to it.
       */}
       <span className="sr-only">, {count} en cours</span>
     </>

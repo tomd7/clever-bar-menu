@@ -73,12 +73,12 @@ function BackOfficeLayout() {
           ownerId={user.id}
           activeVenueSlug={venueSlug}
           /*
-            L'assemblage des deux features : `features/venues` dessine la
-            colonne, `features/orders` compte les commandes, et aucune des
-            deux n'a le droit d'importer l'autre — c'est donc ici que le
-            compteur se pose. L'élément n'est créé que si un établissement est
-            ouvert, et il ne se monte que là où `VenueNav` lit son créneau,
-            sous cet établissement : ailleurs, aucune requête ne part.
+            Where the two features are assembled: `features/venues` draws the
+            column, `features/orders` counts the orders, and neither may import
+            the other — so the counter is placed here. The element is only
+            created when a venue is open, and it only mounts where `VenueNav`
+            reads its slot, under that venue: everywhere else, no request goes
+            out.
           */
           ordersBadge={
             venueSlug ? <OpenOrdersCount venueSlug={venueSlug} /> : null

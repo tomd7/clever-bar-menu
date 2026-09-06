@@ -1,22 +1,21 @@
 /*
-  La pastille de comptage posée dans la colonne du back-office
+  The counting pill dropped into the back-office column
   (`open-orders-count.tsx`).
 
-  Elle prend l'aplat `--bottle`, l'accent de l'application, et non une teinte
-  d'avertissement : le thème « ardoise » n'en a pas, délibérément (voir
-  `stock-badge.tsx`). Un aplat clair aurait de toute façon été invisible sur
-  l'élément actif de la colonne, dont le fond est déjà `--surface-raised`.
+  It takes the `--bottle` fill, the application's accent, and not a warning
+  hue: the "ardoise" theme deliberately has none (see `stock-badge.tsx`). A
+  light fill would in any case have been invisible on the column's active item,
+  whose background is already `--surface-raised`.
 
-  `margin-inline-start: auto` la pousse au bord droit de l'élément : alignées
-  entre elles, ces pastilles se lisent en descendant la colonne sans avoir à
-  lire les libellés.
+  `margin-inline-start: auto` pushes it to the item's right edge: aligned with
+  each other, these pills can be read going down the column without reading the
+  labels.
 
-  L'animation ne joue qu'une fois — le composant reste monté tant qu'il reste
-  une commande, et un nombre qui change ne fait que remplacer son texte. Ce
-  qui s'anime est donc le passage de rien à quelque chose, la première
-  commande du service, et elle est là pour que ce ne soit pas brutal, pas pour
-  être remarquée. Elle part de `scale(0.85)` et non de zéro : rien n'apparaît
-  de nulle part.
+  The animation plays once only — the component stays mounted for as long as
+  one order remains, and a changing number merely swaps its text. What is
+  animated is therefore the step from nothing to something, the service's first
+  order, and it is there so that step is not abrupt, not to be noticed. It
+  starts from `scale(0.85)` and not from zero: nothing appears out of nowhere.
 */
 .orders-count {
   display: inline-flex;
