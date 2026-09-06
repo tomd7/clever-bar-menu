@@ -359,6 +359,32 @@ export async function setProductStock(
 }
 
 /**
+ * Associe un code-barres à un produit, ou le retire avec `null`.
+ *
+ * L'appairage est une écriture à part, et non un champ de plus sur la fiche
+ * produit. La raison est celle qui vaut déjà pour le stock : c'est une colonne
+ * qu'un autre écran modifie pendant qu'une fiche est ouverte. Un gérant qui
+ * corrige une faute dans une description effacerait sinon l'appairage fait au
+ * comptoir trois minutes plus tôt. Le geste vit donc là où on le fait — devant
+ * la bouteille, dans l'écran de scan.
+ *
+ * Le code est attendu **déjà normalisé** (`normalizeBarcode`) : cette fonction
+ * ne convertit pas, elle écrit. La forme canonique est ce qui garantit qu'un
+ * UPC-A lu par la caméra et le même code tapé à la main désignent la même
+ * ligne, et la contrainte `products_barcode_format` refuse tout le reste.
+ *
+ * L'unicité par établissement, elle, est rendue par le trigger de la migration
+ * `0015` : son message part tel quel dans l'interface, `describeError` laissant
+ * passer ce qu'il ne sait pas traduire.
+ */
+export async function setProductBarcode(
+  productId: string,
+  barcode: string | null,
+): Promise<void> {
+  await write(supabase.from('products').update({ barcode }).eq('id', productId))
+}
+
+/**
  * Décompte (ou recrédite) le stock d'un produit, sans lire la valeur courante.
  *
  * Passe par la fonction `adjust_product_stock` (migration `0007`) et non par un
@@ -369,15 +395,25 @@ export async function setProductStock(
  *
  * C'est le point d'accroche prévu pour la commande à table : une commande
  * validée appellera ceci, avec la quantité commandée en `delta`.
+ *
+ * Elle **rend le niveau obtenu**, que la fonction SQL renvoie depuis toujours.
+ * Le compteur de la page Stock n'en fait rien — son cache optimiste dit déjà la
+ * même chose — mais l'écran de scan, lui, ne peut pas s'en passer : le plancher
+ * à zéro absorbe une partie du `delta` quand la sortie dépasse le stock, et une
+ * annulation qui appliquerait l'opposé de ce qui a été *demandé* fabriquerait
+ * des bouteilles. Le seul chiffre qui dit ce qui s'est réellement passé est
+ * celui-ci.
  */
 export async function adjustProductStock(
   productId: string,
   delta: number,
-): Promise<void> {
-  const { error } = await supabase.rpc('adjust_product_stock', {
+): Promise<number> {
+  const { data, error } = await supabase.rpc('adjust_product_stock', {
     product_id: productId,
     delta,
   })
 
   if (error) throw new Error(describeError(error))
+
+  return data
 }

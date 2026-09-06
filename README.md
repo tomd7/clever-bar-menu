@@ -431,9 +431,11 @@ node .output/server/index.mjs
       suivi de l'état par le client, file et historique dans le back-office, décompte du
       stock à l'acceptation. **Sans paiement en ligne** — le règlement se fait au comptoir,
       la commande ne transporte aucune donnée bancaire
+- [x] Scan du code-barres pour les mouvements de stock : entrées et sorties saisies devant
+      la caméra depuis `/admin/<slug>/stock/scan`, avec appairage du code au premier scan.
+      Repose sur `BarcodeDetector` : Chrome sur Android, saisie manuelle ailleurs
 - [ ] Commande **à table** : un QR code par table, pour que le numéro arrive dans l'URL au
       lieu d'être saisi. Aujourd'hui le retrait se fait au comptoir, au prénom
-- [ ] Limitation de débit sur `place_order` — écriture non authentifiée ouverte sur Internet
 - [ ] Tableau de bord : nouvelle page d'accueil du back-office, à la place de la simple
       liste des établissements — chiffres de la journée, alertes (stocks bas, ruptures,
       commandes en attente) et accès direct à chaque carte

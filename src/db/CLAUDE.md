@@ -108,10 +108,46 @@ table`, and this one assumes it has already run. Neither function changes signat
   `create or replace` is enough and the grants of `0009` stand; re-granting here would mask
   a revocation made since.
 
+- `0015_product_barcode_unique.sql` — the trigger `products_barcode_unique`, which refuses a
+  barcode already carried by another product **of the same venue**. It is a trigger and not
+  an index because it cannot be an index: `products` has no `venue_id` (it goes through
+  `categories`), and an index expression must be `IMMUTABLE`, which nothing resolving a
+  category to its venue can be. The two fallbacks are worse — a global unique would stop two
+  bars of one deployment from selling the same beer, and `unique (category_id, barcode)`
+  would miss the duplicate that actually hurts, the one across categories. `security
+invoker` matters here more than usual: `products_public_read` is `using true`, so the
+  trigger's `select` sees every product without needing `security definer` — a uniqueness
+  check blinded by RLS would be worse than none, since it would pass the duplicate it cannot
+  see. Split from `0014` (drizzle-kit's `alter table` plus the format check) for the same
+  reason as `0012`/`0013`.
+
 **Parameter names in these functions avoid every column name** (`guest_name` not
 `customer_name`, `lookup_id` not `order_id`). Not style: in plpgsql, a parameter that is a
 homonym of a column visible in the statement raises an ambiguity **at run time**, which is
 the latest possible moment to find out.
+
+## Barcodes — `products.barcode`
+
+Nullable `text`, holding a **zero-padded 14-digit GTIN**, with
+`products_barcode_format` (`^[0-9]{14}$`) as its check.
+
+- **The padded form is the point.** A UPC-A and its EAN-13 spelling differ by a leading zero
+  while naming the same bottle; stored as read, that bottle pairs twice and neither pairing
+  resolves afterwards — silently, and in favour of whichever row comes first.
+  `normalizeBarcode` in `features/menu/barcode.ts` is the only writer, and it also verifies
+  the GS1 check digit. The constraint restates the resulting shape, exactly as
+  `products_stock_quantity_non_negative` restates `parseOptionalStock`; the check digit
+  stays client-side, since a regular expression cannot compute one.
+- **Uniqueness is the trigger of `0015`**, not an index. See above.
+- **The column is world-readable**, like every other on this table, and that is accepted: an
+  EAN is printed on the bottle in the aisle, and an anonymous holder of the publishable key
+  already reads a venue's names, sizes and stock levels. A separate `product_barcodes` table
+  would have cost its own RLS, its own read and its own join, to hide a number stamped on a
+  mass-produced object.
+- **Consequence worth knowing**: `fetchPublicMenu` does `select('*')`, so `barcode` now
+  ships in the SSR'd HTML of every customer menu. Harmless, but it is dead weight in the one
+  payload this project is careful about — narrowing that select is a separate change,
+  because its return type is the full `Product`.
 
 ## Connection strings
 

@@ -2,7 +2,8 @@
 
 Owns the back-office menu editor, the stock screen and the customer-facing menu:
 `components/` (menu-editor, category-\*, product-\*, menu-nav, public-menu, photo-field),
-`api.ts`, `public-api.ts`, `mutations.ts`, `price.ts`, `size.ts`, `photo.ts`, `stock.ts`.
+`api.ts`, `public-api.ts`, `mutations.ts`, `price.ts`, `size.ts`, `photo.ts`, `stock.ts`,
+`barcode.ts`, `scanner.ts`.
 
 **No cross-feature imports**: this feature must not reach into `features/venues` or
 `features/orders`. Anything two need moves down to `src/components/` or `src/lib/` — that is
@@ -145,6 +146,59 @@ the `adjust_product_stock` function.
   `JSON.stringify` drops undefined properties. The comparison is against a `useRef`
   snapshot taken at mount, **not** against the props: those move when the counter
   decrements, and comparing to them would read an untouched field as an edit.
+
+## Barcodes — `barcode.ts`, `scanner.ts`, `/admin/$venueSlug/stock/scan`
+
+`products.barcode` plus a scan screen, for the one moment the stock page serves badly: a
+delivery. Counting a crate of 24 on the stock page means 24 round-trips through a 40-product
+list.
+
+- **Manufacturer codes (EAN/UPC), not labels we print.** Nothing to produce, nothing to
+  stick on a shelf, and the code is already on the bottle. The cost is a pairing gesture the
+  first time a code is met, and that gesture lives in the scan screen — never on the product
+  form.
+- **Everything normalizes through `barcode.ts` before anything else happens.** A UPC-A and
+  its EAN-13 spelling are the same bottle written two ways; stored raw, that bottle pairs
+  twice and neither pairing resolves. The canonical form is a zero-padded 14-digit GTIN, and
+  the GS1 check digit is verified rather than trusted — on a camera read it costs nothing, on
+  a typed one it is what makes a mistyped digit fail under the thumb instead of pairing a
+  code no bottle carries. Same relationship to `products_barcode_format` that `stock.ts` has
+  to `products_stock_quantity_non_negative`.
+- **`scanner.ts` is the only file that knows `BarcodeDetector` exists**, and the reach of
+  that API is the reach of the feature: Chrome on Android, ChromeOS, Chrome on macOS. **Not
+  Safari** — every iOS browser is WebKit, which never shipped Shape Detection — not Firefox,
+  not Chrome on Windows or Linux. Hence a manual field that is always present and always
+  takes the identical path, and hence the **asynchronous factory**: dropping in a lazy
+  `import()` of a WASM decoder has to be a change to `createScanner` and nothing else.
+  `SCAN_FORMATS` excludes UPC-E on purpose — its check digit is computed over the expanded
+  UPC-A, so it would be read and then silently dropped, which looks exactly like a broken
+  camera.
+- **A code resolves against the menu just read, never through a `where barcode = ?`.** No
+  index to create, no enumeration opened to whoever holds the publishable key, no round-trip
+  — and one property a query would not give for free: scoped to the open venue, a manager
+  with two bars cannot decrement the other one's beer.
+- **An unknown code triggers a refetch before it is called unknown.** The client-side
+  uniqueness check is unsound on its own: device A's cache does not know about the pairing
+  device B just made, so A would offer to pair the same code again and two products would
+  carry it. One round-trip on the cold path, none on the hot one — and the trigger of
+  migration `0015` is what actually holds the invariant.
+- **The journal records what moved, not what was asked.** `adjust_product_stock` floors at
+  zero, so a sortie of 10 against a stock of 3 moves 3; undoing the requested −10 would
+  create seven bottles. `adjustProductStock` therefore returns the resulting level (it always
+  had it), and « Annuler » is offered only where something actually moved.
+- **Direction and quantity are chosen per movement, not once per session.** A persistent
+  Entrée/Sortie mode at the top of the screen goes wrong silently — 24 bottles put away as
+  exits is a 48-unit error — and it forced one pass per unit in front of the lens, slower
+  than typing the number. The panel shows the direction next to the product's name and level
+  and states the resulting level _before_ validation; that reading is the safeguard.
+- **No barcode field on the product form.** It would inherit exactly the hazard documented
+  above for `stockQuantity` — another screen writing the column while a card is open — for
+  the price of a `useRef` snapshot and a third `undefined` state. Correcting a wrong pairing
+  happens where it is noticed instead: « Ce n'est pas ce produit ? » in the movement panel.
+- **The way in is a button on the stock page, and there is no sidebar link.**
+  `BackOfficeShell` renders its nav under `hidden lg:block` — the column exists only on
+  desktop, the machine with no usable camera and, on Windows or Linux, no `BarcodeDetector`
+  at all.
 
 ## Customer menu — `public-api.ts`, `components/public-menu.tsx`
 

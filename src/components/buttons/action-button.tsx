@@ -1,3 +1,5 @@
+import { Slot } from 'radix-ui'
+
 import { Button } from '#/components/ui/button'
 import { DESTRUCTIVE_TONE } from '#/components/buttons/tone'
 import { SURFACE_HEIGHT } from '#/components/surface'
@@ -19,6 +21,15 @@ import type { Tone } from '#/components/buttons/tone'
  * `tone` reprend celui d'`IconButton`, et pour la même raison : un bouton qui
  * retire quelque chose sans être l'action principale d'une confirmation se
  * colore sans s'aplatir en rouge. Les deux composants lisent la même teinte.
+ *
+ * **`Slottable` autour des enfants**, et ce n'est pas une précaution en l'air :
+ * ce composant rend deux nœuds — l'icône, puis le libellé — alors que le `Slot`
+ * de Radix, sur lequel `asChild` bascule, en exige exactement un. Sans ce
+ * marqueur, `<ActionButton asChild>` autour d'un `Link` ne rend pas un bouton
+ * mal fichu : il **lève** (« Slot failed to slot onto its children »), et
+ * l'écran entier tombe dans sa `CatchBoundary`. Le marqueur désigne l'enfant
+ * qui reçoit la fusion et laisse l'icône à côté de lui, ce qui est exactement
+ * la disposition voulue. Il est inerte quand `asChild` est absent.
  */
 export function ActionButton({
   icon: Icon,
@@ -45,7 +56,7 @@ export function ActionButton({
       {...props}
     >
       {Icon ? <Icon className="size-4" /> : null}
-      {children}
+      <Slot.Slottable>{children}</Slot.Slottable>
     </Button>
   )
 }

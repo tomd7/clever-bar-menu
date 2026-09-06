@@ -264,6 +264,27 @@ export const products = pgTable(
     size: text('size'),
 
     /**
+     * Manufacturer's barcode, as a **zero-padded 14-digit GTIN**, or `null`.
+     *
+     * `null` is the resting state and stays the majority: a coffee, a draught
+     * beer and a house cocktail carry no barcode, and nothing on this menu
+     * needs one. The column exists for the products that are counted in
+     * bottles, so that a delivery can be put away by scanning rather than by
+     * hunting for a row.
+     *
+     * The padded form is not a whim. A UPC-A and its EAN-13 spelling differ by
+     * a leading zero while naming the same bottle; stored as read, that bottle
+     * pairs twice and neither pairing resolves afterwards. Everything writing
+     * this column goes through `normalizeBarcode` in `features/menu/barcode.ts`
+     * — the check below only restates the shape that function guarantees, the
+     * way `products_stock_quantity_non_negative` restates `parseOptionalStock`.
+     *
+     * Uniqueness is a trigger, not an index — see `products_barcode_unique`
+     * in migration `0015`, and the note on the check below.
+     */
+    barcode: text('barcode'),
+
+    /**
      * Prix dans la plus petite unité de la devise (2450 = 24,50 €).
      * Un entier plutôt qu'un flottant : aucun arrondi ne peut se glisser dans
      * un total. La devise vit sur l'établissement, pas ici.
@@ -341,6 +362,24 @@ export const products = pgTable(
     check(
       'products_low_stock_threshold_non_negative',
       sql`${table.lowStockThreshold} is null or ${table.lowStockThreshold} >= 0`,
+    ),
+    /*
+      La forme canonique d'un code-barres, et rien de plus : quatorze chiffres,
+      ce que produit `normalizeBarcode`. La clé de contrôle, elle, reste côté
+      client — une expression régulière ne sait pas la calculer, et la refaire
+      en SQL dupliquerait la règle à l'endroit le moins lisible.
+
+      L'**unicité** n'est pas ici, et pas par choix : elle doit valoir par
+      établissement, or `products` ne porte pas `venue_id` — il faut passer par
+      `categories`. Une expression d'index doit être `IMMUTABLE`, et toute
+      fonction qui remonte la catégorie vers l'établissement est `STABLE` au
+      mieux : Postgres refuse l'index. Un unique global, lui, interdirait à deux
+      bars du même déploiement de vendre la même bière. D'où le trigger de la
+      migration `0015`, qui dit ce qu'un index ne peut pas dire.
+    */
+    check(
+      'products_barcode_format',
+      sql`${table.barcode} is null or ${table.barcode} ~ '^[0-9]{14}$'`,
     ),
     /**
      * Volontairement sans filtre sur `is_available` ni sur `stock_quantity` :
