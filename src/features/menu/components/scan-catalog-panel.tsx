@@ -51,6 +51,7 @@ export type CatalogDraft = {
 export function ScanCatalogPanel({
   barcode,
   entry,
+  unavailable,
   categories,
   onCreate,
   onPairInstead,
@@ -61,6 +62,16 @@ export function ScanCatalogPanel({
   barcode: string
   /** La fiche trouvée, ou `null` : le formulaire est alors vide. */
   entry: CatalogEntry | null
+  /**
+   * Le catalogue n'a pas répondu — panne réseau, serveur injoignable.
+   *
+   * À ne surtout pas confondre avec « il ne connaît pas ce code » : le
+   * formulaire est le même, mais ce qu'on dit au gérant ne l'est pas. Présenter
+   * un incident comme une bouteille inconnue lui fait ressaisir à la main ce
+   * qu'une fiche lui aurait donné, sans que personne n'apprenne qu'il y a une
+   * panne.
+   */
+  unavailable: boolean
   categories: Array<CategoryWithProducts>
   onCreate: (draft: CatalogDraft) => void
   onPairInstead: () => void
@@ -86,7 +97,11 @@ export function ScanCatalogPanel({
     <div className="flex h-full flex-col bg-surface">
       <header className="border-b border-line p-4 sm:p-5">
         <p className="island-kicker">
-          {entry ? 'Trouvé au catalogue' : 'Code-barres inconnu'}
+          {entry
+            ? 'Trouvé au catalogue'
+            : unavailable
+              ? 'Catalogue indisponible'
+              : 'Code-barres inconnu'}
         </p>
 
         <div className="mt-2 flex items-center gap-3">
@@ -107,11 +122,13 @@ export function ScanCatalogPanel({
             <p className="font-medium tabular-nums text-ink">
               {displayBarcode(barcode)}
             </p>
-            <p className="mt-0.5 truncate text-sm text-ink-soft">
+            <p className="mt-0.5 text-sm text-ink-soft">
               {entry
                 ? [entry.brand, entry.quantity].filter(Boolean).join(' · ') ||
                   'Aucun détail'
-                : 'Aucune fiche pour ce code — décrivez la bouteille.'}
+                : unavailable
+                  ? 'Le catalogue n’a pas répondu. Vous pouvez créer la bouteille à la main — la fiche sera retrouvée au prochain scan.'
+                  : 'Aucune fiche pour ce code — décrivez la bouteille.'}
             </p>
           </div>
         </div>

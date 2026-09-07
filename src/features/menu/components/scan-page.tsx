@@ -40,7 +40,19 @@ type Overlay =
   | { kind: 'looking'; barcode: string }
   | { kind: 'movement'; barcode: string; productId: string }
   | { kind: 'pairing'; barcode: string; pairedProductId: string | null }
-  | { kind: 'catalog'; barcode: string; entry: CatalogEntry | null }
+  | {
+      kind: 'catalog'
+      barcode: string
+      entry: CatalogEntry | null
+      /**
+       * Le catalogue n'a pas répondu, ce qui n'est **pas** la même chose qu'un
+       * code qu'il ne connaît pas. Sans cette distinction, une panne serveur
+       * s'affiche comme « bouteille inconnue » : le gérant ressaisit à la main
+       * ce qu'une fiche lui aurait donné, et personne ne voit qu'il y a un
+       * incident.
+       */
+      unavailable: boolean
+    }
 
 /** Un mouvement passé, gardé le temps de la session pour pouvoir le défaire. */
 type JournalEntry = {
@@ -173,6 +185,7 @@ export function ScanPage({ venueSlug }: { venueSlug: string }) {
         kind: 'catalog',
         barcode,
         entry: lookup.status === 'found' ? lookup.entry : null,
+        unavailable: lookup.status === 'unavailable',
       })
     } catch (cause) {
       setError(
@@ -416,6 +429,8 @@ export function ScanPage({ venueSlug }: { venueSlug: string }) {
                               kind: 'catalog',
                               barcode: overlay.barcode,
                               entry: null,
+                              /* Choix délibéré du gérant, pas un incident. */
+                              unavailable: false,
                             })
                     }
                     pending={setBarcode.isPending}
@@ -427,6 +442,7 @@ export function ScanPage({ venueSlug }: { venueSlug: string }) {
                   <ScanCatalogPanel
                     barcode={overlay.barcode}
                     entry={overlay.entry}
+                    unavailable={overlay.unavailable}
                     categories={menu?.categories ?? []}
                     onCreate={handleCreate}
                     onPairInstead={() =>
