@@ -28,6 +28,7 @@ export function ScanPairingPanel({
   categories,
   pairedProductId,
   onPair,
+  onCreateInstead,
   onCancel,
   pending,
   error,
@@ -37,6 +38,12 @@ export function ScanPairingPanel({
   /** Le produit qui porte déjà ce code, quand on vient le corriger. */
   pairedProductId: string | null
   onPair: (productId: string) => void
+  /**
+   * Retour vers la création d'un produit. `undefined` quand elle n'a pas de
+   * sens — corriger un appairage, où créer un second produit ferait le doublon
+   * qu'on est en train de défaire.
+   */
+  onCreateInstead?: () => void
   onCancel: () => void
   pending: boolean
   error: string | null
@@ -89,8 +96,7 @@ export function ScanPairingPanel({
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5">
         {matches.length === 0 ? (
           <p className="text-sm text-ink-soft">
-            Aucun produit ne porte ce nom. Le produit doit exister sur la carte
-            avant de recevoir un code-barres.
+            Aucun produit ne porte ce nom.
           </p>
         ) : (
           <div className="space-y-4">
@@ -137,6 +143,23 @@ export function ScanPairingPanel({
 
       <footer className="border-t border-line p-4 sm:p-5">
         <CancelButton onClick={onCancel}>Revenir à la caméra</CancelButton>
+
+        {/*
+          L'autre issue : cette bouteille n'est pas encore sur la carte. Elle
+          existe parce que ce panneau était auparavant un cul-de-sac — « le
+          produit doit exister avant de recevoir un code-barres » envoyait le
+          gérant vers l'éditeur de carte, sur un autre écran, une caisse dans
+          les bras.
+        */}
+        {onCreateInstead ? (
+          <button
+            type="button"
+            onClick={onCreateInstead}
+            className="mt-3 block min-h-11 text-sm text-ink-soft underline underline-offset-4 hover:text-ink"
+          >
+            Il n’est pas encore sur ma carte
+          </button>
+        ) : null}
       </footer>
     </div>
   )

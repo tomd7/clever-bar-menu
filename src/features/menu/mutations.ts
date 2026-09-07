@@ -20,7 +20,12 @@ import {
 } from '#/features/menu/price'
 import { StockFormatError, parseOptionalStock } from '#/features/menu/stock'
 import { parseOptionalSize } from '#/features/menu/size'
-import { removeProductPhoto, uploadProductPhoto } from '#/features/menu/photo'
+import {
+  copyRemotePhoto,
+  removeProductPhoto,
+  uploadProductPhoto,
+} from '#/features/menu/photo'
+import { CATALOG_PHOTO_CREDIT } from '#/features/menu/catalog'
 
 import type { Menu } from '#/features/menu/api'
 import type { Product } from '#/lib/supabase'
@@ -121,6 +126,8 @@ export function useSaveProduct() {
       photoFile: File | null
       /** Chemin conservé : celui du produit, ou `null` si la photo est retirée. */
       imagePath: string | null
+      /** Crédit actuel de la photo. Ne survit qu'à une photo inchangée. */
+      photoCredit: string | null
       /** Chemin avant modification, pour savoir quel fichier devient inutile. */
       previousImagePath: string | null
     }) => {
@@ -161,12 +168,22 @@ export function useSaveProduct() {
         ? await uploadProductPhoto(input.venueId, input.photoFile)
         : null
 
+      const imagePath = uploadedPath ?? input.imagePath
+
       const draft = {
         name: input.name.trim(),
         description: input.description.trim() || null,
         size: parseOptionalSize(input.size),
         priceCents,
-        imagePath: uploadedPath ?? input.imagePath,
+        imagePath,
+        /*
+          Le crédit ne survit qu'à une photo inchangée : une image téléversée à
+          l'instant est celle du gérant, et une photo retirée n'a plus personne
+          à créditer. Le laisser derrière ferait mentir la mention en pied de
+          carte, dans le sens le plus embarrassant — créditer un tiers pour une
+          photo prise au comptoir.
+        */
+        photoCredit: uploadedPath || !imagePath ? null : input.photoCredit,
         stockQuantity,
         lowStockThreshold,
       }
@@ -194,6 +211,84 @@ export function useSaveProduct() {
         input.previousImagePath !== draft.imagePath
       ) {
         await removeProductPhoto(input.previousImagePath)
+      }
+    },
+  )
+}
+
+/**
+ * Crée un produit depuis l'écran de scan, code-barres compris.
+ *
+ * Distincte de `useSaveProduct` alors que les deux créent un produit, parce que
+ * ce qu'elles reçoivent n'a rien à voir : une fiche de formulaire d'un côté,
+ * une bouteille et un code de l'autre. Les fusionner obligerait `useSaveProduct`
+ * à porter un code-barres — ce que le formulaire produit refuse justement.
+ *
+ * **Pas d'optimisme**, contrairement aux mutations de stock : on ne sait pas
+ * fabriquer l'identifiant d'un produit qui n'existe pas encore, et l'écran a
+ * besoin du vrai pour enchaîner sur le mouvement. L'argument du décompte tapé
+ * deux fois ne s'applique pas non plus — une création se fait une fois.
+ *
+ * Le stock est volontairement absent : le produit naît non suivi, et le panneau
+ * de mouvement enchaîne aussitôt sur sa branche « activer le suivi », qui est
+ * la bonne première question pour une bouteille qu'on vient de recevoir. Le
+ * demander ici *et* là est la façon dont un 24 devient un 48.
+ */
+export function useCreateProductFromCatalog() {
+  return useMenuMutation(
+    async (input: {
+      venueId: string
+      categoryId: string
+      position: number
+      /** Code-barres **déjà normalisé** — il vient du scanner ou de `barcode.ts`. */
+      barcode: string
+      name: string
+      /** Format saisi, en texte. Vide = la carte n'affiche pas de format. */
+      size: string
+      /** Prix saisi en euros, en texte. Vide = pas de prix affiché. */
+      price: string
+      /** Photo du catalogue à recopier, ou `null` s'il n'y en a pas. */
+      photoUrl: string | null
+    }) => {
+      let priceCents: number | null
+      try {
+        priceCents = parseOptionalEurosToCents(input.price)
+      } catch (cause) {
+        throw cause instanceof PriceFormatError
+          ? cause
+          : new Error('Prix invalide.')
+      }
+
+      /*
+        La copie est au mieux : `copyRemotePhoto` ne lève pas et rend `null` si
+        le CDN ne répond pas. Une bouteille sans photo reste une bouteille
+        vendable, et le gérant n'a pas demandé une image, il a demandé un
+        produit.
+      */
+      const imagePath = input.photoUrl
+        ? await copyRemotePhoto(input.venueId, input.photoUrl)
+        : null
+
+      try {
+        await createProduct({
+          categoryId: input.categoryId,
+          position: input.position,
+          barcode: input.barcode,
+          name: input.name.trim(),
+          description: null,
+          size: parseOptionalSize(input.size),
+          priceCents,
+          imagePath,
+          photoCredit: imagePath ? CATALOG_PHOTO_CREDIT : null,
+        })
+      } catch (cause) {
+        /*
+          Même rattrapage que `useSaveProduct` : l'insertion peut être refusée
+          par le trigger d'unicité du code-barres, et le fichier déjà envoyé
+          n'aurait alors plus rien qui le référence.
+        */
+        if (imagePath) await removeProductPhoto(imagePath)
+        throw cause
       }
     },
   )

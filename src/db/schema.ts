@@ -304,6 +304,24 @@ export const products = pgTable(
     imagePath: text('image_path'),
 
     /**
+     * À qui la photo doit d'être créditée, ou `null` — le cas normal, celui de
+     * la photo prise derrière le bar.
+     *
+     * Vaut `'Open Food Facts'` quand la photo a été recopiée depuis le
+     * catalogue (`drink_catalog`) : les images d'Open Food Facts sont sous
+     * CC-BY-SA, et la copier sur la carte publique d'un établissement, c'est la
+     * republier. L'attribution est due là où l'œuvre est publiée, donc sur
+     * `/m/$venueSlug` et pas seulement dans le back-office.
+     *
+     * Une colonne plutôt qu'un `catalog_id` : ce qu'il faut savoir n'est pas
+     * « d'où vient cette fiche » mais « que doit-on afficher en pied de carte »,
+     * et la réponse doit survivre à la disparition de la ligne du catalogue.
+     * Elle suit `imagePath` — le jour où le gérant remplace la photo par la
+     * sienne, le crédit retombe à `null` avec elle.
+     */
+    photoCredit: text('photo_credit'),
+
+    /**
      * Rupture décidée à la main : masque le produit sur la carte publique.
      *
      * Distinct de l'épuisement du stock, qui se déduit de `stockQuantity`. Un
@@ -401,6 +419,106 @@ export const products = pgTable(
     ),
   ],
 )
+
+/**
+ * Le catalogue de boissons : ce qu'un code-barres désigne, indépendamment de
+ * tout établissement.
+ *
+ * Une Coca 33 cl est la même bouteille dans tous les bars, et c'est là tout
+ * l'intérêt : le premier scan d'un GTIN interroge Open Food Facts, la fiche est
+ * gardée ici, et tous les scans suivants — chez n'importe quel gérant — sont
+ * une lecture. Sans cette table, chaque bar ressaisirait à la main ce que le
+ * voisin a déjà saisi.
+ *
+ * **Première table globale du schéma**, et la seule à ne pas remonter à
+ * `venues`. C'est ce qui rend sa RLS différente de toutes les autres, ci-dessous.
+ */
+export const drinkCatalog = pgTable(
+  'drink_catalog',
+  {
+    /**
+     * Le GTIN canonique — quatorze chiffres zero-paddés, ce que produit
+     * `normalizeBarcode` — et l'identité de la fiche.
+     *
+     * Clé primaire plutôt qu'un `uuid` de plus : le code-barres *est* le nom du
+     * produit dans ce référentiel, et `products.barcode` porte déjà cette
+     * valeur. Une colonne `catalog_id` sur `products` serait la même donnée
+     * écrite deux fois, avec deux occasions de diverger.
+     */
+    gtin: text('gtin').primaryKey(),
+
+    /**
+     * Le nom du produit, ou `null` — et ce `null` est le cache négatif.
+     *
+     * Une ligne sans nom signifie « Open Food Facts a été interrogé et ne
+     * connaît pas ce code », pas « fiche incomplète ». La distinction paie
+     * derrière un bar : les vins, spiritueux et sirops y sont mal couverts, et
+     * ce sont précisément les bouteilles rescannées à chaque livraison. Sans
+     * cette trace, chacune rejouerait un aller-retour réseau à chaque scan.
+     *
+     * `checkedAt` dit quand la question a été posée, ce qui permet de la
+     * reposer plus tard : le catalogue d'Open Food Facts s'enrichit tous les
+     * jours, et un « inconnu » n'est vrai qu'à une date.
+     */
+    name: text('name'),
+
+    /**
+     * La marque telle qu'Open Food Facts la donne, sans découpage.
+     *
+     * Le champ `brands` est une liste libre où l'ordre ne veut rien dire — pour
+     * le Coca-Cola, il commence par « COCA-COLA SERVICES SA/NV », une raison
+     * sociale. Aucune règle n'en extrait la marque commerciale de façon fiable,
+     * et ce n'est pas grave : `products` n'a pas de colonne marque, celle-ci ne
+     * sert qu'à aider le gérant à reconnaître la bouteille qu'il tient.
+     */
+    brand: text('brand'),
+
+    /**
+     * La contenance, recopiée brute d'Open Food Facts (« 330 ml », « 1,5 L »).
+     *
+     * Jamais parsée, pour la raison qu'expose `features/menu/size.ts` : une
+     * taille est du texte libre. Elle est proposée au gérant, qui la corrige
+     * d'un tap — Open Food Facts écrit en millilitres, un bar en centilitres.
+     */
+    quantity: text('quantity'),
+
+    /** L'URL de la photo chez Open Food Facts. Sert d'aperçu, pas de source. */
+    photoUrl: text('photo_url'),
+
+    /** Date de la dernière question posée à Open Food Facts. Voir `name`. */
+    checkedAt: timestamp('checked_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+
+    ...timestamps,
+  },
+  (table) => [
+    /* La même forme canonique que `products_barcode_format`, et pour la même raison. */
+    check('drink_catalog_gtin_format', sql`${table.gtin} ~ '^[0-9]{14}$'`),
+  ],
+  /*
+    RLS activée, et **aucune policy** : la table est fermée à PostgREST. Ni
+    lecture ni écriture avec la clé publiable, ce qui est l'inverse exact des
+    cinq autres tables.
+
+    Le raisonnement tient au fait qu'elle est globale. Une table partagée par
+    tous les établissements et ouverte en écriture à `authenticated` est un
+    catalogue empoisonnable : n'importe quel compte renomme le Coca-Cola de tous
+    les bars, et rien dans le modèle propriétaire ne peut l'en empêcher, faute
+    de propriétaire à qui rattacher la ligne. Une lecture publique serait
+    tenable, mais ne servirait à rien tant que l'écriture doit de toute façon
+    passer par le serveur.
+
+    D'où `enableRLS()` seul, et un `createServerFn` comme unique porte
+    (`features/menu/catalog-api.ts`), qui se connecte via Drizzle en
+    propriétaire de la base. C'est le premier accès Drizzle à l'exécution du
+    projet, et l'avertissement de `CLAUDE.md` — « ils contourneraient
+    silencieusement chaque policy » — ne s'applique pas ici : la fonction ne
+    touche que cette table, qui n'a pas d'isolation à contourner. Elle ne doit
+    jamais lire ni écrire `venues`, `categories`, `products`, `orders` ou
+    `order_items`.
+  */
+).enableRLS()
 
 /**
  * Les états d'une commande, dans l'ordre où elle les traverse.

@@ -54,6 +54,12 @@ type ProductRow = {
   barcode: string | null
   price_cents: number | null
   image_path: string | null
+  /**
+   * À qui créditer la photo, ou `null` — le cas de la photo prise sur place.
+   * Vaut `'Open Food Facts'` quand elle a été recopiée depuis le catalogue :
+   * ces images sont sous CC-BY-SA, et la carte publique doit le dire.
+   */
+  photo_credit: string | null
   is_available: boolean
   /** Niveau restant, ou `null` si le produit n'est pas suivi en stock. */
   stock_quantity: number | null
@@ -190,6 +196,7 @@ export type Database = {
           | 'position'
           | 'is_available'
           | 'image_path'
+          | 'photo_credit'
           | 'size'
           | 'barcode'
           | 'price_cents'

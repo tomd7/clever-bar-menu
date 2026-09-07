@@ -1,9 +1,11 @@
 # Persistence — `src/db/`
 
-Postgres hosted on Supabase. **Drizzle is migrations-only**: no application query goes
-through it (the app talks to PostgREST via `supabase-js`), so `DATABASE_URL` is needed
-only by `db:migrate`. Supabase also carries the back office's auth and the product photo
-storage — that is what a move off it would have to replace.
+Postgres hosted on Supabase. **Drizzle is migrations-only, except for `drink_catalog`**:
+every other query goes through PostgREST via `supabase-js`. That exception makes
+`DATABASE_URL` a **runtime** variable, not just a `db:migrate` one — a deployment that
+only exposes it to CI leaves the scan screen saying « catalogue indisponible » with no
+other symptom. Supabase also carries the back office's auth and the product photo storage
+— that is what a move off it would have to replace.
 
 | File                      | Role                                                                 |
 | ------------------------- | -------------------------------------------------------------------- |
@@ -67,7 +69,10 @@ category write policies, which look the venue up by subquery, would stop finding
 
 **Drizzle bypasses RLS**: it connects as the table owner and there is no `FORCE ROW LEVEL
 SECURITY`. Don't reintroduce runtime Drizzle queries without revisiting the isolation
-story — they would silently sidestep every policy.
+story — they would silently sidestep every policy. **That revisit has been done once, for
+`drink_catalog` alone** (below), and its argument is that the table holds no tenant data.
+It does not extend to any venue-scoped table: the next Drizzle query that reaches one has
+to make its own case.
 
 ## Hand-written migrations
 
@@ -149,6 +154,43 @@ Nullable `text`, holding a **zero-padded 14-digit GTIN**, with
   payload this project is careful about — narrowing that select is a separate change,
   because its return type is the full `Product`.
 
+## The drink catalogue — `drink_catalog`
+
+The cache of Open Food Facts, keyed by canonical GTIN-14. **The only global table in the
+schema**: it has no `venue_id` and nothing points at it. A 33 cl Coca-Cola is the same
+bottle in every bar, and the whole point is that the first scan anywhere spares every
+other manager the typing.
+
+- **RLS enabled, zero policies** (`.enableRLS()` with no `pgPolicy`). This inverts the
+  five other tables and is the load-bearing decision. A global table writable by any
+  `authenticated` account is a catalogue anyone can poison — one signed-in stranger
+  renames the Coca-Cola of every venue — and the owner model has no answer, because there
+  is no owner to scope a row to. A public _read_ would be defensible, but buys nothing:
+  writes have to go through the server regardless, and a second door would mean two error
+  paths and two places stating the negative-cache rule. So the table is closed to
+  PostgREST entirely, and `features/menu/catalog.server.ts` is the only way in.
+- **Consequence worth stating**: `drink_catalog` is deliberately **absent** from the
+  hand-written `Database` type in `src/lib/supabase.ts`. Adding it would be the first step
+  toward undoing the above.
+- **`name is null` is the negative cache**, not an incomplete sheet — Open Food Facts was
+  asked and does not know this code. It matters because OFF covers wine and spirits badly,
+  and those are exactly what a bar rescans at every delivery. `checked_at` dates the
+  question so it can be asked again after thirty days; an **outage is never recorded as an
+  answer**, or a four-second timeout would silence a code for a month.
+- **The code goes out unpadded** (`displayBarcode`): OFF is keyed by what is printed under
+  the bars. It does normalise leading zeros, but relying on that would rest on
+  undocumented behaviour.
+- **No `catalog_id` on `products`, and no FK.** The catalogue's primary key _is_ the GTIN,
+  which `products.barcode` already carries — a link column would be the same value written
+  twice. A FK would be worse: it would forbid pairing a code OFF has never heard of, which
+  is the entire wine list. What the product keeps is a **copy** (name, size, photo), the
+  same decision `order_items` makes for its lines.
+- **`products.photo_credit` carries the licence, not the provenance.** OFF photographs are
+  CC-BY-SA, so copying one onto a public menu republishes it and attribution is due on
+  `/m/$venueSlug`. The column answers « what must the footer say », which survives the
+  catalogue row disappearing, and it is why tracing the sheet's origin is not needed. It
+  follows `image_path` and is cleared with it.
+
 ## Connection strings
 
 Three, from the Supabase dashboard: transaction pooler (6543, IPv4) for the app, session
@@ -156,6 +198,21 @@ pooler (5432, IPv4) for migrations if the transaction pooler chokes on DDL (set
 `MIGRATION_DATABASE_URL`, read only by `drizzle.config.ts`), and the direct connection
 (`db.<ref>.supabase.co:5432`), which is **IPv6-only** on recent projects and fails from
 hosts without IPv6.
+
+**On the host, `DATABASE_URL` must be the transaction pooler, and it must exist for
+previews as well as production.** Since the drink catalogue, this variable is read at
+runtime and not only by `db:migrate`, which changes two things that used to be harmless:
+
+- A local `.env` pointing at the direct connection works on a laptop with IPv6 and fails
+  on a serverless host without it. Ports are not interchangeable here.
+- On Vercel, an environment variable set for Production alone leaves every preview
+  deployment without it, and **variables are read at deploy time — adding one does not fix
+  the deployments that already exist, they have to be redeployed.**
+
+The failure is quiet by construction: `lookupCatalog` answers `unavailable` rather than
+throwing, so the scan screen keeps working and says « Catalogue indisponible ». Everything
+else on the site keeps working too, because everything else talks to PostgREST from the
+browser. A catalogue that is the only broken thing on a deployment points here first.
 
 ## Deliberately absent
 

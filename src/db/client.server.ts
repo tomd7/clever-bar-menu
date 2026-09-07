@@ -29,6 +29,29 @@ const create = () => {
      * échouent de façon intermittente sous charge.
      */
     prepare: false,
+
+    /**
+     * Une seule connexion par instance.
+     *
+     * `postgres` en ouvre dix par défaut, ce qui est le bon réglage pour un
+     * serveur long — une instance sert alors plusieurs requêtes de front. En
+     * serverless c'est l'inverse : chaque instance traite **une** requête à la
+     * fois, et les neuf autres connexions ne servent qu'à occuper des places
+     * dans le pooler, que toutes les instances chaudes se partagent. Le
+     * plafond se manifeste par des « remaining connection slots are reserved »
+     * intermittents sous charge, c'est-à-dire au pire moment.
+     *
+     * Le réglage n'avait aucun effet tant que rien n'appelait `db()` à
+     * l'exécution ; le catalogue de boissons est ce qui l'a rendu réel.
+     */
+    max: 1,
+
+    /**
+     * Une connexion inutilisée est refermée au bout de vingt secondes plutôt
+     * que gardée : une instance serverless gelée entre deux requêtes tient
+     * sinon une place que personne n'occupe.
+     */
+    idle_timeout: 20,
   })
 
   return drizzle(client, {

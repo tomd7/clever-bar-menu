@@ -127,6 +127,48 @@ export async function uploadProductPhoto(
   return path
 }
 
+/** Au-delà, c'est qu'on ne télécharge pas ce qu'on croit. */
+const REMOTE_PHOTO_MAX_BYTES = 8_000_000
+
+/**
+ * Recopie une photo distante dans le bucket de l'établissement.
+ *
+ * Utilisée par l'écran de scan quand le gérant ajoute à sa carte une boisson
+ * trouvée au catalogue : l'image vient d'Open Food Facts, et elle doit devenir
+ * la sienne. La carte publique est la seule page SSR à données du projet, et
+ * faire dépendre l'image d'une bouteille du CDN d'un tiers — qui peut la
+ * remplacer ou la retirer — n'est pas une dépendance que le bar a choisie.
+ *
+ * Elle passe par `uploadProductPhoto`, donc par `shrink` : l'image arrive
+ * réduite et réencodée comme n'importe quelle photo prise au téléphone. Un seul
+ * chemin d'envoi, un seul format, un seul `allowed_mime_types` à tenir aligné
+ * avec la migration `0004`.
+ *
+ * **Elle ne lève jamais** et renvoie `null` si quoi que ce soit échoue. Le
+ * gérant voulait un produit, pas une photo : refuser de créer une bière parce
+ * qu'un CDN a hoqueté serait le pire arbitrage possible derrière un comptoir.
+ */
+export async function copyRemotePhoto(
+  venueId: string,
+  url: string,
+): Promise<string | null> {
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(8000) })
+    if (!response.ok) return null
+
+    const blob = await response.blob()
+    if (!blob.type.startsWith('image/')) return null
+    if (blob.size > REMOTE_PHOTO_MAX_BYTES) return null
+
+    return await uploadProductPhoto(
+      venueId,
+      new File([blob], 'catalogue', { type: blob.type }),
+    )
+  } catch {
+    return null
+  }
+}
+
 /**
  * Supprime une photo, sans jamais faire échouer l'appelant.
  *

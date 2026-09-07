@@ -3,22 +3,31 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 
 import { ActionButton } from '#/components/buttons/action-button'
-import { BarcodeFormatError, normalizeBarcode } from '#/features/menu/barcode'
+import {
+  BarcodeFormatError,
+  displayBarcode,
+  normalizeBarcode,
+} from '#/features/menu/barcode'
 import { ErrorNote } from '#/components/error-note'
 import { NavLink } from '#/components/nav-link'
 import { ProductSize } from '#/components/product-size'
 import { ScanCamera } from '#/features/menu/components/scan-camera'
+import { ScanCatalogPanel } from '#/features/menu/components/scan-catalog-panel'
 import { ScanMovementPanel } from '#/features/menu/components/scan-movement-panel'
 import { ScanPairingPanel } from '#/features/menu/components/scan-pairing-panel'
 import { TextField } from '#/components/form/text-field'
+import { drinkQueryOptions } from '#/features/menu/catalog-api'
 import { isCameraAvailable } from '#/features/menu/scanner'
-import { menuQueryOptions } from '#/features/menu/api'
+import { menuQueryOptions, nextPosition } from '#/features/menu/api'
 import {
   useAdjustProductStock,
+  useCreateProductFromCatalog,
   useSetProductBarcode,
   useSetProductStock,
 } from '#/features/menu/mutations'
 
+import type { CatalogEntry, CatalogLookup } from '#/features/menu/catalog'
+import type { CatalogDraft } from '#/features/menu/components/scan-catalog-panel'
 import type { Menu } from '#/features/menu/api'
 import type {
   MovementDirection,
@@ -28,8 +37,22 @@ import type { Product } from '#/lib/supabase'
 
 /** Ce qui couvre la caméra, quand quelque chose la couvre. */
 type Overlay =
+  | { kind: 'looking'; barcode: string }
   | { kind: 'movement'; barcode: string; productId: string }
   | { kind: 'pairing'; barcode: string; pairedProductId: string | null }
+  | {
+      kind: 'catalog'
+      barcode: string
+      entry: CatalogEntry | null
+      /**
+       * Le catalogue n'a pas répondu, ce qui n'est **pas** la même chose qu'un
+       * code qu'il ne connaît pas. Sans cette distinction, une panne serveur
+       * s'affiche comme « bouteille inconnue » : le gérant ressaisit à la main
+       * ce qu'une fiche lui aurait donné, et personne ne voit qu'il y a un
+       * incident.
+       */
+      unavailable: boolean
+    }
 
 /** Un mouvement passé, gardé le temps de la session pour pouvoir le défaire. */
 type JournalEntry = {
@@ -84,10 +107,16 @@ export function ScanPage({ venueSlug }: { venueSlug: string }) {
   const adjust = useAdjustProductStock()
   const setStock = useSetProductStock()
   const setBarcode = useSetProductBarcode()
+  const createProduct = useCreateProductFromCatalog()
 
   const [overlay, setOverlay] = useState<Overlay | null>(null)
   const [product, setProduct] = useState<Product | null>(null)
-  const [categories, setCategories] = useState<Menu['categories']>([])
+  /*
+    La carte entière, et non ses seules catégories : le panneau de catalogue a
+    besoin de `venue.id` pour déposer la photo recopiée dans le bon dossier du
+    bucket. Deux états nourris par le même `readMenu` finiraient par diverger.
+  */
+  const [menu, setMenu] = useState<Menu | null>(null)
   const [journal, setJournal] = useState<Array<JournalEntry>>([])
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -114,24 +143,50 @@ export function ScanPage({ venueSlug }: { venueSlug: string }) {
     setBusy(true)
 
     try {
-      let menu = await readMenu(false)
-      let found = findByBarcode(menu, barcode)
+      let card = await readMenu(false)
+      let found = findByBarcode(card, barcode)
 
       if (!found) {
         /* Le chemin froid : peut-être que l'autre appareil vient de l'appairer. */
-        menu = await readMenu(true)
-        found = findByBarcode(menu, barcode)
+        card = await readMenu(true)
+        found = findByBarcode(card, barcode)
       }
 
-      setCategories(menu.categories)
+      setMenu(card)
 
       if (found) {
         setProduct(found)
         setOverlay({ kind: 'movement', barcode, productId: found.id })
-      } else {
-        setProduct(null)
-        setOverlay({ kind: 'pairing', barcode, pairedProductId: null })
+        return
       }
+
+      /*
+        Le code n'est sur aucune ligne de la carte : on demande au catalogue de
+        quelle bouteille il s'agit. C'est le seul appel réseau que cet écran
+        fait au-delà de la carte, et il n'a lieu que sur ce chemin — un code
+        déjà appairé n'y passe jamais.
+      */
+      setProduct(null)
+      setOverlay({ kind: 'looking', barcode })
+
+      let lookup: CatalogLookup
+      try {
+        lookup = await queryClient.fetchQuery(drinkQueryOptions(barcode))
+      } catch {
+        /*
+          Une exception ici veut dire que **notre** serveur n'a pas répondu, et
+          non qu'Open Food Facts est muette. Les deux se soldent par le même
+          écran : un catalogue en panne ne doit jamais casser un scan.
+        */
+        lookup = { status: 'unavailable' }
+      }
+
+      setOverlay({
+        kind: 'catalog',
+        barcode,
+        entry: lookup.status === 'found' ? lookup.entry : null,
+        unavailable: lookup.status === 'unavailable',
+      })
     } catch (cause) {
       setError(
         cause instanceof Error
@@ -198,17 +253,65 @@ export function ScanPage({ venueSlug }: { venueSlug: string }) {
         mouvement doit porter le niveau que la base connaît, et l'appairage
         vient d'invalider la carte de toute façon.
       */
-      const menu = await readMenu(false)
-      const paired = findProduct(menu, productId)
+      const fresh = await readMenu(false)
+      const paired = findProduct(fresh, productId)
       if (!paired) return
 
-      setCategories(menu.categories)
+      setMenu(fresh)
       setProduct(paired)
       setOverlay({ kind: 'movement', barcode: overlay.barcode, productId })
     } catch (cause) {
       setError(
         cause instanceof Error ? cause.message : 'Association impossible.',
       )
+    }
+  }
+
+  /**
+   * Crée le produit scanné, puis enchaîne sur son mouvement de stock.
+   *
+   * Le produit fraîchement créé se retrouve **par son code-barres** et non par
+   * un identifiant renvoyé par l'écriture : c'est exactement la résolution que
+   * cet écran fait déjà, et elle a la même propriété — elle ne peut désigner
+   * qu'un produit de l'établissement ouvert. Une insertion qui rendrait son id
+   * obligerait `createProduct` à changer de forme pour un gain nul.
+   */
+  async function handleCreate(draft: CatalogDraft) {
+    if (overlay?.kind !== 'catalog' || !menu) return
+
+    setError(null)
+
+    const category = menu.categories.find(
+      (item) => item.id === draft.categoryId,
+    )
+    if (!category) return
+
+    try {
+      await createProduct.mutateAsync({
+        venueId: menu.venue.id,
+        categoryId: draft.categoryId,
+        position: nextPosition(category.products),
+        barcode: overlay.barcode,
+        name: draft.name,
+        size: draft.size,
+        price: draft.price,
+        photoUrl: draft.photoUrl,
+      })
+
+      const fresh = await readMenu(false)
+      const created = findByBarcode(fresh, overlay.barcode)
+      if (!created) return
+
+      setMenu(fresh)
+      setProduct(created)
+      setOverlay({
+        kind: 'movement',
+        barcode: overlay.barcode,
+        productId: created.id,
+      })
+    } catch (cause) {
+      /* Le trigger d'unicité du code-barres parle déjà français, entre autres. */
+      setError(cause instanceof Error ? cause.message : 'Création impossible.')
     }
   }
 
@@ -310,13 +413,53 @@ export function ScanPage({ venueSlug }: { venueSlug: string }) {
                 {overlay.kind === 'pairing' ? (
                   <ScanPairingPanel
                     barcode={overlay.barcode}
-                    categories={categories}
+                    categories={menu?.categories ?? []}
                     pairedProductId={overlay.pairedProductId}
                     onPair={handlePair}
                     onCancel={close}
+                    onCreateInstead={
+                      /*
+                        Créer un second produit alors qu'on répare un appairage
+                        ferait le doublon qu'on est en train de corriger.
+                      */
+                      overlay.pairedProductId
+                        ? undefined
+                        : () =>
+                            setOverlay({
+                              kind: 'catalog',
+                              barcode: overlay.barcode,
+                              entry: null,
+                              /* Choix délibéré du gérant, pas un incident. */
+                              unavailable: false,
+                            })
+                    }
                     pending={setBarcode.isPending}
                     error={error}
                   />
+                ) : null}
+
+                {overlay.kind === 'catalog' ? (
+                  <ScanCatalogPanel
+                    barcode={overlay.barcode}
+                    entry={overlay.entry}
+                    unavailable={overlay.unavailable}
+                    categories={menu?.categories ?? []}
+                    onCreate={handleCreate}
+                    onPairInstead={() =>
+                      setOverlay({
+                        kind: 'pairing',
+                        barcode: overlay.barcode,
+                        pairedProductId: null,
+                      })
+                    }
+                    onCancel={close}
+                    pending={createProduct.isPending}
+                    error={error}
+                  />
+                ) : null}
+
+                {overlay.kind === 'looking' ? (
+                  <LookingPanel barcode={overlay.barcode} />
                 ) : null}
               </div>
             ) : null}
@@ -387,6 +530,26 @@ export function ScanPage({ venueSlug }: { venueSlug: string }) {
           </ul>
         </section>
       ) : null}
+    </div>
+  )
+}
+
+/**
+ * L'attente pendant que le catalogue répond.
+ *
+ * Elle ne dure qu'au premier scan d'un code — ensuite la fiche est en base — et
+ * elle est bornée à quelques secondes côté serveur. Mais la caméra est en pause
+ * pendant ce temps, et un écran figé sans un mot se lit comme un scanner cassé :
+ * le gérant rescanne, ce qui ne fait qu'ajouter une requête. Dire ce qui se
+ * passe coûte huit lignes et supprime ce réflexe.
+ */
+function LookingPanel({ barcode }: { barcode: string }) {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-2 bg-surface p-4 text-center">
+      <p className="font-medium tabular-nums text-ink">
+        {displayBarcode(barcode)}
+      </p>
+      <p className="text-sm text-ink-soft">Recherche dans le catalogue…</p>
     </div>
   )
 }

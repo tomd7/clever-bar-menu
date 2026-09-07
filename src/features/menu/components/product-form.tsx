@@ -95,6 +95,7 @@ export function ProductForm({
         initialLowStockThreshold: stockAtOpen.current.lowStockThreshold,
         photoFile,
         imagePath,
+        photoCredit: product?.photo_credit ?? null,
         previousImagePath: product?.image_path ?? null,
       },
       { onSuccess: onSaved },

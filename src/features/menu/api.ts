@@ -252,6 +252,15 @@ export type ProductDraft = {
   /** Chemin dans le bucket, jamais une URL : celle-ci dépend du projet. */
   imagePath: string | null
   /**
+   * À qui créditer la photo, ou `null` — le cas de la photo prise sur place.
+   *
+   * Suit `imagePath` et se réécrit avec lui : une photo recopiée du catalogue
+   * porte `'Open Food Facts'` (ses images sont sous CC-BY-SA, la carte publique
+   * doit le dire), et le jour où le gérant la remplace par la sienne, le crédit
+   * retombe à `null` avec elle. Les deux champs ne se dissocient jamais.
+   */
+  photoCredit: string | null
+  /**
    * Niveau de stock, `null` pour un produit non suivi, `undefined` pour « ne
    * pas y toucher ».
    *
@@ -273,6 +282,7 @@ function toProductRow(draft: ProductDraft) {
     size: draft.size,
     price_cents: draft.priceCents,
     image_path: draft.imagePath,
+    photo_credit: draft.photoCredit,
     /*
       Une valeur `undefined` disparaît de la charge utile : `JSON.stringify`
       supprime les propriétés qui la portent, et PostgREST ne reçoit donc pas
@@ -284,14 +294,40 @@ function toProductRow(draft: ProductDraft) {
   }
 }
 
+/**
+ * Crée un produit, éventuellement avec son code-barres.
+ *
+ * `barcode` est hors de `ProductDraft`, aux côtés de `categoryId` et
+ * `position`, et ce n'est pas un détail de forme : `updateProduct` écrit tout
+ * le draft, donc un code-barres qui y figurerait serait réécrit à chaque
+ * enregistrement d'une fiche produit — exactement l'écrasement que le refus
+ * d'un champ code-barres dans le formulaire cherche à éviter. Ici la ligne
+ * n'existe pas encore : rien ne peut être écrasé.
+ *
+ * Le code est écrit **avec** le produit plutôt qu'après. Deux écritures
+ * laisseraient une fenêtre où le produit existe sans son code : si la seconde
+ * échoue, le gérant se retrouve avec une ligne de plus sur sa carte et un
+ * scanner qui l'ignore toujours, alors que l'écran est passé à la bouteille
+ * suivante. Le trigger `products_barcode_unique` (migration `0015`) se
+ * déclenche sur cet `insert`, donc un doublon est refusé **avant** que le
+ * produit n'existe.
+ *
+ * Le code est attendu **déjà normalisé** : cette fonction écrit, elle ne
+ * convertit pas.
+ */
 export async function createProduct(
-  input: { categoryId: string; position: number } & ProductDraft,
+  input: {
+    categoryId: string
+    position: number
+    barcode?: string
+  } & ProductDraft,
 ): Promise<void> {
   await write(
     supabase.from('products').insert({
       ...toProductRow(input),
       category_id: input.categoryId,
       position: input.position,
+      barcode: input.barcode,
     }),
   )
 }

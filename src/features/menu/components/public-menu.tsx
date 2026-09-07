@@ -69,6 +69,25 @@ export function PublicMenu({
   const { venue, categories } = menu
   const hasNav = categories.length >= NAV_MIN_CATEGORIES
 
+  /*
+    Les crédits dus par cette carte, dédoublonnés.
+
+    Une photo issue du catalogue vient d'Open Food Facts et est sous CC-BY-SA :
+    l'afficher ici est une republication, et l'attribution est due à l'endroit
+    où l'œuvre est publiée — cette page, pas l'écran de scan où le gérant l'a
+    choisie. Une carte dont toutes les photos ont été prises au comptoir
+    n'affiche donc rien, ce qui est le cas le plus courant.
+  */
+  const photoCredits = [
+    ...new Set(
+      categories.flatMap((category) =>
+        category.products
+          .map((product) => product.photo_credit)
+          .filter((credit) => credit !== null),
+      ),
+    ),
+  ]
+
   return (
     /*
       La réserve du bas n'existe que lorsqu'une action est posée : c'est la
@@ -184,15 +203,24 @@ export function PublicMenu({
                 Le lien n'apparaît donc que là où le rail apparaît : en dessous,
                 le pouce remonte plus vite que lui.
               */}
-              {hasNav ? (
+              {hasNav || photoCredits.length > 0 ? (
                 <footer className="border-t border-line px-5 py-6 text-center sm:px-9">
-                  <a
-                    href={`#${MENU_TOP_ID}`}
-                    className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-soft no-underline"
-                  >
-                    <ArrowUp className="size-4" aria-hidden="true" />
-                    Haut de la carte
-                  </a>
+                  {hasNav ? (
+                    <a
+                      href={`#${MENU_TOP_ID}`}
+                      className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-soft no-underline"
+                    >
+                      <ArrowUp className="size-4" aria-hidden="true" />
+                      Haut de la carte
+                    </a>
+                  ) : null}
+
+                  {photoCredits.length > 0 ? (
+                    <p className="text-xs text-ink-soft">
+                      Certaines photos proviennent de {photoCredits.join(', ')}{' '}
+                      et sont sous licence CC-BY-SA.
+                    </p>
+                  ) : null}
                 </footer>
               ) : null}
             </>
