@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# Refuses a commit whose staged files aren't formatted, don't lint, or break the typecheck.
+# Enabled by `git config core.hooksPath .githooks`, which the postinstall script runs.
+# Bypass deliberately with `git commit --no-verify`.
+set -uo pipefail
+
+root="$(git rev-parse --show-toplevel)"
+cd "$root" || exit 1
+
+# Staged files, added/copied/modified only — deletions and renames-away have nothing to check.
+staged=()
+while IFS= read -r -d '' f; do
+  [ -f "$f" ] && staged+=("$f")
+done < <(git diff --cached --name-only --diff-filter=ACM -z)
+
+[ ${#staged[@]} -eq 0 ] && exit 0
+
+code=()
+for f in "${staged[@]}"; do
+  case "$f" in
+    *.ts | *.tsx | *.js | *.jsx) code+=("$f") ;;
+  esac
+done
+
+fail() {
+  echo ""
+  echo "pre-commit: $1" >&2
+  echo "            Fix it, or commit with --no-verify if you know what you're doing." >&2
+  exit 1
+}
+
+# Only the staged files — never a global `npm run format`, which would rewrite the
+# pre-existing unformatted scaffold files and bloat the diff.
+npx prettier --check --ignore-unknown "${staged[@]}" >/dev/null 2>&1 ||
+  fail "some staged files aren't formatted. Run: npx prettier --write --ignore-unknown <files>"
+
+if [ ${#code[@]} -gt 0 ]; then
+  npx eslint "${code[@]}" || fail "ESLint reported problems in the staged files."
+  npx tsc --noEmit || fail "\`npx tsc --noEmit\` fails."
+fi
+
+exit 0

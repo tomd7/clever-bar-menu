@@ -158,6 +158,31 @@ validation.
   maintenance, SSR compatibility with TanStack Start, lock-in) and what writing it by hand
   would take. State a recommendation, then wait for the answer.
 
+## Automated gates
+
+Three hooks enforce the baseline so it doesn't rest on anyone remembering — two Claude Code
+hooks (`.claude/settings.json` → `.claude/hooks/`) and one git hook (`.githooks/`):
+
+| Hook                   | When                                | What it does                                                             |
+| ---------------------- | ----------------------------------- | ------------------------------------------------------------------------ |
+| `hooks/format-file.sh` | after Claude writes or edits a file | `prettier --write --ignore-unknown`, then `eslint --fix` on JS/TS        |
+| `hooks/typecheck.sh`   | when Claude tries to end a turn     | `npx tsc --noEmit`; a failure blocks the turn and reports the errors     |
+| `.githooks/pre-commit` | on every `git commit`, yours too    | prettier `--check` + ESLint on the staged files, then `npx tsc --noEmit` |
+
+`format-file.sh` only touches files inside the repo and never fails a tool call. It formats
+the file being edited and nothing else, which is exactly the "only the files you touch" rule
+above — the pre-existing unformatted scaffold files stay untouched. `typecheck.sh` gives up
+after one re-entry (`stop_hook_active`), so an error it can't fix doesn't loop.
+
+The git hook is enabled by `git config core.hooksPath .githooks`, which `postinstall` runs
+after `patch-package` — so a fresh clone gets it from `npm install`. It checks only the
+staged files (never a global `npm run format`), refuses the commit on failure, and
+`git commit --no-verify` is the deliberate way out. No dependency: it's a shell script, not
+husky + lint-staged.
+
+These three cover formatting, lint and types. Everything else in this file — conventions, UI
+rules, architecture — is still enforced by review, not by tooling.
+
 ## UI rules
 
 ### Mobile-first
@@ -228,8 +253,9 @@ External skills follow an npm-like model: `skills-lock.json` (committed) is the 
 truth — GitHub source + hash of each skill; `.agents/skills/` (content) and
 `.claude/skills/` (relative symlinks into it) are derived, regenerable and **gitignored**.
 Don't commit either — the symlinks would arrive broken for everyone else. `.claude/` itself
-is **not** ignored wholesale: a future `settings.json` belongs there and is shared
-normally. The personal file to ignore the day it appears is `.claude/settings.local.json`.
+is **not** ignored wholesale: `settings.json` and `hooks/` live there and are shared (see
+« Automated gates » above). The personal file to ignore the day it appears is
+`.claude/settings.local.json`.
 
 ## Project status
 

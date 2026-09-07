@@ -6,7 +6,7 @@
     "#/*": "./src/*"
   },
   "scripts": {
-    "postinstall": "patch-package",
+    "postinstall": "patch-package && (git config core.hooksPath .githooks || true)",
     "dev": "vite dev --port 3000",
     "generate-routes": "tsr generate",
     "db:generate": "drizzle-kit generate",
