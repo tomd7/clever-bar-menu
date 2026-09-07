@@ -58,7 +58,14 @@ export function CategoryHeader({
               maxLength={80}
               value={name}
               onChange={(event) => setName(event.target.value)}
-              className="flex-1"
+              /*
+                Full width on a phone, which pushes the two buttons onto the
+                next line: sharing one row with them left about eighty pixels
+                for the field — a category name typed there is read three
+                characters at a time. From `sm` up the row is wide enough for
+                the three, and the field takes what the buttons leave.
+              */
+              className="w-full sm:w-auto sm:flex-1"
             />
             <SaveButton
               size="sm"
