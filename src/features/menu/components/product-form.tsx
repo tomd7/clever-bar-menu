@@ -125,7 +125,16 @@ export function ProductForm({
           onChange={(event) => setName(event.target.value)}
         />
 
-        <div>
+        {/*
+          `min-w-0` is what keeps this column inside the card on a phone. A grid
+          item's automatic minimum size is its content's, and the suggestion
+          rail below is a nowrap flex row: without it the track widens to the
+          seven chips laid end to end and drags the whole form — name, price,
+          description — past the card's right edge. The rail's own
+          `overflow-x-auto` only starts scrolling once its parent is allowed to
+          be narrower than its contents.
+        */}
+        <div className="min-w-0">
           <TextField
             label={
               <>
