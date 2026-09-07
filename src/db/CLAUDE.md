@@ -199,6 +199,21 @@ pooler (5432, IPv4) for migrations if the transaction pooler chokes on DDL (set
 (`db.<ref>.supabase.co:5432`), which is **IPv6-only** on recent projects and fails from
 hosts without IPv6.
 
+**On the host, `DATABASE_URL` must be the transaction pooler, and it must exist for
+previews as well as production.** Since the drink catalogue, this variable is read at
+runtime and not only by `db:migrate`, which changes two things that used to be harmless:
+
+- A local `.env` pointing at the direct connection works on a laptop with IPv6 and fails
+  on a serverless host without it. Ports are not interchangeable here.
+- On Vercel, an environment variable set for Production alone leaves every preview
+  deployment without it, and **variables are read at deploy time — adding one does not fix
+  the deployments that already exist, they have to be redeployed.**
+
+The failure is quiet by construction: `lookupCatalog` answers `unavailable` rather than
+throwing, so the scan screen keeps working and says « Catalogue indisponible ». Everything
+else on the site keeps working too, because everything else talks to PostgREST from the
+browser. A catalogue that is the only broken thing on a deployment points here first.
+
 ## Deliberately absent
 
 i18n columns and per-venue theming, until their roadmap item comes up. No table numbers:
