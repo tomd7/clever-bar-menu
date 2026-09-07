@@ -4,12 +4,56 @@ Une carte digitale pour les bars et cafés : les clients scannent un QR code pos
 et consultent la carte à jour depuis leur téléphone, sans application à installer. Le gérant
 gère ses catégories, ses produits et ses prix depuis un back-office.
 
-![Status](https://img.shields.io/badge/status-work%20in%20progress-orange)
+**Le projet est écrit intégralement avec [Claude Code](https://claude.com/claude-code)**, et
+c'est même son objet : voir jusqu'où un produit complet — mis en ligne, utilisable par un vrai
+bar — peut être mené sans qu'une ligne soit tapée à la main. Le code applicatif, le schéma et
+ses migrations, les policies RLS, le CSS, l'outillage et la documentation, ce README compris,
+en viennent tous. Le rôle humain est celui de la commande, de l'arbitrage et de la relecture.
 
-> [!WARNING]
-> **Projet en cours de démarrage.** Les bases techniques sont posées, mais les
-> fonctionnalités décrites ci-dessous sont encore en développement. Le schéma de données
-> et les URLs ne sont pas figés : n'utilisez pas encore ce projet en production.
+![Status](https://img.shields.io/badge/status-en%20ligne-brightgreen)
+![Built with Claude Code](https://img.shields.io/badge/écrit%20avec-Claude%20Code-d97757)
+
+## En ligne
+
+**<https://bar-menu-taupe.vercel.app>**
+
+|                          | Adresse                                            |
+| ------------------------ | -------------------------------------------------- |
+| Carte publique (exemple) | <https://bar-menu-taupe.vercel.app/m/chez-lambert> |
+| Back-office              | <https://bar-menu-taupe.vercel.app/login>          |
+| Compte de démonstration  | `demo@cbm.be` / `demo`                             |
+
+La carte d'un établissement vit à `/m/<slug>` — c'est cette adresse qu'encode le QR code
+posé sur les tables.
+
+> [!NOTE]
+> Le compte de démonstration est **partagé et public** : les modifications qu'on y fait sont
+> visibles par les autres visiteurs, et l'établissement de démonstration peut être remis à
+> zéro sans préavis. N'y déposez rien de réel.
+
+> [!IMPORTANT]
+> Le produit est en service, mais le développement continue : voir la [roadmap](#roadmap)
+> pour ce qui manque encore. L'inscription est fermée — les comptes des gérants sont créés
+> par l'administrateur de la plateforme (voir « [Création des comptes](#création-des-comptes) »).
+
+## Sommaire
+
+- [Fonctionnalités](#fonctionnalités)
+- [Stack technique](#stack-technique)
+- [Démarrage](#démarrage)
+  - [Variables d'environnement](#variables-denvironnement)
+  - [Base de données](#base-de-données) — [sécurité des données (RLS)](#sécurité-des-données-rls)
+- [Scripts](#scripts)
+- [Back-office](#back-office)
+  - [Suivi de stock](#suivi-de-stock) — [scan des codes-barres](#scan-des-codes-barres)
+  - [Commande au comptoir](#commande-au-comptoir)
+  - [Création des comptes](#création-des-comptes)
+  - [Supprimer un établissement](#supprimer-un-établissement)
+- [QR code](#qr-code)
+- [Carte publique](#carte-publique)
+- [Structure du projet](#structure-du-projet)
+  - [Ajouter un composant UI](#ajouter-un-composant-ui)
+- [Roadmap](#roadmap)
 
 ## Fonctionnalités
 
@@ -30,9 +74,11 @@ gère ses catégories, ses produits et ses prix depuis un back-office.
   L'isolation est portée par Postgres : un gérant ne voit et ne modifie que ses
   établissements. Un établissement a en revanche **un seul propriétaire** — plusieurs
   comptes sur un même bar restent à faire.
-- **Multilingue et thème clair/sombre** — carte traduisible et apparence personnalisable
-  par établissement. Le thème « bar du soir » est en place : il suit le réglage clair/sombre
-  du téléphone qui scanne le QR code, sans interrupteur ni cookie.
+- **Scan des codes-barres** — les entrées et sorties de stock se saisissent devant la
+  caméra, depuis le téléphone. Fonctionne sur tous les navigateurs, iPhone compris.
+- **Thème clair/sombre** — le thème « bar du soir » suit le réglage du téléphone qui scanne
+  le QR code, sans interrupteur ni cookie. La personnalisation par établissement et la carte
+  multilingue sont à la [roadmap](#roadmap), pas encore là.
 
 ## Stack technique
 
@@ -49,11 +95,11 @@ gère ses catégories, ses produits et ses prix depuis un back-office.
 | Langage      | TypeScript                                                                             |
 
 > [!NOTE]
-> La persistance est assurée par un Postgres hébergé sur Supabase, interrogé via Drizzle.
-> Supabase a été retenu parce qu'il couvre aussi l'authentification du back-office et le
-> stockage des photos produits, deux besoins de la roadmap. Les requêtes passent par Drizzle
-> et non par `supabase-js` : le jour où seule la base doit déménager, c'est du Postgres
-> standard.
+> La persistance est un Postgres hébergé sur Supabase. Supabase a été retenu parce qu'il
+> couvre aussi l'authentification du back-office et le stockage des photos produits.
+> **Les requêtes applicatives partent du navigateur** via `supabase-js` (PostgREST) et c'est
+> le RLS qui porte l'isolation entre établissements ; **Drizzle ne sert qu'au schéma et aux
+> migrations**, jamais à l'exécution.
 
 ## Démarrage
 
@@ -70,16 +116,15 @@ L'application est servie sur http://localhost:3000.
 
 ### Variables d'environnement
 
-Les variables sont validées au démarrage par [`@t3-oss/env-core`](https://env.t3.gg) dans
-[`src/env.ts`](src/env.ts) — un démarrage échoue plutôt que de laisser passer une
-configuration incomplète. Créez un fichier `.env` à la racine :
-
-Le fichier [`.env.example`](.env.example) liste les variables attendues :
+Les variables sont validées par [`@t3-oss/env-core`](https://env.t3.gg) dans
+[`src/env.ts`](src/env.ts) et [`src/env.server.ts`](src/env.server.ts) — une variable
+manquante fait échouer la validation plutôt que de se propager en `undefined`. Copiez
+[`.env.example`](.env.example) en `.env` à la racine ; il liste les variables attendues :
 
 ```bash
 # Côté serveur — src/env.server.ts
 DATABASE_URL=            # requis : connexion Postgres Supabase (pooler transaction, 6543)
-MIGRATION_DATABASE_URL=  # optionnel : connexion dédiée aux migrations (voir ci-dessous)
+MIGRATION_DATABASE_URL=  # optionnel : lu par drizzle-kit seul (voir ci-dessous)
 
 # Côté client (préfixe VITE_ obligatoire) — src/env.ts
 VITE_APP_TITLE=          # requis : nom du produit (onglet, pied de page, back-office)
@@ -101,16 +146,17 @@ Créez un projet sur [supabase.com](https://supabase.com), puis récupérez la c
 connexion dans **Project Settings → Database → Connection string**. Le dashboard en propose
 trois, qui ne sont pas interchangeables :
 
-| Chaîne             | Port | Réseau        | Usage                                         |
-| ------------------ | ---- | ------------- | --------------------------------------------- |
-| Transaction pooler | 6543 | IPv4          | **L'application** — c'est `DATABASE_URL`      |
-| Session pooler     | 5432 | IPv4          | Les migrations, si le pooler transaction cale |
-| Direct connection  | 5432 | **IPv6 seul** | À éviter : échoue sans IPv6, erreur obscure   |
+| Chaîne             | Port | Réseau        | Usage                                            |
+| ------------------ | ---- | ------------- | ------------------------------------------------ |
+| Transaction pooler | 6543 | IPv4          | `DATABASE_URL` — c'est celle-ci par défaut       |
+| Session pooler     | 5432 | IPv4          | `MIGRATION_DATABASE_URL`, si le pooler 6543 cale |
+| Direct connection  | 5432 | **IPv6 seul** | À éviter : échoue sans IPv6, erreur obscure      |
 
-L'application vise le pooler en mode transaction parce qu'en serverless chaque instance
-ouvre sa propre connexion : des connexions Postgres directes épuiseraient la base bien
-avant que le trafic ne devienne intéressant. En contrepartie ce mode interdit les
-instructions préparées, d'où le `prepare: false` dans `src/db/client.server.ts`.
+`DATABASE_URL` ne sert **qu'aux migrations** : les requêtes de l'application partent du
+navigateur vers PostgREST, avec la clé publiable. Le pooler en mode transaction reste le
+défaut parce qu'il est le mode prévu pour le serverless, et parce que la connexion Drizzle
+(`src/db/client.server.ts`) est écrite pour lui — d'où son `prepare: false`, ce mode
+interdisant les instructions préparées.
 
 Renseignez `DATABASE_URL`, puis appliquez les migrations :
 
@@ -129,12 +175,16 @@ rôles `anon` et `authenticated`. **Une table sans Row Level Security y est donc
 modifiable_ par quiconque possède la clé publiable** — laquelle est, par construction, dans
 le bundle navigateur.
 
-Le RLS est donc activé sur les trois tables, avec des policies déclarées directement dans
+Le RLS est donc activé sur les **cinq** tables (`venues`, `categories`, `products`,
+`orders`, `order_items`), avec des policies déclarées directement dans
 [`src/db/schema.ts`](src/db/schema.ts) pour que le schéma reste la source de vérité :
 
 - **lecture publique** sur `venues`, `categories` et `products` — c'est l'intérêt même du QR
   code : consulter la carte sans compte ;
-- **aucune policy d'écriture**, donc aucune écriture possible avec la clé publiable.
+- **aucune policy d'écriture**, donc aucune écriture possible avec la clé publiable ;
+- **rien du tout sur `orders` et `order_items` pour le client**, pas même la lecture : une
+  commande anonyme passe exclusivement par des fonctions `security definer` (voir
+  « [Commande au comptoir](#commande-au-comptoir) »).
 
 Les écritures du back-office sont autorisées par des policies restreintes au propriétaire
 (`auth.uid() = owner_id`, et par jointure sur l'établissement pour les catégories et les
@@ -159,6 +209,9 @@ qu'aux migrations : aucune requête applicative ne passe par lui.
 | `npm run format`          | Prettier `--write` puis `eslint --fix`               |
 | `npm run check`           | Vérifie le formatage sans modifier les fichiers      |
 
+Il n'y a pas de script de typecheck : c'est `npx tsc --noEmit`. Le projet n'embarque pas non
+plus de framework de test pour l'instant.
+
 ## Back-office
 
 Le back-office vit sous `/admin`, derrière une authentification Supabase (e-mail + mot de
@@ -170,15 +223,17 @@ navigateur, donc l'évaluer pendant le rendu serveur conclurait « non connecté
 requête. La carte publique, elle, est en SSR — c'est une page scannée au QR code, sa vitesse de
 premier affichage compte.
 
-| Route                         | Rôle                                                       |
-| ----------------------------- | ---------------------------------------------------------- |
-| `/login`                      | Connexion                                                  |
-| `/admin`                      | Liste des établissements du gérant, et création            |
-| `/admin/$venueSlug`           | Édition de la carte : catégories, produits, prix, ruptures |
-| `/admin/$venueSlug/stock`     | Suivi de stock : niveaux, alertes, décompte                |
-| `/admin/$venueSlug/qr`        | Feuille de QR code à imprimer                              |
-| `/admin/$venueSlug/commandes` | File des commandes et historique                           |
-| `/m/$venueSlug`               | **Carte publique** — la page que vise le QR code           |
+| Route                          | Rôle                                                       |
+| ------------------------------ | ---------------------------------------------------------- |
+| `/login`                       | Connexion                                                  |
+| `/admin`                       | Liste des établissements du gérant, et création            |
+| `/admin/corbeille`             | Établissements supprimés, et restauration                  |
+| `/admin/$venueSlug`            | Édition de la carte : catégories, produits, prix, ruptures |
+| `/admin/$venueSlug/stock`      | Suivi de stock : niveaux, alertes, décompte                |
+| `/admin/$venueSlug/stock/scan` | Mouvements de stock à la caméra, code-barres               |
+| `/admin/$venueSlug/qr`         | Feuille de QR code à imprimer                              |
+| `/admin/$venueSlug/commandes`  | File des commandes et historique                           |
+| `/m/$venueSlug`                | **Carte publique** — la page que vise le QR code           |
 
 Les prix sont saisis en euros et stockés en **centimes entiers**
 ([`src/features/menu/price.ts`](src/features/menu/price.ts)) : la saisie accepte la virgule comme le point, et
@@ -230,6 +285,26 @@ Deux points de conception valent d'être connus :
   `0007`). PostgREST ne sait pas écrire `stock_quantity = stock_quantity - 1` : sans elle, le
   navigateur devrait lire puis écrire, et deux appareils derrière le même bar perdraient un
   décompte sur deux. C'est aussi le point d'accroche prévu pour la commande à table.
+
+#### Scan des codes-barres
+
+`/admin/<slug>/stock/scan` saisit les mouvements devant la caméra : on scanne, on choisit
+« entrée » ou « sortie », la quantité s'applique au produit. Un code inconnu propose son
+**appairage** au produit correspondant, une seule fois — après quoi la bouteille est
+reconnue.
+
+- **Tout code entrant est normalisé en GTIN-14** ([`src/features/menu/barcode.ts`](src/features/menu/barcode.ts)),
+  chiffre de contrôle vérifié. La même canette porte un UPC-A à 12 chiffres aux États-Unis
+  et un EAN-13 en Europe : stockées brutes, ces deux chaînes appaireraient deux fois le même
+  produit. La saisie au clavier passe par le même chemin que la caméra — deux chemins qui
+  ne s'accordent pas là-dessus ne s'accordent pas en production.
+- **Deux décodeurs derrière une seule API.** Le `BarcodeDetector` du navigateur quand il
+  existe ; sinon un ZXing-C++ compilé en WebAssembly, chargé **à la demande sur ce seul
+  écran** (~430 Ko, jamais servi à la carte publique). C'est ce qui fait marcher l'écran sur
+  iPhone, où WebKit n'a jamais implémenté la Shape Detection API.
+- **Le `.wasm` est servi depuis notre propre origine**, pas depuis le CDN public que
+  `zxing-wasm` vise par défaut : un tiers entre un gérant et son inventaire, sur le wifi
+  d'une cave, est un mode de panne de plus.
 
 ### Commande au comptoir
 
@@ -292,7 +367,7 @@ connecter).
 >
 > `disable_signup` doit valoir `true`.
 
-## Supprimer un établissement
+### Supprimer un établissement
 
 La suppression est **logique** : la ligne reste en base avec sa carte, ses photos et son
 slug, marquée par une date dans `deleted_at`. L'établissement part dans une **corbeille**
@@ -352,24 +427,32 @@ Trois comportements à connaître :
 
 ## Structure du projet
 
+Le code est groupé **par domaine métier**, pas par nature technique : une feature possède
+ses écrans, ses requêtes et ses règles dans un même dossier.
+
 ```
 src/
 ├── routes/          # Routes fichier-système (TanStack Router)
 │   ├── __root.tsx   # Shell HTML, providers et devtools
-│   ├── index.tsx    # Page d'accueil
-│   ├── login.tsx    # Connexion / création de compte
+│   ├── index.tsx    # Page d'accueil (vitrine, pas la carte)
+│   ├── login.tsx    # Connexion
+│   ├── m.$venueSlug.tsx        # Carte publique, en SSR
 │   ├── _authenticated.tsx      # Garde d'auth + coquille du back-office
-│   └── _authenticated/
-│       └── admin.tsx           # Liste des établissements
+│   └── _authenticated/         # Écrans du back-office, en `ssr: false`
+├── features/        # Un dossier par domaine : composants, `api.ts`, `mutations.ts`
+│   ├── auth/        # Connexion et traduction des erreurs
+│   ├── menu/        # Catégories, produits, prix, photos, stock, carte publique
+│   ├── orders/      # Panier client, envoi, suivi, file du bar
+│   └── venues/      # Établissements, corbeille, QR code
+├── components/      # Partagé entre features : ui/ (shadcn), buttons/, form/,
+│                    # back-office/ (coquille), home/ (vitrine)
 ├── db/
 │   ├── schema.ts    # Modèle de données + policies RLS
-│   ├── client.server.ts # Connexion Drizzle — jamais importée côté client
+│   ├── client.server.ts # Connexion Drizzle — migrations uniquement
 │   └── migrations/  # Généré par drizzle-kit — ne pas éditer à la main
-├── components/ui/   # Composants shadcn/ui
 ├── integrations/    # Providers (TanStack Query)
-├── lib/
-│   ├── supabase.ts  # Client navigateur + types des tables
-│   └── utils.ts     # Utilitaires (`cn`)
+├── lib/             # Sans domaine : supabase.ts, money.ts, query-keys.ts,
+│                    # postgrest-error.ts, product-photos.ts, public-menu-url.ts, utils.ts
 ├── env.ts           # Variables d'environnement client
 ├── env.server.ts    # Variables d'environnement serveur
 ├── router.tsx       # Configuration du router
@@ -377,6 +460,11 @@ src/
 ├── styles.css       # Point d'entrée : n'assemble que des `@import`
 └── styles/          # Thème, éléments nus, vocabulaire partagé, mouvement, impression
 ```
+
+Les dépendances vont dans un seul sens — `routes/` → `features/` → `components/` et `lib/` —
+et **une feature n'en importe pas une autre** : ce que deux features partagent descend d'un
+cran. Quand deux domaines doivent être assemblés, c'est la route qui le fait. Un composant
+n'appelle jamais `supabase` directement : tout passe par l'`api.ts` de sa feature.
 
 Le CSS suit le même découpage que le code : `src/styles/` porte ce qui appartient à
 l'application entière, et **le style d'un composant vit dans un `.css` à côté de lui**
@@ -396,32 +484,17 @@ chemins relatifs.
 npx shadcn@latest add dialog
 ```
 
-## Déploiement
-
-Le projet cible **Vercel**. Poussez le dépôt, importez-le dans Vercel et laissez la
-détection automatique faire le reste — pensez à renseigner les variables d'environnement
-dans les réglages du projet.
-
-Nitro sert d'adapter serveur, donc un déploiement sur tout hôte compatible Node reste
-possible :
-
-```bash
-npm run build
-node .output/server/index.mjs
-```
-
 ## Roadmap
 
 - [x] Socle technique : TanStack Start, Tailwind, shadcn/ui, validation d'environnement
 - [x] Choix et mise en place de la persistance des données (Supabase + Drizzle)
-- [x] Modèle de données : établissement, catégorie, produit
-- [x] Carte publique responsive
-- [x] Génération du QR code (un par établissement)
 - [x] Authentification du back-office (Supabase Auth, comptes créés par l'administrateur)
+- [x] CRUD des établissements
 - [x] CRUD de la carte (catégories, produits, prix, photos)
+- [x] Carte publique
+- [x] Génération du QR code (un par établissement)
 - [x] Taille du produit : format servi (25cl, 50cl, au fût…), sur la carte comme sur les
       tickets de commande
-- [x] Multi-établissements : un gérant, plusieurs bars
 - [x] Thème : variantes jour et nuit suivant le système
 - [x] Suppression d'un établissement (logique, avec corbeille et restauration)
 - [x] Gestion des ruptures de stock
@@ -435,22 +508,10 @@ node .output/server/index.mjs
       la caméra depuis `/admin/<slug>/stock/scan`, avec appairage du code au premier scan.
       Fonctionne sur tous les navigateurs, iOS compris : `BarcodeDetector` natif quand il
       existe, sinon un décodeur ZXing en WebAssembly chargé à la demande sur ce seul écran
-- [ ] Commande **à table** : un QR code par table, pour que le numéro arrive dans l'URL au
-      lieu d'être saisi. Aujourd'hui le retrait se fait au comptoir, au prénom
 - [ ] Tableau de bord : nouvelle page d'accueil du back-office, à la place de la simple
       liste des établissements — chiffres de la journée, alertes (stocks bas, ruptures,
       commandes en attente) et accès direct à chaque carte
-- [ ] Personnalisation du thème par établissement
+- [ ] Personnalisation du thème de la carte par établissement
 - [ ] Internationalisation
 - [ ] Accès partagés : plusieurs comptes sur un même établissement, rôles, transfert de
       propriété
-
-## Contribuer
-
-Les contributions sont bienvenues. Ouvrez une issue avant d'attaquer un chantier
-important, puis :
-
-1. Créez une branche depuis `main`.
-2. Faites vos modifications.
-3. Lancez `npm run format` et `npm run lint` avant de committer.
-4. Ouvrez une pull request en décrivant le changement.
