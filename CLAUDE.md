@@ -275,7 +275,9 @@ The home page is a landing page, **not** the customer menu: `/` markets the prod
 `README.md` describes the **intended** product, not what exists; its Roadmap section is the
 source of truth on what's left. Don't assume a listed feature exists — and note the Roadmap
 has itself fallen behind the code more than once, so check for the route or the file before
-trusting either document.
+trusting either document. The README exists in **two languages** — `README.md`
+(English, the default) and `README.fr.md` (French) — mirrors of each other, linked at the
+top of each: a change to one goes into the other in the same commit.
 
 The repository is deliberately **unlicensed** (an explicit choice by the owner, don't
 reintroduce a `LICENSE` file).
