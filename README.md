@@ -44,7 +44,10 @@ encodes.
 
 - [Features](#features)
 - [Tech stack](#tech-stack)
-- [Scripts](#scripts)
+- [Development process](#development-process)
+  - [Automated gates](#automated-gates)
+- [Project structure](#project-structure)
+  - [Adding a UI component](#adding-a-ui-component)
 - [Back office](#back-office)
   - [Stock tracking](#stock-tracking) — [barcode scanning](#barcode-scanning)
   - [Counter ordering](#counter-ordering)
@@ -52,11 +55,8 @@ encodes.
   - [Deleting a venue](#deleting-a-venue)
 - [QR code](#qr-code)
 - [Public menu](#public-menu)
-- [Project structure](#project-structure)
-  - [Adding a UI component](#adding-a-ui-component)
-- [Development process](#development-process)
-  - [Automated gates](#automated-gates)
 - [Roadmap](#roadmap)
+- [Scripts](#scripts)
 
 ## Features
 
@@ -102,33 +102,125 @@ encodes.
 > browser** through `supabase-js` (PostgREST), and it is RLS that carries isolation between
 > venues; **Drizzle only serves the schema and the migrations**, never runtime.
 
-## Scripts
+## Development process
 
-| Command                   | Role                                                 |
-| ------------------------- | ---------------------------------------------------- |
-| `npm run dev`             | Development server on port 3000                      |
-| `npm run build`           | Production build                                     |
-| `npm run preview`         | Serve the build                                      |
-| `npm run generate-routes` | Regenerate `src/routeTree.gen.ts` from `src/routes/` |
-| `npm run db:generate`     | Generate a SQL migration from `src/db/schema.ts`     |
-| `npm run db:migrate`      | Apply pending migrations                             |
-| `npm run db:studio`       | Open Drizzle Studio on the database                  |
-| `npm run db:seed:demo`    | Reset and refill the demo venue                      |
-| `npm run lint`            | ESLint                                               |
-| `npm run format`          | Prettier `--write`, then `eslint --fix`              |
-| `npm run check`           | Check formatting without changing anything           |
+All the code comes from Claude Code, but none of it lands there by chance: every feature
+follows the same cycle, from idea to deployment. The dev decides and reviews; Claude frames,
+writes and verifies.
 
-There is no typecheck script: it is `npx tsc --noEmit`. The project carries no test
-framework either, for now.
+| Step                        | Who      |
+| --------------------------- | -------- |
+| Feature idea                | The dev  |
+| Framing the idea            | Together |
+| Issue in the Linear backlog | Claude   |
+| Development on a branch     | Claude   |
+| Verification                | Claude   |
+| Pull request to `develop`   | Claude   |
+| Code review                 | The dev  |
+| Merge and deployment        | The dev  |
 
-`db:seed:demo` runs `scripts/seed-demo.ts`: it deletes the categories, products and orders
-of `chez-lambert`, then writes back a menu of seven categories, some forty products (with
-stock levels, alert thresholds and barcodes) and about fifteen orders spread between the
-live queue and the history. It is **replayable** — running it again gives exactly the same
-state. Before deleting anything, it checks that the targeted venue really carries the demo
-slug **and** belongs to `demo@cbm.be`; otherwise it stops without writing. It connects
-through `DATABASE_URL`, so as the database owner: that is the only way to write into
-`orders`, a table on which nobody holds an insert right.
+1. **The idea starts with the dev.** A need from the bar, a gap spotted in use, a line from
+   the [roadmap](#roadmap).
+2. **It is developed with Claude Code**, in conversation: scope, edge cases, consequences on
+   the schema and on RLS, alternatives ruled out. This is the step that turns a sentence
+   into a describable feature — and sometimes the one that shrinks it, or drops it.
+3. **Claude creates the issue in the Linear backlog**, with what the framing produced:
+   intent, scope, acceptance criteria.
+4. **Claude develops.** The issue moves to "In Progress", a `feat/<issue-ID>` branch (or
+   `fix/<ID>` for a fix) is cut from `develop` — for instance `feat/CLOCLO-5` — and the
+   commits follow the `type(scope): description` convention.
+5. **Claude verifies its own work** before opening anything. The project carries no test
+   framework: verification is the [automated gates](#automated-gates) — Prettier, ESLint and
+   `npx tsc --noEmit` — plus a pass through the real application, at mobile size first.
+6. **Claude opens the pull request to `develop`** (through `gh`) and moves the issue to
+   "In Review".
+7. **The dev reviews.** This is the project's checkpoint: nothing is merged without having
+   been read. Remarks go back to Claude, which fixes on the same branch.
+8. **The PR is merged into `develop`**, then **`develop` is merged into `main`**, which
+   triggers the deployment on Vercel.
+
+`develop` is the integration branch, `main` is what is live. No development happens directly
+on either.
+
+### Automated gates
+
+Three hooks hold the baseline without depending on anyone's memory — two Claude Code hooks
+(`.claude/settings.json` → `.claude/hooks/`) and one git hook (`.githooks/`, enabled by
+`postinstall`):
+
+| Hook                   | When                                 | Effect                                                       |
+| ---------------------- | ------------------------------------ | ------------------------------------------------------------ |
+| `hooks/format-file.sh` | after each file Claude writes        | `prettier --write`, then `eslint --fix` on JS/TS             |
+| `hooks/typecheck.sh`   | when Claude ends its turn            | `npx tsc --noEmit`; an error blocks and is handed back to it |
+| `.githooks/pre-commit` | on every `git commit`, the dev's too | Prettier `--check` + ESLint on staged files, then `tsc`      |
+
+The git hook looks only at staged files, refuses the commit on failure, and
+`git commit --no-verify` is the deliberate way out. Formatting, linting and types are
+therefore guaranteed; the rest — architecture, UI rules, conventions — is still held by
+review.
+
+## Project structure
+
+Code is grouped **by business domain**, not by technical kind: a feature owns its screens,
+its queries and its rules in one directory.
+
+```
+src/
+├── routes/          # File-based routes (TanStack Router)
+│   ├── __root.tsx   # HTML shell, providers and devtools
+│   ├── index.tsx    # Landing page (marketing, not the menu)
+│   ├── login.tsx    # Sign in
+│   ├── m.$venueSlug.tsx        # Public menu, server-rendered
+│   ├── _authenticated.tsx      # Auth guard + back-office shell
+│   └── _authenticated/         # Back-office screens, `ssr: false`
+├── features/        # One directory per domain: components, `api.ts`, `mutations.ts`
+│   ├── auth/        # Sign in and error translation
+│   ├── menu/        # Categories, products, prices, photos, stock, public menu
+│   ├── orders/      # Customer cart, sending, tracking, bar queue
+│   └── venues/      # Venues, trash, QR code
+├── components/      # Shared between features: ui/ (shadcn), buttons/, form/,
+│                    # back-office/ (shell), home/ (landing page)
+├── db/
+│   ├── schema.ts    # Data model + RLS policies
+│   ├── client.server.ts # Drizzle connection — migrations only
+│   └── migrations/  # Generated by drizzle-kit — never edit by hand
+├── integrations/    # Providers (TanStack Query)
+├── lib/             # Domain-free: supabase.ts, money.ts, query-keys.ts,
+│                    # postgrest-error.ts, product-photos.ts, public-menu-url.ts, utils.ts
+├── env.ts           # Client environment variables
+├── env.server.ts    # Server environment variables
+├── router.tsx       # Router configuration
+├── routeTree.gen.ts # Generated — never edit by hand
+├── styles.css       # Entry point: assembles `@import`s and nothing else
+└── styles/          # Theme, bare elements, shared vocabulary, motion, print
+
+scripts/
+└── seed-demo.ts     # Resets and refills the demo venue
+```
+
+Dependencies point one way — `routes/` → `features/` → `components/` and `lib/` — and **a
+feature never imports another**: what two features share moves down a level. When two
+domains must be assembled, the route does it. A component never calls `supabase` directly:
+everything goes through its feature's `api.ts`.
+
+The CSS follows the same split as the code: `src/styles/` carries what belongs to the whole
+application, and **a component's style lives in a `.css` next to it**
+(`components/nav-link.css`, `features/menu/components/public-menu.css`…). `src/styles.css`
+is only their table of contents, in cascade order.
+
+Files suffixed `.server.ts` are refused at compile time if they are imported from client
+code. That matters here: route `loader`s are **isomorphic** and also run in the browser, so
+any data access must go through a `createServerFn`.
+
+The `#/*` alias points at `./src/*`: prefer `import { cn } from '#/lib/utils'` over relative
+paths. Only `scripts/` is an exception, and out of constraint: it is run by `node` alone,
+which rejects a specifier starting with `#/`.
+
+### Adding a UI component
+
+```bash
+npx shadcn@latest add dialog
+```
 
 ## Back office
 
@@ -334,126 +426,6 @@ Three behaviours to know:
 - **An unknown address answers a real 404**, not an error page with a 200: these URLs are
   printed on QR codes.
 
-## Project structure
-
-Code is grouped **by business domain**, not by technical kind: a feature owns its screens,
-its queries and its rules in one directory.
-
-```
-src/
-├── routes/          # File-based routes (TanStack Router)
-│   ├── __root.tsx   # HTML shell, providers and devtools
-│   ├── index.tsx    # Landing page (marketing, not the menu)
-│   ├── login.tsx    # Sign in
-│   ├── m.$venueSlug.tsx        # Public menu, server-rendered
-│   ├── _authenticated.tsx      # Auth guard + back-office shell
-│   └── _authenticated/         # Back-office screens, `ssr: false`
-├── features/        # One directory per domain: components, `api.ts`, `mutations.ts`
-│   ├── auth/        # Sign in and error translation
-│   ├── menu/        # Categories, products, prices, photos, stock, public menu
-│   ├── orders/      # Customer cart, sending, tracking, bar queue
-│   └── venues/      # Venues, trash, QR code
-├── components/      # Shared between features: ui/ (shadcn), buttons/, form/,
-│                    # back-office/ (shell), home/ (landing page)
-├── db/
-│   ├── schema.ts    # Data model + RLS policies
-│   ├── client.server.ts # Drizzle connection — migrations only
-│   └── migrations/  # Generated by drizzle-kit — never edit by hand
-├── integrations/    # Providers (TanStack Query)
-├── lib/             # Domain-free: supabase.ts, money.ts, query-keys.ts,
-│                    # postgrest-error.ts, product-photos.ts, public-menu-url.ts, utils.ts
-├── env.ts           # Client environment variables
-├── env.server.ts    # Server environment variables
-├── router.tsx       # Router configuration
-├── routeTree.gen.ts # Generated — never edit by hand
-├── styles.css       # Entry point: assembles `@import`s and nothing else
-└── styles/          # Theme, bare elements, shared vocabulary, motion, print
-
-scripts/
-└── seed-demo.ts     # Resets and refills the demo venue
-```
-
-Dependencies point one way — `routes/` → `features/` → `components/` and `lib/` — and **a
-feature never imports another**: what two features share moves down a level. When two
-domains must be assembled, the route does it. A component never calls `supabase` directly:
-everything goes through its feature's `api.ts`.
-
-The CSS follows the same split as the code: `src/styles/` carries what belongs to the whole
-application, and **a component's style lives in a `.css` next to it**
-(`components/nav-link.css`, `features/menu/components/public-menu.css`…). `src/styles.css`
-is only their table of contents, in cascade order.
-
-Files suffixed `.server.ts` are refused at compile time if they are imported from client
-code. That matters here: route `loader`s are **isomorphic** and also run in the browser, so
-any data access must go through a `createServerFn`.
-
-The `#/*` alias points at `./src/*`: prefer `import { cn } from '#/lib/utils'` over relative
-paths. Only `scripts/` is an exception, and out of constraint: it is run by `node` alone,
-which rejects a specifier starting with `#/`.
-
-### Adding a UI component
-
-```bash
-npx shadcn@latest add dialog
-```
-
-## Development process
-
-All the code comes from Claude Code, but none of it lands there by chance: every feature
-follows the same cycle, from idea to deployment. The dev decides and reviews; Claude frames,
-writes and verifies.
-
-| Step                        | Who      |
-| --------------------------- | -------- |
-| Feature idea                | The dev  |
-| Framing the idea            | Together |
-| Issue in the Linear backlog | Claude   |
-| Development on a branch     | Claude   |
-| Verification                | Claude   |
-| Pull request to `develop`   | Claude   |
-| Code review                 | The dev  |
-| Merge and deployment        | The dev  |
-
-1. **The idea starts with the dev.** A need from the bar, a gap spotted in use, a line from
-   the [roadmap](#roadmap).
-2. **It is developed with Claude Code**, in conversation: scope, edge cases, consequences on
-   the schema and on RLS, alternatives ruled out. This is the step that turns a sentence
-   into a describable feature — and sometimes the one that shrinks it, or drops it.
-3. **Claude creates the issue in the Linear backlog**, with what the framing produced:
-   intent, scope, acceptance criteria.
-4. **Claude develops.** The issue moves to "In Progress", a `feat/<issue-ID>` branch (or
-   `fix/<ID>` for a fix) is cut from `develop` — for instance `feat/CLOCLO-5` — and the
-   commits follow the `type(scope): description` convention.
-5. **Claude verifies its own work** before opening anything. The project carries no test
-   framework: verification is the [automated gates](#automated-gates) — Prettier, ESLint and
-   `npx tsc --noEmit` — plus a pass through the real application, at mobile size first.
-6. **Claude opens the pull request to `develop`** (through `gh`) and moves the issue to
-   "In Review".
-7. **The dev reviews.** This is the project's checkpoint: nothing is merged without having
-   been read. Remarks go back to Claude, which fixes on the same branch.
-8. **The PR is merged into `develop`**, then **`develop` is merged into `main`**, which
-   triggers the deployment on Vercel.
-
-`develop` is the integration branch, `main` is what is live. No development happens directly
-on either.
-
-### Automated gates
-
-Three hooks hold the baseline without depending on anyone's memory — two Claude Code hooks
-(`.claude/settings.json` → `.claude/hooks/`) and one git hook (`.githooks/`, enabled by
-`postinstall`):
-
-| Hook                   | When                                 | Effect                                                       |
-| ---------------------- | ------------------------------------ | ------------------------------------------------------------ |
-| `hooks/format-file.sh` | after each file Claude writes        | `prettier --write`, then `eslint --fix` on JS/TS             |
-| `hooks/typecheck.sh`   | when Claude ends its turn            | `npx tsc --noEmit`; an error blocks and is handed back to it |
-| `.githooks/pre-commit` | on every `git commit`, the dev's too | Prettier `--check` + ESLint on staged files, then `tsc`      |
-
-The git hook looks only at staged files, refuses the commit on failure, and
-`git commit --no-verify` is the deliberate way out. Formatting, linting and types are
-therefore guaranteed; the rest — architecture, UI rules, conventions — is still held by
-review.
-
 ## Roadmap
 
 - [x] Technical foundation: TanStack Start, Tailwind, shadcn/ui, environment validation
@@ -484,3 +456,31 @@ review.
 - [ ] Per-venue menu theme customization
 - [ ] Internationalization
 - [ ] Shared access: several accounts on one venue, roles, ownership transfer
+
+## Scripts
+
+| Command                   | Role                                                 |
+| ------------------------- | ---------------------------------------------------- |
+| `npm run dev`             | Development server on port 3000                      |
+| `npm run build`           | Production build                                     |
+| `npm run preview`         | Serve the build                                      |
+| `npm run generate-routes` | Regenerate `src/routeTree.gen.ts` from `src/routes/` |
+| `npm run db:generate`     | Generate a SQL migration from `src/db/schema.ts`     |
+| `npm run db:migrate`      | Apply pending migrations                             |
+| `npm run db:studio`       | Open Drizzle Studio on the database                  |
+| `npm run db:seed:demo`    | Reset and refill the demo venue                      |
+| `npm run lint`            | ESLint                                               |
+| `npm run format`          | Prettier `--write`, then `eslint --fix`              |
+| `npm run check`           | Check formatting without changing anything           |
+
+There is no typecheck script: it is `npx tsc --noEmit`. The project carries no test
+framework either, for now.
+
+`db:seed:demo` runs `scripts/seed-demo.ts`: it deletes the categories, products and orders
+of `chez-lambert`, then writes back a menu of seven categories, some forty products (with
+stock levels, alert thresholds and barcodes) and about fifteen orders spread between the
+live queue and the history. It is **replayable** — running it again gives exactly the same
+state. Before deleting anything, it checks that the targeted venue really carries the demo
+slug **and** belongs to `demo@cbm.be`; otherwise it stops without writing. It connects
+through `DATABASE_URL`, so as the database owner: that is the only way to write into
+`orders`, a table on which nobody holds an insert right.
