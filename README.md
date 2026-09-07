@@ -42,9 +42,6 @@ posé sur les tables.
 
 - [Fonctionnalités](#fonctionnalités)
 - [Stack technique](#stack-technique)
-- [Démarrage](#démarrage)
-  - [Variables d'environnement](#variables-denvironnement)
-  - [Base de données](#base-de-données) — [sécurité des données (RLS)](#sécurité-des-données-rls)
 - [Scripts](#scripts)
 - [Back-office](#back-office)
   - [Suivi de stock](#suivi-de-stock) — [scan des codes-barres](#scan-des-codes-barres)
@@ -55,6 +52,8 @@ posé sur les tables.
 - [Carte publique](#carte-publique)
 - [Structure du projet](#structure-du-projet)
   - [Ajouter un composant UI](#ajouter-un-composant-ui)
+- [Processus de développement](#processus-de-développement)
+  - [Portes automatisées](#portes-automatisées)
 - [Roadmap](#roadmap)
 
 ## Fonctionnalités
@@ -102,100 +101,6 @@ posé sur les tables.
 > **Les requêtes applicatives partent du navigateur** via `supabase-js` (PostgREST) et c'est
 > le RLS qui porte l'isolation entre établissements ; **Drizzle ne sert qu'au schéma et aux
 > migrations**, jamais à l'exécution.
-
-## Démarrage
-
-Prérequis : **Node.js 22+**.
-
-```bash
-git clone https://github.com/tomd7/clever-bar-menu.git
-cd clever-bar-menu
-npm install
-npm run dev
-```
-
-L'application est servie sur http://localhost:3000.
-
-### Variables d'environnement
-
-Les variables sont validées par [`@t3-oss/env-core`](https://env.t3.gg) dans
-[`src/env.ts`](src/env.ts) et [`src/env.server.ts`](src/env.server.ts) — une variable
-manquante fait échouer la validation plutôt que de se propager en `undefined`. Copiez
-[`.env.example`](.env.example) en `.env` à la racine ; il liste les variables attendues :
-
-```bash
-# Côté serveur — src/env.server.ts
-DATABASE_URL=            # requis : connexion Postgres Supabase (pooler transaction, 6543)
-MIGRATION_DATABASE_URL=  # optionnel : lu par drizzle-kit seul (voir ci-dessous)
-
-# Côté client (préfixe VITE_ obligatoire) — src/env.ts
-VITE_APP_TITLE=          # requis : nom du produit (onglet, pied de page, back-office)
-VITE_SUPABASE_URL=       # requis : https://<ref>.supabase.co
-VITE_SUPABASE_ANON_KEY=  # requis : clé publiable (sb_publishable_...)
-```
-
-La clé publiable est **publique par conception** : elle est servie au navigateur et figure
-dans le bundle. Ce n'est pas elle qui protège les données, c'est le RLS (voir ci-dessous).
-La clé secrète (`sb_secret_…`), elle, ne doit jamais porter le préfixe `VITE_`.
-
-Les variables serveur et client sont validées séparément, parce qu'elles ne viennent pas de
-la même source : le client lit `import.meta.env`, qui n'expose que le préfixe `VITE_`. Une
-variable serveur déclarée côté client vaudrait silencieusement `undefined`.
-
-### Base de données
-
-Créez un projet sur [supabase.com](https://supabase.com), puis récupérez la chaîne de
-connexion dans **Project Settings → Database → Connection string**. Le dashboard en propose
-trois, qui ne sont pas interchangeables :
-
-| Chaîne             | Port | Réseau        | Usage                                            |
-| ------------------ | ---- | ------------- | ------------------------------------------------ |
-| Transaction pooler | 6543 | IPv4          | `DATABASE_URL` — c'est celle-ci par défaut       |
-| Session pooler     | 5432 | IPv4          | `MIGRATION_DATABASE_URL`, si le pooler 6543 cale |
-| Direct connection  | 5432 | **IPv6 seul** | À éviter : échoue sans IPv6, erreur obscure      |
-
-`DATABASE_URL` ne sert **qu'aux migrations et au seed de démonstration** : les requêtes de
-l'application partent du navigateur vers PostgREST, avec la clé publiable. Le pooler en mode transaction reste le
-défaut parce qu'il est le mode prévu pour le serverless, et parce que la connexion Drizzle
-(`src/db/client.server.ts`) est écrite pour lui — d'où son `prepare: false`, ce mode
-interdisant les instructions préparées.
-
-Renseignez `DATABASE_URL`, puis appliquez les migrations :
-
-```bash
-npm run db:migrate
-```
-
-Les migrations sont du DDL et se comportent mal à travers un pooler en mode transaction. Si
-`db:migrate` échoue, renseignez `MIGRATION_DATABASE_URL` avec la chaîne **session pooler**
-(port 5432) : seules les migrations l'emprunteront, la connexion applicative ne change pas.
-
-#### Sécurité des données (RLS)
-
-Supabase expose automatiquement le schéma `public` via PostgREST et accorde des droits aux
-rôles `anon` et `authenticated`. **Une table sans Row Level Security y est donc lisible _et
-modifiable_ par quiconque possède la clé publiable** — laquelle est, par construction, dans
-le bundle navigateur.
-
-Le RLS est donc activé sur les **cinq** tables (`venues`, `categories`, `products`,
-`orders`, `order_items`), avec des policies déclarées directement dans
-[`src/db/schema.ts`](src/db/schema.ts) pour que le schéma reste la source de vérité :
-
-- **lecture publique** sur `venues`, `categories` et `products` — c'est l'intérêt même du QR
-  code : consulter la carte sans compte ;
-- **aucune policy d'écriture**, donc aucune écriture possible avec la clé publiable ;
-- **rien du tout sur `orders` et `order_items` pour le client**, pas même la lecture : une
-  commande anonyme passe exclusivement par des fonctions `security definer` (voir
-  « [Commande au comptoir](#commande-au-comptoir) »).
-
-Les écritures du back-office sont autorisées par des policies restreintes au propriétaire
-(`auth.uid() = owner_id`, et par jointure sur l'établissement pour les catégories et les
-produits). L'isolation entre établissements est donc portée par Postgres : un bug applicatif
-ne peut pas exposer la carte d'un autre bar.
-
-Drizzle, lui, se connecte en propriétaire de la base et **contourne** le RLS. Il ne sert
-qu'aux migrations et au script de démonstration (`npm run db:seed:demo`) : aucune requête
-applicative ne passe par lui.
 
 ## Scripts
 
@@ -500,6 +405,65 @@ chemins relatifs. Seul `scripts/` fait exception, et par contrainte : il est ex�
 ```bash
 npx shadcn@latest add dialog
 ```
+
+## Processus de développement
+
+Tout le code vient de Claude Code, mais rien n'y arrive au hasard : chaque fonctionnalité
+suit le même cycle, de l'idée au déploiement. Le dev décide et relit, Claude cadre, écrit
+et vérifie.
+
+| Étape                         | Qui    |
+| ----------------------------- | ------ |
+| Idée de fonctionnalité        | Le dev |
+| Cadrage de l'idée             | À deux |
+| Issue dans le backlog Linear  | Claude |
+| Développement sur une branche | Claude |
+| Vérifications                 | Claude |
+| Pull request vers `develop`   | Claude |
+| Revue de code                 | Le dev |
+| Merge et déploiement          | Le dev |
+
+1. **L'idée part du dev.** Un besoin du bar, un manque repéré à l'usage, une ligne de la
+   [roadmap](#roadmap).
+2. **Elle est développée avec Claude Code**, en conversation : périmètre, cas limites,
+   conséquences sur le schéma et sur le RLS, alternatives écartées. C'est l'étape qui
+   transforme une phrase en une fonctionnalité descriptible — et parfois celle qui la
+   réduit, ou l'abandonne.
+3. **Claude crée l'issue dans le backlog Linear**, avec ce que le cadrage a produit :
+   intention, périmètre, critères d'acceptation.
+4. **Claude développe.** L'issue passe en « In Progress », une branche `feat/<ID-de-issue>`
+   (ou `fix/<ID>` pour une correction) part de `develop` — par exemple `feat/CLOCLO-5` — et
+   les commits suivent la convention `type(scope): description`.
+5. **Claude vérifie son travail** avant d'ouvrir quoi que ce soit. Le projet n'embarque pas
+   de framework de test : la vérification, ce sont les [portes
+   automatisées](#portes-automatisées) — Prettier, ESLint et `npx tsc --noEmit` — et un
+   passage dans l'application réelle, au format mobile d'abord.
+6. **Claude ouvre la pull request vers `develop`** (via `gh`) et passe l'issue en
+   « In Review ».
+7. **Le dev relit.** C'est le point de contrôle du projet : rien n'est fusionné sans avoir
+   été lu. Les remarques repartent à Claude, qui corrige sur la même branche.
+8. **Merge de la PR dans `develop`**, puis **merge de `develop` dans `main`**, qui déclenche
+   le déploiement sur Vercel.
+
+`develop` est la branche d'intégration, `main` est ce qui est en ligne. Aucun développement
+ne se fait directement sur l'une ou l'autre.
+
+### Portes automatisées
+
+Trois crochets tiennent la base sans dépendre de la mémoire de qui que ce soit — deux
+crochets Claude Code (`.claude/settings.json` → `.claude/hooks/`) et un crochet git
+(`.githooks/`, activé par `postinstall`) :
+
+| Crochet                | Quand                                       | Effet                                                            |
+| ---------------------- | ------------------------------------------- | ---------------------------------------------------------------- |
+| `hooks/format-file.sh` | après chaque écriture de fichier par Claude | `prettier --write`, puis `eslint --fix` sur le JS/TS             |
+| `hooks/typecheck.sh`   | quand Claude termine son tour               | `npx tsc --noEmit` ; une erreur bloque et lui est renvoyée       |
+| `.githooks/pre-commit` | à chaque `git commit`, celui du dev compris | Prettier `--check` + ESLint sur les fichiers indexés, puis `tsc` |
+
+Le crochet git ne regarde que les fichiers indexés, refuse le commit en cas d'échec, et
+`git commit --no-verify` est la sortie de secours assumée. Le formatage, le lint et les
+types sont donc garantis ; le reste — architecture, règles d'UI, conventions — reste tenu
+par la revue.
 
 ## Roadmap
 
