@@ -1,498 +1,486 @@
 # Clever Bar Menu
 
-Une carte digitale pour les bars et cafés : les clients scannent un QR code posé sur la table
-et consultent la carte à jour depuis leur téléphone, sans application à installer. Le gérant
-gère ses catégories, ses produits et ses prix depuis un back-office.
+**English** · [Français](README.fr.md)
 
-**Le projet est écrit intégralement avec [Claude Code](https://claude.com/claude-code)**, et
-c'est même son objet : voir jusqu'où un produit complet — mis en ligne, utilisable par un vrai
-bar — peut être mené sans qu'une ligne soit tapée à la main. Le code applicatif, le schéma et
-ses migrations, les policies RLS, le CSS, l'outillage et la documentation, ce README compris,
-en viennent tous. Le rôle humain est celui de la commande, de l'arbitrage et de la relecture.
+A digital menu for bars and cafés: customers scan a QR code on the table and read the
+up-to-date menu on their phone, with no app to install. The manager edits categories,
+products and prices from a back office.
 
-![Status](https://img.shields.io/badge/status-en%20ligne-brightgreen)
-![Built with Claude Code](https://img.shields.io/badge/écrit%20avec-Claude%20Code-d97757)
+**The project is written entirely with [Claude Code](https://claude.com/claude-code)**, and
+that is in fact its point: to see how far a complete product — deployed, usable by a real
+bar — can be taken without a single line being typed by hand. The application code, the
+schema and its migrations, the RLS policies, the CSS, the tooling and the documentation,
+this README included, all come from it. The human role is one of commissioning, arbitrating
+and reviewing.
 
-## En ligne
+![Status](https://img.shields.io/badge/status-live-brightgreen)
+![Built with Claude Code](https://img.shields.io/badge/built%20with-Claude%20Code-d97757)
+
+## Live
 
 **<https://bar-menu-taupe.vercel.app>**
 
-|                          | Adresse                                            |
-| ------------------------ | -------------------------------------------------- |
-| Carte publique (exemple) | <https://bar-menu-taupe.vercel.app/m/chez-lambert> |
-| Back-office              | <https://bar-menu-taupe.vercel.app/login>          |
-| Compte de démonstration  | `demo@cbm.be` / `demo`                             |
+|                      | Address                                            |
+| -------------------- | -------------------------------------------------- |
+| Public menu (sample) | <https://bar-menu-taupe.vercel.app/m/chez-lambert> |
+| Back office          | <https://bar-menu-taupe.vercel.app/login>          |
+| Demo account         | `demo@cbm.be` / `demo`                             |
 
-La carte d'un établissement vit à `/m/<slug>` — c'est cette adresse qu'encode le QR code
-posé sur les tables.
+A venue's menu lives at `/m/<slug>` — that is the address the QR code on the tables
+encodes.
 
 > [!NOTE]
-> Le compte de démonstration est **partagé et public** : les modifications qu'on y fait sont
-> visibles par les autres visiteurs, et l'établissement de démonstration peut être remis à
-> zéro sans préavis. N'y déposez rien de réel. La remise à zéro est
-> `npm run db:seed:demo`, qui vide sa carte et son historique puis les remplit d'un jeu
-> fictif (voir « [Scripts](#scripts) »).
+> The demo account is **shared and public**: whatever you change there is visible to other
+> visitors, and the demo venue can be reset without notice. Don't put anything real in it.
+> The reset is `npm run db:seed:demo`, which empties its menu and its history, then refills
+> them with a fictional set (see "[Scripts](#scripts)").
 
 > [!IMPORTANT]
-> Le produit est en service, mais le développement continue : voir la [roadmap](#roadmap)
-> pour ce qui manque encore. L'inscription est fermée — les comptes des gérants sont créés
-> par l'administrateur de la plateforme (voir « [Création des comptes](#création-des-comptes) »).
+> The product is in service, but development continues: see the [roadmap](#roadmap) for
+> what is still missing. Sign-up is closed — manager accounts are created by the platform
+> administrator (see "[Creating accounts](#creating-accounts)").
 
-## Sommaire
+## Contents
 
-- [Fonctionnalités](#fonctionnalités)
-- [Stack technique](#stack-technique)
+- [Features](#features)
+- [Tech stack](#tech-stack)
 - [Scripts](#scripts)
-- [Back-office](#back-office)
-  - [Suivi de stock](#suivi-de-stock) — [scan des codes-barres](#scan-des-codes-barres)
-  - [Commande au comptoir](#commande-au-comptoir)
-  - [Création des comptes](#création-des-comptes)
-  - [Supprimer un établissement](#supprimer-un-établissement)
+- [Back office](#back-office)
+  - [Stock tracking](#stock-tracking) — [barcode scanning](#barcode-scanning)
+  - [Counter ordering](#counter-ordering)
+  - [Creating accounts](#creating-accounts)
+  - [Deleting a venue](#deleting-a-venue)
 - [QR code](#qr-code)
-- [Carte publique](#carte-publique)
-- [Structure du projet](#structure-du-projet)
-  - [Ajouter un composant UI](#ajouter-un-composant-ui)
-- [Processus de développement](#processus-de-développement)
-  - [Portes automatisées](#portes-automatisées)
+- [Public menu](#public-menu)
+- [Project structure](#project-structure)
+  - [Adding a UI component](#adding-a-ui-component)
+- [Development process](#development-process)
+  - [Automated gates](#automated-gates)
 - [Roadmap](#roadmap)
 
-## Fonctionnalités
+## Features
 
-- **Carte publique via QR code** — chaque table renvoie vers la carte de l'établissement,
-  consultable sur mobile, sans installation ni compte.
-- **Back-office de gestion** — création et édition des catégories, produits, prix,
-  descriptions et photos ; un produit en rupture peut être masqué en un clic.
-- **Suivi de stock** — activable produit par produit, avec un seuil d'alerte et une page
-  faite pour être tenue debout derrière le bar. Un produit épuisé quitte la carte des
-  clients et y revient de lui-même au réapprovisionnement.
-- **Commande au comptoir** — le client compose son panier depuis la carte scannée, laisse
-  un prénom, et suit l'état de sa commande jusqu'à « prête ». Le bar la voit arriver dans
-  une file qui se rafraîchit toute seule. **Sans paiement en ligne** : le règlement se fait
-  au comptoir, et aucune donnée bancaire ne transite. Fermé par défaut sur chaque
-  établissement, à ouvrir depuis l'écran des commandes.
-- **Multi-établissements** — un même déploiement héberge plusieurs bars. Un gérant en
-  possède autant qu'il veut, chacun avec sa carte, son adresse publique et son QR code.
-  L'isolation est portée par Postgres : un gérant ne voit et ne modifie que ses
-  établissements. Un établissement a en revanche **un seul propriétaire** — plusieurs
-  comptes sur un même bar restent à faire.
-- **Scan des codes-barres** — les entrées et sorties de stock se saisissent devant la
-  caméra, depuis le téléphone. Fonctionne sur tous les navigateurs, iPhone compris.
-- **Thème clair/sombre** — le thème « bar du soir » suit le réglage du téléphone qui scanne
-  le QR code, sans interrupteur ni cookie. La personnalisation par établissement et la carte
-  multilingue sont à la [roadmap](#roadmap), pas encore là.
+- **Public menu behind a QR code** — every table points at the venue's menu, readable on a
+  phone, with no install and no account.
+- **Management back office** — create and edit categories, products, prices, descriptions
+  and photos; a product that has run out can be hidden in one click.
+- **Stock tracking** — enabled product by product, with an alert threshold and a page built
+  to be held standing behind the bar. A product that runs out leaves the customer menu and
+  comes back on its own when restocked.
+- **Counter ordering** — the customer builds a cart from the scanned menu, leaves a first
+  name, and follows the order through to "ready". The bar sees it arrive in a queue that
+  refreshes itself. **No online payment**: settlement happens at the counter, and no
+  banking data travels. Closed by default on every venue, to be opened from the orders
+  screen.
+- **Multi-venue** — a single deployment hosts several bars. A manager owns as many as they
+  want, each with its own menu, public address and QR code. Isolation is carried by
+  Postgres: a manager only sees and edits their own venues. A venue, on the other hand, has
+  **a single owner** — several accounts on one bar remain to be done.
+- **Barcode scanning** — stock movements in and out are entered in front of the camera,
+  from the phone. Works on every browser, iPhone included.
+- **Light/dark theme** — the "evening bar" theme follows the setting of the phone scanning
+  the QR code, with no switch and no cookie. Per-venue customization and a multilingual
+  menu are on the [roadmap](#roadmap), not here yet.
 
-## Stack technique
+## Tech stack
 
-| Domaine      | Choix                                                                                  |
+| Area         | Choice                                                                                 |
 | ------------ | -------------------------------------------------------------------------------------- |
 | Framework    | [TanStack Start](https://tanstack.com/start) (SSR) + [React 19](https://react.dev)     |
-| Routing      | [TanStack Router](https://tanstack.com/router) (routes générées depuis `src/routes/`)  |
-| Cache client | [TanStack Query](https://tanstack.com/query)                                           |
-| Formulaires  | [TanStack Form](https://tanstack.com/form) + [Zod](https://zod.dev)                    |
-| Persistance  | [Supabase](https://supabase.com) (Postgres) + [Drizzle ORM](https://orm.drizzle.team)  |
+| Routing      | [TanStack Router](https://tanstack.com/router) (routes generated from `src/routes/`)   |
+| Client cache | [TanStack Query](https://tanstack.com/query)                                           |
+| Forms        | [TanStack Form](https://tanstack.com/form) + [Zod](https://zod.dev)                    |
+| Persistence  | [Supabase](https://supabase.com) (Postgres) + [Drizzle ORM](https://orm.drizzle.team)  |
 | UI           | [Tailwind CSS 4](https://tailwindcss.com) + [shadcn/ui](https://ui.shadcn.com) (Radix) |
 | Build        | [Vite 8](https://vite.dev)                                                             |
-| Serveur      | [Nitro](https://nitro.build)                                                           |
-| Langage      | TypeScript                                                                             |
+| Server       | [Nitro](https://nitro.build)                                                           |
+| Language     | TypeScript                                                                             |
 
 > [!NOTE]
-> La persistance est un Postgres hébergé sur Supabase. Supabase a été retenu parce qu'il
-> couvre aussi l'authentification du back-office et le stockage des photos produits.
-> **Les requêtes applicatives partent du navigateur** via `supabase-js` (PostgREST) et c'est
-> le RLS qui porte l'isolation entre établissements ; **Drizzle ne sert qu'au schéma et aux
-> migrations**, jamais à l'exécution.
+> Persistence is a Postgres hosted on Supabase. Supabase was chosen because it also covers
+> back-office authentication and product photo storage. **Application queries leave from the
+> browser** through `supabase-js` (PostgREST), and it is RLS that carries isolation between
+> venues; **Drizzle only serves the schema and the migrations**, never runtime.
 
 ## Scripts
 
-| Commande                  | Rôle                                                 |
+| Command                   | Role                                                 |
 | ------------------------- | ---------------------------------------------------- |
-| `npm run dev`             | Serveur de développement sur le port 3000            |
-| `npm run build`           | Build de production                                  |
-| `npm run preview`         | Prévisualisation du build                            |
-| `npm run generate-routes` | Régénère `src/routeTree.gen.ts` depuis `src/routes/` |
-| `npm run db:generate`     | Génère une migration SQL depuis `src/db/schema.ts`   |
-| `npm run db:migrate`      | Applique les migrations en attente                   |
-| `npm run db:studio`       | Ouvre Drizzle Studio sur la base                     |
-| `npm run db:seed:demo`    | Réinitialise et remplit l'établissement de démo      |
+| `npm run dev`             | Development server on port 3000                      |
+| `npm run build`           | Production build                                     |
+| `npm run preview`         | Serve the build                                      |
+| `npm run generate-routes` | Regenerate `src/routeTree.gen.ts` from `src/routes/` |
+| `npm run db:generate`     | Generate a SQL migration from `src/db/schema.ts`     |
+| `npm run db:migrate`      | Apply pending migrations                             |
+| `npm run db:studio`       | Open Drizzle Studio on the database                  |
+| `npm run db:seed:demo`    | Reset and refill the demo venue                      |
 | `npm run lint`            | ESLint                                               |
-| `npm run format`          | Prettier `--write` puis `eslint --fix`               |
-| `npm run check`           | Vérifie le formatage sans modifier les fichiers      |
+| `npm run format`          | Prettier `--write`, then `eslint --fix`              |
+| `npm run check`           | Check formatting without changing anything           |
 
-Il n'y a pas de script de typecheck : c'est `npx tsc --noEmit`. Le projet n'embarque pas non
-plus de framework de test pour l'instant.
+There is no typecheck script: it is `npx tsc --noEmit`. The project carries no test
+framework either, for now.
 
-`db:seed:demo` exécute `scripts/seed-demo.ts` : il supprime les catégories, les produits et
-les commandes de `chez-lambert`, puis réécrit une carte de sept catégories, une quarantaine
-de produits (avec stocks, seuils d'alerte et codes-barres) et une quinzaine de commandes
-réparties entre la file en cours et l'historique. Il est **rejouable** — le relancer redonne
-exactement le même état. Avant la moindre suppression, il vérifie que l'établissement visé
-porte bien le slug de la démo **et** appartient à `demo@cbm.be` ; sinon il s'arrête sans rien
-écrire. Il se connecte par `DATABASE_URL`, donc en propriétaire de la base : c'est le seul
-moyen d'écrire dans `orders`, table sur laquelle personne n'a de droit d'insertion.
+`db:seed:demo` runs `scripts/seed-demo.ts`: it deletes the categories, products and orders
+of `chez-lambert`, then writes back a menu of seven categories, some forty products (with
+stock levels, alert thresholds and barcodes) and about fifteen orders spread between the
+live queue and the history. It is **replayable** — running it again gives exactly the same
+state. Before deleting anything, it checks that the targeted venue really carries the demo
+slug **and** belongs to `demo@cbm.be`; otherwise it stops without writing. It connects
+through `DATABASE_URL`, so as the database owner: that is the only way to write into
+`orders`, a table on which nobody holds an insert right.
 
-## Back-office
+## Back office
 
-Le back-office vit sous `/admin`, derrière une authentification Supabase (e-mail + mot de
-passe). L'accès aux données se fait **depuis le navigateur** via `supabase-js`, et c'est le
-RLS qui garantit qu'un gérant ne voit que ses établissements.
+The back office lives under `/admin`, behind Supabase authentication (email + password).
+Data access happens **from the browser** through `supabase-js`, and it is RLS that
+guarantees a manager only sees their own venues.
 
-Les routes du back-office sont en `ssr: false` : la session Supabase est conservée dans le
-navigateur, donc l'évaluer pendant le rendu serveur conclurait « non connecté » à chaque
-requête. La carte publique, elle, est en SSR — c'est une page scannée au QR code, sa vitesse de
-premier affichage compte.
+Back-office routes are `ssr: false`: the Supabase session is kept in the browser, so
+evaluating it during server rendering would conclude "not signed in" on every request. The
+public menu, by contrast, is server-rendered — it is a page reached by scanning a QR code,
+and its first paint matters.
 
-| Route                          | Rôle                                                       |
-| ------------------------------ | ---------------------------------------------------------- |
-| `/login`                       | Connexion                                                  |
-| `/admin`                       | Liste des établissements du gérant, et création            |
-| `/admin/corbeille`             | Établissements supprimés, et restauration                  |
-| `/admin/$venueSlug`            | Édition de la carte : catégories, produits, prix, ruptures |
-| `/admin/$venueSlug/stock`      | Suivi de stock : niveaux, alertes, décompte                |
-| `/admin/$venueSlug/stock/scan` | Mouvements de stock à la caméra, code-barres               |
-| `/admin/$venueSlug/qr`         | Feuille de QR code à imprimer                              |
-| `/admin/$venueSlug/commandes`  | File des commandes et historique                           |
-| `/m/$venueSlug`                | **Carte publique** — la page que vise le QR code           |
+| Route                          | Role                                                     |
+| ------------------------------ | -------------------------------------------------------- |
+| `/login`                       | Sign in                                                  |
+| `/admin`                       | The manager's venues, and venue creation                 |
+| `/admin/corbeille`             | Deleted venues, and restoration                          |
+| `/admin/$venueSlug`            | Menu editing: categories, products, prices, availability |
+| `/admin/$venueSlug/stock`      | Stock tracking: levels, alerts, decrements               |
+| `/admin/$venueSlug/stock/scan` | Stock movements at the camera, by barcode                |
+| `/admin/$venueSlug/qr`         | Printable QR code sheet                                  |
+| `/admin/$venueSlug/commandes`  | Order queue and history                                  |
+| `/m/$venueSlug`                | **Public menu** — the page the QR code points at         |
 
-Les prix sont saisis en euros et stockés en **centimes entiers**
-([`src/features/menu/price.ts`](src/features/menu/price.ts)) : la saisie accepte la virgule comme le point, et
-les décimales sont lues comme du texte plutôt que multipliées en flottant — `1,10 * 100`
-vaut `110.00000000000001` en JavaScript.
+Prices are entered in euros and stored as **whole cents**
+([`src/features/menu/price.ts`](src/features/menu/price.ts)): input accepts a comma as well
+as a period, and decimals are read as text rather than multiplied as floats — `1.10 * 100`
+is `110.00000000000001` in JavaScript.
 
-Les **photos** sont déposées dans le bucket Supabase Storage `product-photos`, public en
-lecture (la carte se charge au QR code, une URL publique passe par le CDN) mais dont
-l'écriture est réservée au propriétaire de l'établissement. Elles sont réduites dans le
-navigateur avant l'envoi — 1200 px de côté au maximum, en WebP.
+**Photos** are uploaded to the Supabase Storage bucket `product-photos`, publicly readable
+(the menu loads from a QR code, and a public URL goes through the CDN) but writable only by
+the venue's owner. They are resized in the browser before upload — 1200 px on the longest
+side, in WebP.
 
-Le prix est **facultatif** : un champ laissé vide vaut « pas de prix affiché », pour un plat
-du jour ou un tarif selon arrivage. C'est distinct de `0`, qui reste un prix valide pour un
-article offert.
+The price is **optional**: an empty field means "no price shown", for a dish of the day or a
+market rate. That is distinct from `0`, which remains a valid price for something on the
+house.
 
-La **taille** d'un produit — « 25cl », « 50cl », « au fût », « pichet » — est un champ libre,
-facultatif lui aussi. Le formulaire propose les formats courants en une pastille, sans pour
-autant fermer la liste : les formats d'un bar sont les siens. Deux tailles d'une même bière
-sont **deux produits**, comme sur une carte imprimée, et le format se lit à la suite du nom,
-avant la conduite qui mène au prix. Il est recopié sur la ligne de commande à l'envoi : deux
-« Blonde » sur un ticket, l'une en 25cl et l'autre en 50cl, seraient sinon un ticket qu'il
-faut deviner.
+A product's **size** — "25cl", "50cl", "on tap", "pitcher" — is a free-text field, optional
+as well. The form offers the common formats as chips without closing the list: a bar's
+formats are its own. Two sizes of the same beer are **two products**, as on a printed menu,
+and the format reads right after the name, before the leader line running to the price. It
+is copied onto the order line when the order is sent: two "Blonde" on one ticket, one 25cl
+and one 50cl, would otherwise be a ticket you have to guess at.
 
-L'ordre des catégories et des produits est porté par une colonne `position`, avançant de 100
-en 100 pour permettre d'insérer entre deux voisines sans réécrire la liste. Un produit en
-rupture reste dans la carte du gérant, barré, et sera masqué côté client.
+The order of categories and products is carried by a `position` column, stepping by 100 so
+that a row can be inserted between two neighbours without rewriting the list. A product that
+has run out stays in the manager's menu, struck through, and is hidden on the customer side.
 
-### Suivi de stock
+### Stock tracking
 
-Le suivi s'active **produit par produit**, en renseignant un stock restant sur sa fiche. Un
-champ laissé vide veut dire « pas de suivi », et c'est le cas normal : un café ou une
-pression au fût ne se comptent pas à l'échelle d'un service. Un seuil d'alerte facultatif
-signale un stock bas avant l'épuisement.
+Tracking is enabled **product by product**, by filling in a remaining stock on its form. An
+empty field means "not tracked", and that is the normal case: a coffee or a draught beer
+isn't counted at the scale of a service. An optional alert threshold flags a low stock
+before it runs out.
 
-`/admin/$venueSlug/stock` regroupe les produits suivis, dans l'ordre de la carte, avec un
-compteur par ligne : « −1 » pendant le service, la saisie du niveau à la livraison. Un
-bandeau en tête donne les raccourcis vers ce qui demande une intervention. La liste, elle,
-ne se réordonne jamais — trier par urgence ferait remonter une ligne à l'instant où le doigt
-appuie sur son « −1 ».
+`/admin/$venueSlug/stock` gathers the tracked products, in menu order, with a counter per
+row: "−1" during service, entering the level at delivery. A banner at the top gives
+shortcuts to whatever needs attention. The list itself never reorders — sorting by urgency
+would move a row up at the very moment a finger presses its "−1".
 
-Deux points de conception valent d'être connus :
+Two design points are worth knowing:
 
-- **La rupture par épuisement est déduite, jamais écrite.** `is_available` reste le geste
-  manuel du gérant ; un stock à zéro masque le produit de la carte publique par un filtre de
-  requête, et le réapprovisionnement le fait réapparaître sans intervention. Basculer
-  vraiment la colonne obligerait à réactiver chaque produit à la main après une livraison,
-  et écraserait au passage une décision prise pour une tout autre raison.
-- **Le décompte passe par une fonction Postgres**, `adjust_product_stock` (migration
-  `0007`). PostgREST ne sait pas écrire `stock_quantity = stock_quantity - 1` : sans elle, le
-  navigateur devrait lire puis écrire, et deux appareils derrière le même bar perdraient un
-  décompte sur deux. C'est aussi le point d'accroche prévu pour la commande à table.
+- **Running out is inferred, never written.** `is_available` stays the manager's manual
+  gesture; a stock at zero hides the product from the public menu through a query filter,
+  and restocking brings it back with no intervention. Actually flipping the column would
+  force reactivating every product by hand after a delivery, and would overwrite a decision
+  taken for an entirely different reason along the way.
+- **The decrement goes through a Postgres function**, `adjust_product_stock` (migration
+  `0007`). PostgREST cannot write `stock_quantity = stock_quantity - 1`: without it the
+  browser would have to read and then write, and two devices behind the same bar would lose
+  one decrement out of two. It is also the intended hook for table ordering.
 
-#### Scan des codes-barres
+#### Barcode scanning
 
-`/admin/<slug>/stock/scan` saisit les mouvements devant la caméra : on scanne, on choisit
-« entrée » ou « sortie », la quantité s'applique au produit. Un code inconnu propose son
-**appairage** au produit correspondant, une seule fois — après quoi la bouteille est
-reconnue.
+`/admin/<slug>/stock/scan` enters movements in front of the camera: you scan, you choose
+"in" or "out", the quantity applies to the product. An unknown code offers to **pair** it
+with the matching product, once — after which the bottle is recognized.
 
-- **Tout code entrant est normalisé en GTIN-14** ([`src/features/menu/barcode.ts`](src/features/menu/barcode.ts)),
-  chiffre de contrôle vérifié. La même canette porte un UPC-A à 12 chiffres aux États-Unis
-  et un EAN-13 en Europe : stockées brutes, ces deux chaînes appaireraient deux fois le même
-  produit. La saisie au clavier passe par le même chemin que la caméra — deux chemins qui
-  ne s'accordent pas là-dessus ne s'accordent pas en production.
-- **Deux décodeurs derrière une seule API.** Le `BarcodeDetector` du navigateur quand il
-  existe ; sinon un ZXing-C++ compilé en WebAssembly, chargé **à la demande sur ce seul
-  écran** (~430 Ko, jamais servi à la carte publique). C'est ce qui fait marcher l'écran sur
-  iPhone, où WebKit n'a jamais implémenté la Shape Detection API.
-- **Le `.wasm` est servi depuis notre propre origine**, pas depuis le CDN public que
-  `zxing-wasm` vise par défaut : un tiers entre un gérant et son inventaire, sur le wifi
-  d'une cave, est un mode de panne de plus.
+- **Every incoming code is normalized to GTIN-14**
+  ([`src/features/menu/barcode.ts`](src/features/menu/barcode.ts)), check digit verified.
+  The same can carries a 12-digit UPC-A in the United States and an EAN-13 in Europe: stored
+  raw, those two strings would pair the same product twice. Keyboard entry goes through the
+  same path as the camera — two paths that disagree about this disagree in production.
+- **Two decoders behind a single API.** The browser's `BarcodeDetector` where it exists;
+  otherwise a ZXing-C++ compiled to WebAssembly, loaded **on demand on this screen alone**
+  (~430 KB, never served to the public menu). That is what makes the screen work on iPhone,
+  where WebKit never implemented the Shape Detection API.
+- **The `.wasm` is served from our own origin**, not from the public CDN `zxing-wasm`
+  targets by default: a third party standing between a manager and their inventory, on a
+  cellar's wifi, is one more failure mode.
 
-### Commande au comptoir
+### Counter ordering
 
-Le client ajoute des produits depuis la carte scannée, ouvre son panier dans une feuille
-qui monte du bas de l'écran, donne un prénom et envoie. Il suit ensuite l'état de sa
-commande sur la même page, sans compte : **reçue → en préparation → prête**. Le prénom est
-la référence — c'est lui qu'on appelle au comptoir, ce qu'un numéro fait mal.
+The customer adds products from the scanned menu, opens the cart in a sheet rising from the
+bottom of the screen, gives a first name and sends. They then follow the order's state on
+the same page, with no account: **received → in preparation → ready**. The first name is the
+reference — it is what gets called out at the counter, which a number does badly.
 
-Le client peut **annuler lui-même**, tant que le bar n'a pas pris la commande en charge.
-Passé ce point le stock est décompté et le verre est en préparation : l'annulation reste
-possible, mais au comptoir. La commande annulée indique laquelle des deux parties l'a fait.
+The customer can **cancel themselves**, as long as the bar hasn't taken the order on. Past
+that point the stock is decremented and the glass is being poured: cancelling is still
+possible, but at the counter. A cancelled order records which of the two parties did it.
 
-Côté bar, `/admin/$venueSlug/commandes` affiche la file, la plus ancienne en tête, et se
-relève toutes les dix secondes. Trois gestes : **Accepter** (qui décompte le stock),
-**Prête**, **Récupérée** — plus une annulation en deux temps. Le nombre de commandes non
-encore acceptées apparaît dans le titre de l'onglet, seul endroit qu'un onglet en
-arrière-plan peut faire voir.
+On the bar's side, `/admin/$venueSlug/commandes` shows the queue, oldest first, and picks
+itself up every ten seconds. Three gestures: **Accept** (which decrements stock), **Ready**,
+**Picked up** — plus a two-step cancellation. The number of orders not yet accepted appears
+in the tab title, the only place a background tab can show anything.
 
-Trois points de conception qui expliquent le reste :
+Three design points explain the rest:
 
-- **La commande anonyme ne touche jamais la table.** Le client est `anon` et `orders` ne
-  lui ouvre aucune policy, pas même en lecture. Tout passe par deux fonctions Postgres
-  `security definer` (migration `0009`) : `place_order` valide et insère, `get_order`
-  relit. **Rien de ce qui a une conséquence ne vient du navigateur** — le client envoie des
-  identifiants de produits et des quantités, les prix et le total sont relus en base.
-- **Le suivi tient à un jeton secret**, gardé dans le navigateur et transmis en corps de
-  requête, jamais dans une URL. Sans lui, suivre une commande par son seul identifiant
-  laisserait lire celle du voisin en changeant un chiffre. Le navigateur en garde **une
-  liste** : commander une deuxième tournée pendant que la première arrive n'efface pas la
-  première. Le suivi les range en deux onglets — « En cours » et « Historique » — pour
-  qu'une commande déjà récupérée n'encombre pas ce qu'on attend encore.
-- **Le stock descend à l'acceptation, pas à l'envoi.** Une commande arrive anonymement
-  depuis un QR code affiché en salle : décompter à l'envoi laisserait vider un inventaire
-  depuis le trottoir. En contrepartie, deux clients peuvent commander la dernière bouteille
-  avant que le bar n'arbitre.
+- **An anonymous order never touches the table.** The customer is `anon` and `orders` opens
+  no policy to them, not even for reading. Everything goes through two `security definer`
+  Postgres functions (migration `0009`): `place_order` validates and inserts, `get_order`
+  reads back. **Nothing with a consequence comes from the browser** — the client sends
+  product ids and quantities, prices and totals are re-read in the database.
+- **Tracking hangs on a secret token**, kept in the browser and sent in the request body,
+  never in a URL. Without it, following an order by its id alone would let you read your
+  neighbour's by changing one digit. The browser keeps **a list** of them: ordering a second
+  round while the first arrives doesn't erase the first. Tracking files them into two tabs —
+  "In progress" and "History" — so that an order already picked up doesn't clutter what is
+  still being waited on.
+- **Stock goes down on acceptance, not on sending.** An order arrives anonymously from a QR
+  code displayed in the room: decrementing on send would let an inventory be emptied from
+  the pavement. In exchange, two customers can order the last bottle before the bar
+  arbitrates.
 
-Une limite connue : **`place_order` n'est pas limitée en débit**. C'est un point d'entrée
-d'écriture non authentifié, ouvert sur Internet. Les plafonds par ligne (20) et par
-commande (40 lignes) bornent ce qu'un appel peut écrire, rien ne borne le nombre d'appels.
+One known limit: **`place_order` is not rate-limited**. It is an unauthenticated write entry
+point, open to the internet. The caps per line (20) and per order (40 lines) bound what one
+call can write; nothing bounds the number of calls.
 
-### Création des comptes
+### Creating accounts
 
-**Il n'y a pas d'inscription libre.** Les accès sont créés par l'administrateur de la
-plateforme depuis **Authentication → Users → Add user** dans le tableau de bord Supabase
-(cochez _Auto Confirm User_, sinon le gérant devra confirmer son adresse avant de pouvoir se
-connecter).
+**There is no open sign-up.** Access is created by the platform administrator from
+**Authentication → Users → Add user** in the Supabase dashboard (tick _Auto Confirm User_,
+otherwise the manager will have to confirm their address before being able to sign in).
 
 > [!IMPORTANT]
-> Retirer le formulaire d'inscription de l'interface ne ferme rien. L'endpoint
-> `/auth/v1/signup` reste joignable directement avec la clé publiable, qui est par
-> conception présente dans le bundle navigateur. Ce qui ferme réellement l'inscription est
-> le réglage **Authentication → Sign In / Providers → Allow new users to sign up**, à
-> désactiver dans le tableau de bord.
+> Removing the sign-up form from the interface closes nothing. The `/auth/v1/signup`
+> endpoint stays reachable directly with the publishable key, which is by design present in
+> the browser bundle. What actually closes sign-up is the **Authentication → Sign In /
+> Providers → Allow new users to sign up** setting, to be turned off in the dashboard.
 >
-> Pour vérifier l'état réel du projet, sans rien modifier :
+> To check the project's real state, without changing anything:
 >
 > ```bash
 > curl -s "$VITE_SUPABASE_URL/auth/v1/settings" -H "apikey: $VITE_SUPABASE_ANON_KEY"
 > ```
 >
-> `disable_signup` doit valoir `true`.
+> `disable_signup` must be `true`.
 
-### Supprimer un établissement
+### Deleting a venue
 
-La suppression est **logique** : la ligne reste en base avec sa carte, ses photos et son
-slug, marquée par une date dans `deleted_at`. L'établissement part dans une **corbeille**
-d'où il peut être restauré tel qu'il était.
+Deletion is **soft**: the row stays in the database with its menu, its photos and its slug,
+marked by a date in `deleted_at`. The venue goes into a **trash** from which it can be
+restored exactly as it was.
 
-Ce que garantit Postgres, et pas seulement le code :
+What Postgres guarantees, and not just the code:
 
-- **La carte publique d'un établissement supprimé ne répond plus** — la policy de lecture
-  publique exige `deleted_at is null`, donc `/m/<slug>` renvoie un 404 même si une requête
-  oubliait le filtre.
-- **Son propriétaire continue de le voir**, grâce à une seconde policy de lecture. Sans elle,
-  supprimer un établissement le rendrait invisible à son propre gérant, donc impossible à
-  restaurer.
-- **Les autres gérants ne le voient pas**, ni ne peuvent le restaurer.
+- **A deleted venue's public menu stops answering** — the public read policy requires
+  `deleted_at is null`, so `/m/<slug>` returns a 404 even if a query forgot the filter.
+- **Its owner keeps seeing it**, thanks to a second read policy. Without it, deleting a
+  venue would make it invisible to its own manager, hence impossible to restore.
+- **Other managers don't see it**, nor can they restore it.
 
 > [!NOTE]
-> Le slug reste réservé tant que l'établissement est à la corbeille : `venues_slug_unique`
-> ignore l'archivage. Une contrainte partielle libérerait l'adresse, au prix d'une
-> restauration qui échouerait si le nom a été repris entre-temps.
+> The slug stays reserved as long as the venue is in the trash: `venues_slug_unique` ignores
+> archiving. A partial constraint would free the address, at the price of a restoration that
+> would fail if the name had been taken in the meantime.
 
 ## QR code
 
-`/admin/<slug>/qr` produit le code à imprimer et à poser sur les tables. Il encode l'URL
-publique de la carte, et c'est **un seul code pour tout l'établissement** : la carte est
-identique à chaque table, distinguer les tables n'apporterait rien tant qu'aucune
-fonctionnalité ne lit ce numéro.
+`/admin/<slug>/qr` produces the code to print and put on the tables. It encodes the menu's
+public URL, and it is **one single code for the whole venue**: the menu is identical at
+every table, and telling tables apart would add nothing as long as no feature reads that
+number.
 
-- **Sortie SVG**, pas PNG : le code finit imprimé à une taille choisie par le gérant, d'un
-  sous-bock à une affiche. Un vecteur reste net partout.
-- **Correction d'erreur `Q`**, un cran au-dessus du défaut, parce que l'objet est physique.
-  Mesuré avec le décodeur de Chrome : le code reste lisible jusqu'à **15 % de sa surface
-  masquée** par une tache opaque, et échoue à 20 %.
-- **Un avertissement s'affiche si l'adresse est `localhost`.** Un code généré en
-  développement encode `localhost` : imprimé et collé sur les tables, il ne mène nulle part,
-  et rien ne le distingue visuellement d'un code valide.
-- `Cmd+P` n'imprime que la feuille : la navigation, les boutons et le fond du thème
-  disparaissent (`.no-print` dans `src/styles/print.css`, `.print-sheet` à côté de l'écran,
-  dans `src/features/venues/components/venue-qr.css`).
+- **SVG output**, not PNG: the code ends up printed at a size the manager chooses, from a
+  coaster to a poster. A vector stays sharp everywhere.
+- **Error correction `Q`**, one notch above the default, because the object is physical.
+  Measured with Chrome's decoder: the code stays readable up to **15% of its surface
+  covered** by an opaque stain, and fails at 20%.
+- **A warning appears if the address is `localhost`.** A code generated in development
+  encodes `localhost`: printed and stuck on the tables, it leads nowhere, and nothing
+  visually distinguishes it from a valid code.
+- `Cmd+P` prints the sheet and nothing else: navigation, buttons and the theme's background
+  disappear (`.no-print` in `src/styles/print.css`, `.print-sheet` next to the screen, in
+  `src/features/venues/components/venue-qr.css`).
 
-## Carte publique
+## Public menu
 
-`/m/<slug>` est la page destinée aux clients : elle s'ouvre en scannant le QR code posé sur
-la table, sans compte ni installation. Elle est **rendue au serveur** — le HTML part complet
-et la carte est lisible avant même que le JavaScript n'ait été évalué, ce qui compte sur le
-réseau mobile d'un client attablé.
+`/m/<slug>` is the page meant for customers: it opens by scanning the QR code on the table,
+with no account and no install. It is **server-rendered** — the HTML leaves complete and the
+menu is readable before JavaScript has even been evaluated, which counts on the mobile
+network of a seated customer.
 
-Trois comportements à connaître :
+Three behaviours to know:
 
-- **Les produits en rupture sont écartés dans la requête**, pas à l'affichage : ils ne
-  quittent jamais le serveur. Deux causes indépendantes les écartent — la rupture décidée à
-  la main, et un stock épuisé. Une catégorie dont tous les produits sont partis disparaît
-  également.
-- **Un produit sans prix n'affiche rien** — pas « Prix non renseigné », qui est un message
-  destiné au gérant. C'est ce que fait une carte imprimée pour un plat du jour.
-- **Une adresse inconnue répond un vrai 404**, et non une page d'erreur en 200 : ces URL sont
-  imprimées sur des QR codes.
+- **Unavailable products are dropped in the query**, not at render: they never leave the
+  server. Two independent causes drop them — availability turned off by hand, and an
+  exhausted stock. A category whose products have all gone disappears as well.
+- **A product without a price shows nothing** — not "No price set", which is a message meant
+  for the manager. That is what a printed menu does for a dish of the day.
+- **An unknown address answers a real 404**, not an error page with a 200: these URLs are
+  printed on QR codes.
 
-## Structure du projet
+## Project structure
 
-Le code est groupé **par domaine métier**, pas par nature technique : une feature possède
-ses écrans, ses requêtes et ses règles dans un même dossier.
+Code is grouped **by business domain**, not by technical kind: a feature owns its screens,
+its queries and its rules in one directory.
 
 ```
 src/
-├── routes/          # Routes fichier-système (TanStack Router)
-│   ├── __root.tsx   # Shell HTML, providers et devtools
-│   ├── index.tsx    # Page d'accueil (vitrine, pas la carte)
-│   ├── login.tsx    # Connexion
-│   ├── m.$venueSlug.tsx        # Carte publique, en SSR
-│   ├── _authenticated.tsx      # Garde d'auth + coquille du back-office
-│   └── _authenticated/         # Écrans du back-office, en `ssr: false`
-├── features/        # Un dossier par domaine : composants, `api.ts`, `mutations.ts`
-│   ├── auth/        # Connexion et traduction des erreurs
-│   ├── menu/        # Catégories, produits, prix, photos, stock, carte publique
-│   ├── orders/      # Panier client, envoi, suivi, file du bar
-│   └── venues/      # Établissements, corbeille, QR code
-├── components/      # Partagé entre features : ui/ (shadcn), buttons/, form/,
-│                    # back-office/ (coquille), home/ (vitrine)
+├── routes/          # File-based routes (TanStack Router)
+│   ├── __root.tsx   # HTML shell, providers and devtools
+│   ├── index.tsx    # Landing page (marketing, not the menu)
+│   ├── login.tsx    # Sign in
+│   ├── m.$venueSlug.tsx        # Public menu, server-rendered
+│   ├── _authenticated.tsx      # Auth guard + back-office shell
+│   └── _authenticated/         # Back-office screens, `ssr: false`
+├── features/        # One directory per domain: components, `api.ts`, `mutations.ts`
+│   ├── auth/        # Sign in and error translation
+│   ├── menu/        # Categories, products, prices, photos, stock, public menu
+│   ├── orders/      # Customer cart, sending, tracking, bar queue
+│   └── venues/      # Venues, trash, QR code
+├── components/      # Shared between features: ui/ (shadcn), buttons/, form/,
+│                    # back-office/ (shell), home/ (landing page)
 ├── db/
-│   ├── schema.ts    # Modèle de données + policies RLS
-│   ├── client.server.ts # Connexion Drizzle — migrations uniquement
-│   └── migrations/  # Généré par drizzle-kit — ne pas éditer à la main
+│   ├── schema.ts    # Data model + RLS policies
+│   ├── client.server.ts # Drizzle connection — migrations only
+│   └── migrations/  # Generated by drizzle-kit — never edit by hand
 ├── integrations/    # Providers (TanStack Query)
-├── lib/             # Sans domaine : supabase.ts, money.ts, query-keys.ts,
+├── lib/             # Domain-free: supabase.ts, money.ts, query-keys.ts,
 │                    # postgrest-error.ts, product-photos.ts, public-menu-url.ts, utils.ts
-├── env.ts           # Variables d'environnement client
-├── env.server.ts    # Variables d'environnement serveur
-├── router.tsx       # Configuration du router
-├── routeTree.gen.ts # Généré — ne pas éditer à la main
-├── styles.css       # Point d'entrée : n'assemble que des `@import`
-└── styles/          # Thème, éléments nus, vocabulaire partagé, mouvement, impression
+├── env.ts           # Client environment variables
+├── env.server.ts    # Server environment variables
+├── router.tsx       # Router configuration
+├── routeTree.gen.ts # Generated — never edit by hand
+├── styles.css       # Entry point: assembles `@import`s and nothing else
+└── styles/          # Theme, bare elements, shared vocabulary, motion, print
 
 scripts/
-└── seed-demo.ts     # Réinitialise et remplit l'établissement de démonstration
+└── seed-demo.ts     # Resets and refills the demo venue
 ```
 
-Les dépendances vont dans un seul sens — `routes/` → `features/` → `components/` et `lib/` —
-et **une feature n'en importe pas une autre** : ce que deux features partagent descend d'un
-cran. Quand deux domaines doivent être assemblés, c'est la route qui le fait. Un composant
-n'appelle jamais `supabase` directement : tout passe par l'`api.ts` de sa feature.
+Dependencies point one way — `routes/` → `features/` → `components/` and `lib/` — and **a
+feature never imports another**: what two features share moves down a level. When two
+domains must be assembled, the route does it. A component never calls `supabase` directly:
+everything goes through its feature's `api.ts`.
 
-Le CSS suit le même découpage que le code : `src/styles/` porte ce qui appartient à
-l'application entière, et **le style d'un composant vit dans un `.css` à côté de lui**
+The CSS follows the same split as the code: `src/styles/` carries what belongs to the whole
+application, and **a component's style lives in a `.css` next to it**
 (`components/nav-link.css`, `features/menu/components/public-menu.css`…). `src/styles.css`
-n'en est que la table des matières, dans l'ordre de la cascade.
+is only their table of contents, in cascade order.
 
-Les fichiers suffixés `.server.ts` sont refusés à la compilation s'ils sont importés depuis du
-code client. C'est important ici : les `loader` de route sont **isomorphes** et s'exécutent
-aussi dans le navigateur, donc tout accès aux données doit passer par un `createServerFn`.
+Files suffixed `.server.ts` are refused at compile time if they are imported from client
+code. That matters here: route `loader`s are **isomorphic** and also run in the browser, so
+any data access must go through a `createServerFn`.
 
-L'alias `#/*` pointe vers `./src/*` : préférez `import { cn } from '#/lib/utils'` aux
-chemins relatifs. Seul `scripts/` fait exception, et par contrainte : il est exécuté par
-`node` seul, qui rejette un spécifieur commençant par `#/`.
+The `#/*` alias points at `./src/*`: prefer `import { cn } from '#/lib/utils'` over relative
+paths. Only `scripts/` is an exception, and out of constraint: it is run by `node` alone,
+which rejects a specifier starting with `#/`.
 
-### Ajouter un composant UI
+### Adding a UI component
 
 ```bash
 npx shadcn@latest add dialog
 ```
 
-## Processus de développement
+## Development process
 
-Tout le code vient de Claude Code, mais rien n'y arrive au hasard : chaque fonctionnalité
-suit le même cycle, de l'idée au déploiement. Le dev décide et relit, Claude cadre, écrit
-et vérifie.
+All the code comes from Claude Code, but none of it lands there by chance: every feature
+follows the same cycle, from idea to deployment. The dev decides and reviews; Claude frames,
+writes and verifies.
 
-| Étape                         | Qui    |
-| ----------------------------- | ------ |
-| Idée de fonctionnalité        | Le dev |
-| Cadrage de l'idée             | À deux |
-| Issue dans le backlog Linear  | Claude |
-| Développement sur une branche | Claude |
-| Vérifications                 | Claude |
-| Pull request vers `develop`   | Claude |
-| Revue de code                 | Le dev |
-| Merge et déploiement          | Le dev |
+| Step                        | Who      |
+| --------------------------- | -------- |
+| Feature idea                | The dev  |
+| Framing the idea            | Together |
+| Issue in the Linear backlog | Claude   |
+| Development on a branch     | Claude   |
+| Verification                | Claude   |
+| Pull request to `develop`   | Claude   |
+| Code review                 | The dev  |
+| Merge and deployment        | The dev  |
 
-1. **L'idée part du dev.** Un besoin du bar, un manque repéré à l'usage, une ligne de la
-   [roadmap](#roadmap).
-2. **Elle est développée avec Claude Code**, en conversation : périmètre, cas limites,
-   conséquences sur le schéma et sur le RLS, alternatives écartées. C'est l'étape qui
-   transforme une phrase en une fonctionnalité descriptible — et parfois celle qui la
-   réduit, ou l'abandonne.
-3. **Claude crée l'issue dans le backlog Linear**, avec ce que le cadrage a produit :
-   intention, périmètre, critères d'acceptation.
-4. **Claude développe.** L'issue passe en « In Progress », une branche `feat/<ID-de-issue>`
-   (ou `fix/<ID>` pour une correction) part de `develop` — par exemple `feat/CLOCLO-5` — et
-   les commits suivent la convention `type(scope): description`.
-5. **Claude vérifie son travail** avant d'ouvrir quoi que ce soit. Le projet n'embarque pas
-   de framework de test : la vérification, ce sont les [portes
-   automatisées](#portes-automatisées) — Prettier, ESLint et `npx tsc --noEmit` — et un
-   passage dans l'application réelle, au format mobile d'abord.
-6. **Claude ouvre la pull request vers `develop`** (via `gh`) et passe l'issue en
-   « In Review ».
-7. **Le dev relit.** C'est le point de contrôle du projet : rien n'est fusionné sans avoir
-   été lu. Les remarques repartent à Claude, qui corrige sur la même branche.
-8. **Merge de la PR dans `develop`**, puis **merge de `develop` dans `main`**, qui déclenche
-   le déploiement sur Vercel.
+1. **The idea starts with the dev.** A need from the bar, a gap spotted in use, a line from
+   the [roadmap](#roadmap).
+2. **It is developed with Claude Code**, in conversation: scope, edge cases, consequences on
+   the schema and on RLS, alternatives ruled out. This is the step that turns a sentence
+   into a describable feature — and sometimes the one that shrinks it, or drops it.
+3. **Claude creates the issue in the Linear backlog**, with what the framing produced:
+   intent, scope, acceptance criteria.
+4. **Claude develops.** The issue moves to "In Progress", a `feat/<issue-ID>` branch (or
+   `fix/<ID>` for a fix) is cut from `develop` — for instance `feat/CLOCLO-5` — and the
+   commits follow the `type(scope): description` convention.
+5. **Claude verifies its own work** before opening anything. The project carries no test
+   framework: verification is the [automated gates](#automated-gates) — Prettier, ESLint and
+   `npx tsc --noEmit` — plus a pass through the real application, at mobile size first.
+6. **Claude opens the pull request to `develop`** (through `gh`) and moves the issue to
+   "In Review".
+7. **The dev reviews.** This is the project's checkpoint: nothing is merged without having
+   been read. Remarks go back to Claude, which fixes on the same branch.
+8. **The PR is merged into `develop`**, then **`develop` is merged into `main`**, which
+   triggers the deployment on Vercel.
 
-`develop` est la branche d'intégration, `main` est ce qui est en ligne. Aucun développement
-ne se fait directement sur l'une ou l'autre.
+`develop` is the integration branch, `main` is what is live. No development happens directly
+on either.
 
-### Portes automatisées
+### Automated gates
 
-Trois crochets tiennent la base sans dépendre de la mémoire de qui que ce soit — deux
-crochets Claude Code (`.claude/settings.json` → `.claude/hooks/`) et un crochet git
-(`.githooks/`, activé par `postinstall`) :
+Three hooks hold the baseline without depending on anyone's memory — two Claude Code hooks
+(`.claude/settings.json` → `.claude/hooks/`) and one git hook (`.githooks/`, enabled by
+`postinstall`):
 
-| Crochet                | Quand                                       | Effet                                                            |
-| ---------------------- | ------------------------------------------- | ---------------------------------------------------------------- |
-| `hooks/format-file.sh` | après chaque écriture de fichier par Claude | `prettier --write`, puis `eslint --fix` sur le JS/TS             |
-| `hooks/typecheck.sh`   | quand Claude termine son tour               | `npx tsc --noEmit` ; une erreur bloque et lui est renvoyée       |
-| `.githooks/pre-commit` | à chaque `git commit`, celui du dev compris | Prettier `--check` + ESLint sur les fichiers indexés, puis `tsc` |
+| Hook                   | When                                 | Effect                                                       |
+| ---------------------- | ------------------------------------ | ------------------------------------------------------------ |
+| `hooks/format-file.sh` | after each file Claude writes        | `prettier --write`, then `eslint --fix` on JS/TS             |
+| `hooks/typecheck.sh`   | when Claude ends its turn            | `npx tsc --noEmit`; an error blocks and is handed back to it |
+| `.githooks/pre-commit` | on every `git commit`, the dev's too | Prettier `--check` + ESLint on staged files, then `tsc`      |
 
-Le crochet git ne regarde que les fichiers indexés, refuse le commit en cas d'échec, et
-`git commit --no-verify` est la sortie de secours assumée. Le formatage, le lint et les
-types sont donc garantis ; le reste — architecture, règles d'UI, conventions — reste tenu
-par la revue.
+The git hook looks only at staged files, refuses the commit on failure, and
+`git commit --no-verify` is the deliberate way out. Formatting, linting and types are
+therefore guaranteed; the rest — architecture, UI rules, conventions — is still held by
+review.
 
 ## Roadmap
 
-- [x] Socle technique : TanStack Start, Tailwind, shadcn/ui, validation d'environnement
-- [x] Choix et mise en place de la persistance des données (Supabase + Drizzle)
-- [x] Authentification du back-office (Supabase Auth, comptes créés par l'administrateur)
-- [x] CRUD des établissements
-- [x] CRUD de la carte (catégories, produits, prix, photos)
-- [x] Carte publique
-- [x] Génération du QR code (un par établissement)
-- [x] Taille du produit : format servi (25cl, 50cl, au fût…), sur la carte comme sur les
-      tickets de commande
-- [x] Thème : variantes jour et nuit suivant le système
-- [x] Suppression d'un établissement (logique, avec corbeille et restauration)
-- [x] Gestion des ruptures de stock
-- [x] Gestion de l'inventaire : niveaux de stock activables par produit, seuils d'alerte,
-      décompte manuel et passage automatique en rupture
-- [x] Commande au comptoir : panier côté client, envoi au bar depuis la carte scannée,
-      suivi de l'état par le client, file et historique dans le back-office, décompte du
-      stock à l'acceptation. **Sans paiement en ligne** — le règlement se fait au comptoir,
-      la commande ne transporte aucune donnée bancaire
-- [x] Scan du code-barres pour les mouvements de stock : entrées et sorties saisies devant
-      la caméra depuis `/admin/<slug>/stock/scan`, avec appairage du code au premier scan.
-      Fonctionne sur tous les navigateurs, iOS compris : `BarcodeDetector` natif quand il
-      existe, sinon un décodeur ZXing en WebAssembly chargé à la demande sur ce seul écran
-- [ ] Tableau de bord : nouvelle page d'accueil du back-office, à la place de la simple
-      liste des établissements — chiffres de la journée, alertes (stocks bas, ruptures,
-      commandes en attente) et accès direct à chaque carte
-- [ ] Personnalisation du thème de la carte par établissement
-- [ ] Internationalisation
-- [ ] Accès partagés : plusieurs comptes sur un même établissement, rôles, transfert de
-      propriété
+- [x] Technical foundation: TanStack Start, Tailwind, shadcn/ui, environment validation
+- [x] Choosing and setting up data persistence (Supabase + Drizzle)
+- [x] Back-office authentication (Supabase Auth, accounts created by the administrator)
+- [x] Venue CRUD
+- [x] Menu CRUD (categories, products, prices, photos)
+- [x] Public menu
+- [x] QR code generation (one per venue)
+- [x] Product size: served format (25cl, 50cl, on tap…), on the menu as well as on order
+      tickets
+- [x] Theme: day and night variants following the system
+- [x] Venue deletion (soft, with trash and restoration)
+- [x] Out-of-stock handling
+- [x] Inventory management: stock levels enabled per product, alert thresholds, manual
+      decrements and automatic switch to unavailable
+- [x] Counter ordering: customer-side cart, sent to the bar from the scanned menu, state
+      tracked by the customer, queue and history in the back office, stock decremented on
+      acceptance. **No online payment** — settlement happens at the counter, the order
+      carries no banking data
+- [x] Barcode scanning for stock movements: ins and outs entered in front of the camera
+      from `/admin/<slug>/stock/scan`, with the code paired on first scan. Works on every
+      browser, iOS included: native `BarcodeDetector` where it exists, otherwise a ZXing
+      decoder in WebAssembly loaded on demand on that screen alone
+- [ ] Dashboard: a new back-office home page, replacing the plain venue list — the day's
+      figures, alerts (low stock, out of stock, pending orders) and direct access to each
+      menu
+- [ ] Per-venue menu theme customization
+- [ ] Internationalization
+- [ ] Shared access: several accounts on one venue, roles, ownership transfer
