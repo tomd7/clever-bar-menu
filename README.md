@@ -36,7 +36,7 @@ encodes.
 > them with a fictional set (see "[Scripts](#scripts)").
 
 > [!IMPORTANT]
-> The product is in service, but development continues: see the [roadmap](#roadmap) for
+> The product is in production, but development continues: see the [roadmap](#roadmap) for
 > what is still missing. Sign-up is closed — manager accounts are created by the platform
 > administrator (see "[Creating accounts](#creating-accounts)").
 

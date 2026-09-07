@@ -36,7 +36,7 @@ posé sur les tables.
 > fictif (voir « [Scripts](#scripts) »).
 
 > [!IMPORTANT]
-> Le produit est en service, mais le développement continue : voir la [roadmap](#roadmap)
+> Le produit est en production, mais le développement continue : voir la [roadmap](#roadmap)
 > pour ce qui manque encore. L'inscription est fermée — les comptes des gérants sont créés
 > par l'administrateur de la plateforme (voir « [Création des comptes](#création-des-comptes) »).
 
