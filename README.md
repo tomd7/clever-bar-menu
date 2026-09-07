@@ -29,7 +29,9 @@ posé sur les tables.
 > [!NOTE]
 > Le compte de démonstration est **partagé et public** : les modifications qu'on y fait sont
 > visibles par les autres visiteurs, et l'établissement de démonstration peut être remis à
-> zéro sans préavis. N'y déposez rien de réel.
+> zéro sans préavis. N'y déposez rien de réel. La remise à zéro est
+> `npm run db:seed:demo`, qui vide sa carte et son historique puis les remplit d'un jeu
+> fictif (voir « [Scripts](#scripts) »).
 
 > [!IMPORTANT]
 > Le produit est en service, mais le développement continue : voir la [roadmap](#roadmap)
@@ -152,8 +154,8 @@ trois, qui ne sont pas interchangeables :
 | Session pooler     | 5432 | IPv4          | `MIGRATION_DATABASE_URL`, si le pooler 6543 cale |
 | Direct connection  | 5432 | **IPv6 seul** | À éviter : échoue sans IPv6, erreur obscure      |
 
-`DATABASE_URL` ne sert **qu'aux migrations** : les requêtes de l'application partent du
-navigateur vers PostgREST, avec la clé publiable. Le pooler en mode transaction reste le
+`DATABASE_URL` ne sert **qu'aux migrations et au seed de démonstration** : les requêtes de
+l'application partent du navigateur vers PostgREST, avec la clé publiable. Le pooler en mode transaction reste le
 défaut parce qu'il est le mode prévu pour le serverless, et parce que la connexion Drizzle
 (`src/db/client.server.ts`) est écrite pour lui — d'où son `prepare: false`, ce mode
 interdisant les instructions préparées.
@@ -191,8 +193,9 @@ Les écritures du back-office sont autorisées par des policies restreintes au p
 produits). L'isolation entre établissements est donc portée par Postgres : un bug applicatif
 ne peut pas exposer la carte d'un autre bar.
 
-Drizzle, lui, se connecte en propriétaire de la base et **contourne** le RLS. Il ne sert plus
-qu'aux migrations : aucune requête applicative ne passe par lui.
+Drizzle, lui, se connecte en propriétaire de la base et **contourne** le RLS. Il ne sert
+qu'aux migrations et au script de démonstration (`npm run db:seed:demo`) : aucune requête
+applicative ne passe par lui.
 
 ## Scripts
 
@@ -205,12 +208,22 @@ qu'aux migrations : aucune requête applicative ne passe par lui.
 | `npm run db:generate`     | Génère une migration SQL depuis `src/db/schema.ts`   |
 | `npm run db:migrate`      | Applique les migrations en attente                   |
 | `npm run db:studio`       | Ouvre Drizzle Studio sur la base                     |
+| `npm run db:seed:demo`    | Réinitialise et remplit l'établissement de démo      |
 | `npm run lint`            | ESLint                                               |
 | `npm run format`          | Prettier `--write` puis `eslint --fix`               |
 | `npm run check`           | Vérifie le formatage sans modifier les fichiers      |
 
 Il n'y a pas de script de typecheck : c'est `npx tsc --noEmit`. Le projet n'embarque pas non
 plus de framework de test pour l'instant.
+
+`db:seed:demo` exécute `scripts/seed-demo.ts` : il supprime les catégories, les produits et
+les commandes de `chez-lambert`, puis réécrit une carte de sept catégories, une quarantaine
+de produits (avec stocks, seuils d'alerte et codes-barres) et une quinzaine de commandes
+réparties entre la file en cours et l'historique. Il est **rejouable** — le relancer redonne
+exactement le même état. Avant la moindre suppression, il vérifie que l'établissement visé
+porte bien le slug de la démo **et** appartient à `demo@cbm.be` ; sinon il s'arrête sans rien
+écrire. Il se connecte par `DATABASE_URL`, donc en propriétaire de la base : c'est le seul
+moyen d'écrire dans `orders`, table sur laquelle personne n'a de droit d'insertion.
 
 ## Back-office
 
@@ -459,6 +472,9 @@ src/
 ├── routeTree.gen.ts # Généré — ne pas éditer à la main
 ├── styles.css       # Point d'entrée : n'assemble que des `@import`
 └── styles/          # Thème, éléments nus, vocabulaire partagé, mouvement, impression
+
+scripts/
+└── seed-demo.ts     # Réinitialise et remplit l'établissement de démonstration
 ```
 
 Les dépendances vont dans un seul sens — `routes/` → `features/` → `components/` et `lib/` —
@@ -476,7 +492,8 @@ code client. C'est important ici : les `loader` de route sont **isomorphes** et 
 aussi dans le navigateur, donc tout accès aux données doit passer par un `createServerFn`.
 
 L'alias `#/*` pointe vers `./src/*` : préférez `import { cn } from '#/lib/utils'` aux
-chemins relatifs.
+chemins relatifs. Seul `scripts/` fait exception, et par contrainte : il est exécuté par
+`node` seul, qui rejette un spécifieur commençant par `#/`.
 
 ### Ajouter un composant UI
 

@@ -28,6 +28,7 @@ npm run preview          # serve the build
 npm run generate-routes  # regenerate src/routeTree.gen.ts from src/routes/
 npm run db:generate      # generate a SQL migration from src/db/schema.ts (no DB needed)
 npm run db:migrate       # apply pending migrations to DATABASE_URL
+npm run db:seed:demo     # wipe and refill the demo venue (chez-lambert) with fictional data
 npm run db:studio        # Drizzle Studio
 npm run lint             # ESLint
 npm run format           # prettier --write . then eslint --fix

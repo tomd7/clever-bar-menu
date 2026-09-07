@@ -2,7 +2,11 @@
 
 Postgres hosted on Supabase. **Drizzle is migrations-only**: no application query goes
 through it (the app talks to PostgREST via `supabase-js`), so `DATABASE_URL` is needed
-only by `db:migrate`. Supabase also carries the back office's auth and the product photo
+only by `db:migrate` — and by `scripts/seed-demo.ts` (`npm run db:seed:demo`), the one
+other consumer, which refills the public demo venue. It writes below the policies on
+purpose: `orders` carries no `insert` policy for anyone, so seeding a history is only
+possible as the table owner. Its guard is `chez-lambert` **plus** ownership by
+`demo@cbm.be`, checked before the first delete. Supabase also carries the back office's auth and the product photo
 storage — that is what a move off it would have to replace.
 
 | File                      | Role                                                                 |
