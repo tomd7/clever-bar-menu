@@ -48,13 +48,14 @@ encodes.
   - [Automated gates](#automated-gates)
 - [Project structure](#project-structure)
   - [Adding a UI component](#adding-a-ui-component)
-- [Back office](#back-office)
-  - [Stock tracking](#stock-tracking) — [barcode scanning](#barcode-scanning)
-  - [Counter ordering](#counter-ordering)
-  - [Creating accounts](#creating-accounts)
-  - [Deleting a venue](#deleting-a-venue)
-- [QR code](#qr-code)
-- [Public menu](#public-menu)
+- [Under the hood](#under-the-hood)
+  - [Back office](#back-office)
+    - [Stock tracking](#stock-tracking) — [barcode scanning](#barcode-scanning)
+    - [Counter ordering](#counter-ordering)
+    - [Creating accounts](#creating-accounts)
+    - [Deleting a venue](#deleting-a-venue)
+  - [QR code](#qr-code)
+  - [Public menu](#public-menu)
 - [Roadmap](#roadmap)
 - [Scripts](#scripts)
 
@@ -222,7 +223,12 @@ which rejects a specifier starting with `#/`.
 npx shadcn@latest add dialog
 ```
 
-## Back office
+## Under the hood
+
+The three surfaces of the product — what a manager edits, what is printed on the table, and
+what a customer reads — and the decisions behind each.
+
+### Back office
 
 The back office lives under `/admin`, behind Supabase authentication (email + password).
 Data access happens **from the browser** through `supabase-js`, and it is RLS that
@@ -270,7 +276,7 @@ The order of categories and products is carried by a `position` column, stepping
 that a row can be inserted between two neighbours without rewriting the list. A product that
 has run out stays in the manager's menu, struck through, and is hidden on the customer side.
 
-### Stock tracking
+#### Stock tracking
 
 Tracking is enabled **product by product**, by filling in a remaining stock on its form. An
 empty field means "not tracked", and that is the normal case: a coffee or a draught beer
@@ -294,7 +300,7 @@ Two design points are worth knowing:
   browser would have to read and then write, and two devices behind the same bar would lose
   one decrement out of two. It is also the intended hook for table ordering.
 
-#### Barcode scanning
+##### Barcode scanning
 
 `/admin/<slug>/stock/scan` enters movements in front of the camera: you scan, you choose
 "in" or "out", the quantity applies to the product. An unknown code offers to **pair** it
@@ -313,7 +319,7 @@ with the matching product, once — after which the bottle is recognized.
   targets by default: a third party standing between a manager and their inventory, on a
   cellar's wifi, is one more failure mode.
 
-### Counter ordering
+#### Counter ordering
 
 The customer adds products from the scanned menu, opens the cart in a sheet rising from the
 bottom of the screen, gives a first name and sends. They then follow the order's state on
@@ -351,7 +357,7 @@ One known limit: **`place_order` is not rate-limited**. It is an unauthenticated
 point, open to the internet. The caps per line (20) and per order (40 lines) bound what one
 call can write; nothing bounds the number of calls.
 
-### Creating accounts
+#### Creating accounts
 
 **There is no open sign-up.** Access is created by the platform administrator from
 **Authentication → Users → Add user** in the Supabase dashboard (tick _Auto Confirm User_,
@@ -371,7 +377,7 @@ otherwise the manager will have to confirm their address before being able to si
 >
 > `disable_signup` must be `true`.
 
-### Deleting a venue
+#### Deleting a venue
 
 Deletion is **soft**: the row stays in the database with its menu, its photos and its slug,
 marked by a date in `deleted_at`. The venue goes into a **trash** from which it can be
@@ -390,7 +396,7 @@ What Postgres guarantees, and not just the code:
 > archiving. A partial constraint would free the address, at the price of a restoration that
 > would fail if the name had been taken in the meantime.
 
-## QR code
+### QR code
 
 `/admin/<slug>/qr` produces the code to print and put on the tables. It encodes the menu's
 public URL, and it is **one single code for the whole venue**: the menu is identical at
@@ -409,7 +415,7 @@ number.
   disappear (`.no-print` in `src/styles/print.css`, `.print-sheet` next to the screen, in
   `src/features/venues/components/venue-qr.css`).
 
-## Public menu
+### Public menu
 
 `/m/<slug>` is the page meant for customers: it opens by scanning the QR code on the table,
 with no account and no install. It is **server-rendered** — the HTML leaves complete and the

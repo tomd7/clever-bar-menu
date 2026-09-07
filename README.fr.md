@@ -45,16 +45,16 @@ posé sur les tables.
 - [Fonctionnalités](#fonctionnalités)
 - [Stack technique](#stack-technique)
 - [Processus de développement](#processus-de-développement)
-  - [Portes automatisées](#portes-automatisées)
+  - [Garde-fous automatiques](#garde-fous-automatiques)
 - [Structure du projet](#structure-du-projet)
-  - [Ajouter un composant UI](#ajouter-un-composant-ui)
-- [Back-office](#back-office)
-  - [Suivi de stock](#suivi-de-stock) — [scan des codes-barres](#scan-des-codes-barres)
-  - [Commande au comptoir](#commande-au-comptoir)
-  - [Création des comptes](#création-des-comptes)
-  - [Supprimer un établissement](#supprimer-un-établissement)
-- [QR code](#qr-code)
-- [Carte publique](#carte-publique)
+- [Sous le capot](#sous-le-capot)
+  - [Back-office](#back-office)
+    - [Suivi de stock](#suivi-de-stock) — [scan des codes-barres](#scan-des-codes-barres)
+    - [Commande au comptoir](#commande-au-comptoir)
+    - [Création des comptes](#création-des-comptes)
+    - [Supprimer un établissement](#supprimer-un-établissement)
+  - [QR code](#qr-code)
+  - [Carte publique](#carte-publique)
 - [Roadmap](#roadmap)
 - [Scripts](#scripts)
 
@@ -132,10 +132,10 @@ et vérifie.
 4. **Claude développe.** L'issue passe en « In Progress », une branche `feat/<ID-de-issue>`
    (ou `fix/<ID>` pour une correction) part de `develop` — par exemple `feat/CLOCLO-5` — et
    les commits suivent la convention `type(scope): description`.
-5. **Claude vérifie son travail** avant d'ouvrir quoi que ce soit. Le projet n'embarque pas
-   de framework de test : la vérification, ce sont les [portes
-   automatisées](#portes-automatisées) — Prettier, ESLint et `npx tsc --noEmit` — et un
-   passage dans l'application réelle, au format mobile d'abord.
+5. **Claude vérifie son travail** avant d'ouvrir quoi que ce soit. Le projet n'embarque
+   pas de framework de test : la vérification, ce sont les [garde-fous
+   automatiques](#garde-fous-automatiques) — Prettier, ESLint et `npx tsc --noEmit` — et
+   un passage dans l'application réelle, au format mobile d'abord.
 6. **Claude ouvre la pull request vers `develop`** (via `gh`) et passe l'issue en
    « In Review ».
 7. **Le dev relit.** C'est le point de contrôle du projet : rien n'est fusionné sans avoir
@@ -146,19 +146,19 @@ et vérifie.
 `develop` est la branche d'intégration, `main` est ce qui est en ligne. Aucun développement
 ne se fait directement sur l'une ou l'autre.
 
-### Portes automatisées
+### Garde-fous automatiques
 
-Trois crochets tiennent la base sans dépendre de la mémoire de qui que ce soit — deux
-crochets Claude Code (`.claude/settings.json` → `.claude/hooks/`) et un crochet git
-(`.githooks/`, activé par `postinstall`) :
+Trois hooks tiennent la base sans dépendre de la mémoire de qui que ce soit — deux hooks
+Claude Code (`.claude/settings.json` → `.claude/hooks/`) et un hook git (`.githooks/`,
+activé par `postinstall`) :
 
-| Crochet                | Quand                                       | Effet                                                            |
+| Hook                   | Quand                                       | Effet                                                            |
 | ---------------------- | ------------------------------------------- | ---------------------------------------------------------------- |
 | `hooks/format-file.sh` | après chaque écriture de fichier par Claude | `prettier --write`, puis `eslint --fix` sur le JS/TS             |
 | `hooks/typecheck.sh`   | quand Claude termine son tour               | `npx tsc --noEmit` ; une erreur bloque et lui est renvoyée       |
 | `.githooks/pre-commit` | à chaque `git commit`, celui du dev compris | Prettier `--check` + ESLint sur les fichiers indexés, puis `tsc` |
 
-Le crochet git ne regarde que les fichiers indexés, refuse le commit en cas d'échec, et
+Le hook git ne regarde que les fichiers indexés, refuse le commit en cas d'échec, et
 `git commit --no-verify` est la sortie de secours assumée. Le formatage, le lint et les
 types sont donc garantis ; le reste — architecture, règles d'UI, conventions — reste tenu
 par la revue.
@@ -220,13 +220,12 @@ L'alias `#/*` pointe vers `./src/*` : préférez `import { cn } from '#/lib/util
 chemins relatifs. Seul `scripts/` fait exception, et par contrainte : il est exécuté par
 `node` seul, qui rejette un spécifieur commençant par `#/`.
 
-### Ajouter un composant UI
+## Sous le capot
 
-```bash
-npx shadcn@latest add dialog
-```
+Les trois surfaces du produit — ce qu'un gérant édite, ce qui est collé sur la table, ce
+qu'un client lit — et les décisions derrière chacune.
 
-## Back-office
+### Back-office
 
 Le back-office vit sous `/admin`, derrière une authentification Supabase (e-mail + mot de
 passe). L'accès aux données se fait **depuis le navigateur** via `supabase-js`, et c'est le
@@ -275,7 +274,7 @@ L'ordre des catégories et des produits est porté par une colonne `position`, a
 en 100 pour permettre d'insérer entre deux voisines sans réécrire la liste. Un produit en
 rupture reste dans la carte du gérant, barré, et sera masqué côté client.
 
-### Suivi de stock
+#### Suivi de stock
 
 Le suivi s'active **produit par produit**, en renseignant un stock restant sur sa fiche. Un
 champ laissé vide veut dire « pas de suivi », et c'est le cas normal : un café ou une
@@ -300,7 +299,7 @@ Deux points de conception valent d'être connus :
   navigateur devrait lire puis écrire, et deux appareils derrière le même bar perdraient un
   décompte sur deux. C'est aussi le point d'accroche prévu pour la commande à table.
 
-#### Scan des codes-barres
+##### Scan des codes-barres
 
 `/admin/<slug>/stock/scan` saisit les mouvements devant la caméra : on scanne, on choisit
 « entrée » ou « sortie », la quantité s'applique au produit. Un code inconnu propose son
@@ -320,7 +319,7 @@ reconnue.
   `zxing-wasm` vise par défaut : un tiers entre un gérant et son inventaire, sur le wifi
   d'une cave, est un mode de panne de plus.
 
-### Commande au comptoir
+#### Commande au comptoir
 
 Le client ajoute des produits depuis la carte scannée, ouvre son panier dans une feuille
 qui monte du bas de l'écran, donne un prénom et envoie. Il suit ensuite l'état de sa
@@ -359,7 +358,7 @@ Une limite connue : **`place_order` n'est pas limitée en débit**. C'est un poi
 d'écriture non authentifié, ouvert sur Internet. Les plafonds par ligne (20) et par
 commande (40 lignes) bornent ce qu'un appel peut écrire, rien ne borne le nombre d'appels.
 
-### Création des comptes
+#### Création des comptes
 
 **Il n'y a pas d'inscription libre.** Les accès sont créés par l'administrateur de la
 plateforme depuis **Authentication → Users → Add user** dans le tableau de bord Supabase
@@ -381,7 +380,7 @@ connecter).
 >
 > `disable_signup` doit valoir `true`.
 
-### Supprimer un établissement
+#### Supprimer un établissement
 
 La suppression est **logique** : la ligne reste en base avec sa carte, ses photos et son
 slug, marquée par une date dans `deleted_at`. L'établissement part dans une **corbeille**
@@ -402,7 +401,7 @@ Ce que garantit Postgres, et pas seulement le code :
 > ignore l'archivage. Une contrainte partielle libérerait l'adresse, au prix d'une
 > restauration qui échouerait si le nom a été repris entre-temps.
 
-## QR code
+### QR code
 
 `/admin/<slug>/qr` produit le code à imprimer et à poser sur les tables. Il encode l'URL
 publique de la carte, et c'est **un seul code pour tout l'établissement** : la carte est
@@ -421,7 +420,7 @@ fonctionnalité ne lit ce numéro.
   disparaissent (`.no-print` dans `src/styles/print.css`, `.print-sheet` à côté de l'écran,
   dans `src/features/venues/components/venue-qr.css`).
 
-## Carte publique
+### Carte publique
 
 `/m/<slug>` est la page destinée aux clients : elle s'ouvre en scannant le QR code posé sur
 la table, sans compte ni installation. Elle est **rendue au serveur** — le HTML part complet
