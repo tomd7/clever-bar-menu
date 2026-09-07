@@ -3,7 +3,12 @@
 Owns the back-office menu editor, the stock screen and the customer-facing menu:
 `components/` (menu-editor, category-\*, product-\*, menu-nav, public-menu, photo-field),
 `api.ts`, `public-api.ts`, `mutations.ts`, `price.ts`, `size.ts`, `photo.ts`, `stock.ts`,
-`barcode.ts`, `scanner.ts`.
+`barcode.ts`, `scanner.ts`, `catalog.ts`, `catalog.server.ts`, `catalog-api.ts`.
+
+**The drink catalogue lives here and not in a feature of its own**, which is the rule
+working as intended rather than an exception to it: it serves the scan screen and product
+creation, both of which are this feature. A `features/catalog/` would have to be imported
+by `features/menu`, and cross-feature imports are exactly what is forbidden.
 
 **No cross-feature imports**: this feature must not reach into `features/venues` or
 `features/orders`. Anything two need moves down to `src/components/` or `src/lib/` — that is
@@ -193,6 +198,31 @@ list.
   index to create, no enumeration opened to whoever holds the publishable key, no round-trip
   — and one property a query would not give for free: scoped to the open venue, a manager
   with two bars cannot decrement the other one's beer.
+- **An unknown code no longer dead-ends.** It used to reach the pairing panel and, if
+  nothing on the menu matched, the sentence « the product must exist on the menu before it
+  can receive a barcode » — which sent a manager with a crate in their arms to the menu
+  editor on another screen, then back to rescan. The scan now asks `drink_catalog` and
+  opens `ScanCatalogPanel`: prefilled when Open Food Facts knows the bottle, empty when it
+  does not (wine and spirits, mostly), and the manager only supplies the category and the
+  price. Pairing is still one tap away in the footer, and remains the common case in a
+  venue's first weeks — the panels reach each other in both directions.
+  - **The catalogue is consulted only after the cold path has failed**, so the invariant
+    above is intact: the hot path still makes no request, and the catalogue knows nothing
+    about products, categories or venues.
+  - **The panel's header sheet is the safeguard.** A GTIN names a trade item, which is
+    sometimes the six-pack rather than the bottle; the photo and the net content are what
+    let a manager notice before pressing. Same role as the resulting level shown before
+    validation in the movement panel.
+  - **The barcode is written in the same `insert` as the product**, never as a second
+    write: a failed pairing after a successful create leaves a menu line the scanner
+    ignores, with the screen already on the next bottle. `barcode` therefore sits on
+    `createProduct`'s parameter and **not** in `ProductDraft` — `updateProduct` writes the
+    whole draft, which is the overwrite this feature refuses everywhere else.
+  - **No stock field on that panel.** The product is born untracked and the movement panel
+    immediately offers « activer le suivi », which is the right first question for a
+    bottle just delivered. Asking in both places is how a 24 becomes a 48.
+  - **A catalogue outage never breaks a scan** — `lookupDrink` answers `unavailable`
+    rather than throwing, and the panel opens empty either way.
 - **An unknown code triggers a refetch before it is called unknown.** The client-side
   uniqueness check is unsound on its own: device A's cache does not know about the pairing
   device B just made, so A would offer to pair the same code again and two products would

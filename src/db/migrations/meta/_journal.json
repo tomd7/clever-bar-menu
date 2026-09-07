@@ -113,6 +113,13 @@
       "when": 1788733616088,
       "tag": "0015_product_barcode_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1788773409844,
+      "tag": "0016_wise_payback",
+      "breakpoints": true
     }
   ]
 }

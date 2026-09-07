@@ -117,7 +117,10 @@ src/
 
 **Browser-side `supabase-js` + RLS.** The browser holds the publishable key and talks to
 PostgREST directly; Postgres policies — not application code — enforce tenant isolation.
-**Drizzle is migrations-only.** Details and invariants: `src/db/CLAUDE.md`.
+**Drizzle is migrations-only, with one deliberate exception**: `drink_catalog`, the shared
+drink catalogue, is closed to PostgREST and reached only by a `createServerFn`. It carries
+no tenant data, so it has no isolation to bypass — and that argument covers that table
+alone. Details and invariants: `src/db/CLAUDE.md`.
 
 ### Environment variables
 
