@@ -1,7 +1,11 @@
 import { useMutation } from '@tanstack/react-query'
 import { useRouter } from '@tanstack/react-router'
 
-import { signIn } from '#/features/auth/api'
+import {
+  requestPasswordReset,
+  signIn,
+  updatePassword,
+} from '#/features/auth/api'
 
 /**
  * Connexion, suivie de l'invalidation du routeur.
@@ -20,6 +24,34 @@ export function useSignIn() {
 
   return useMutation({
     mutationFn: signIn,
+    onSuccess: () => router.invalidate(),
+  })
+}
+
+/**
+ * Requests the recovery mail.
+ *
+ * No router invalidation, unlike the two hooks around it: nothing about the
+ * session changed. The screen reads `isSuccess` to swap the form for its
+ * confirmation, which is why no `useState` mirrors that here either.
+ */
+export function useRequestPasswordReset() {
+  return useMutation({ mutationFn: requestPasswordReset })
+}
+
+/**
+ * Sets the new password, then invalidates the router.
+ *
+ * Same reason as `useSignIn`: the manager arrives from a mail, so the guards
+ * have already concluded « not signed in » — for `/login`, which sent them
+ * here, and for `/admin`, where they are about to land. Without this, the
+ * navigation that follows would bounce straight back to the sign-in screen.
+ */
+export function useUpdatePassword() {
+  const router = useRouter()
+
+  return useMutation({
+    mutationFn: updatePassword,
     onSuccess: () => router.invalidate(),
   })
 }

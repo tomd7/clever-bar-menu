@@ -12,8 +12,8 @@ component takes props instead of calling `Route.useX()`: it keeps TanStack Route
 inference intact and stays movable.
 
 **A component never calls `supabase` directly** — that rule has exactly one exception here:
-`_authenticated.tsx` and `login.tsx` read the session in `beforeLoad`, which is a routing
-concern, not a screen's.
+`_authenticated.tsx`, `login.tsx` and `reset-password.tsx` read the session in
+`beforeLoad`, which is a routing concern, not a screen's.
 
 **Route `loader`s are isomorphic** — they run in the browser too. Never touch the database
 from one; go through `createServerFn`.
@@ -66,3 +66,19 @@ A pathless layout route that both guards `/admin` and provides the shell.
 **The `redirect` search param is optional and sanitized** (internal paths only, rejecting
 `//host`). Keeping the key always present made the router rewrite `/login` to
 `/login?redirect=%2Fadmin` on every direct visit.
+
+## `forgot-password.tsx` / `reset-password.tsx`
+
+The two halves of a password reset, and the only two public routes that are not the
+customer menu. The domain rules are in `src/features/auth/CLAUDE.md`; what belongs here is
+that they do **not** answer the SSR question the same way:
+
+- **`/forgot-password` is server-rendered**, like any page that reads no session. The
+  origin the mail must point back to is read in the submit handler, in the browser.
+- **`/reset-password` is `ssr: false`** — it reads the session — and **carries no guard**.
+  Copying `login.tsx`'s « already signed in → /admin » here would make the screen
+  unreachable: the recovery link opens a session before the route is even matched.
+- **It is the only route with a `pendingComponent`.** Every other wait in this application
+  is a `localStorage` read; this one can be a network round trip, because the client
+  fetches the user behind the recovery token before a session exists. `pendingMs` (1s)
+  plus the ossature's own 140ms fade means a fast check still shows nothing.
