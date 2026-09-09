@@ -1,7 +1,7 @@
 # Shared components — `src/components/`
 
 Holds `ui/` (shadcn), `buttons/`, `form/`, `back-office/`, `home/`, and the cross-screen
-pieces (`nav-link`, `error-note`, `empty-state`, `surface.ts`…).
+pieces (`nav-link`, `error-note`, `empty-state`, `not-found`, `surface.ts`…).
 
 **Nothing here may import from `#/features/`.** Dependencies point one way: routes →
 features → shared. A file under `src/components/` or `src/lib/` reaching into a feature is
@@ -163,6 +163,26 @@ colour and the target but no underline** — every call site goes through the co
 label is `inline-flex` with `gap: inherit` because a trailing icon can be a child, and
 Tailwind's preflight renders `svg` as `display: block`, which would break the line inside
 an inline container.
+
+## `not-found.tsx`
+
+The 404 screen, mounted by the root route's `notFoundComponent` and by
+`/m/$venueSlug`'s. It renders the **requested path as a menu row** — the address at one
+end, « épuisé » at the other — on the chalkboard, and strikes it through: the gesture a bar
+makes when something runs out, which is what a dead URL is. The stroke replaces the
+customer menu's `.menu-leader`, doing that leader's job of carrying the eye across the row
+on its way through; drawing both put two near-parallel rules a few pixels apart. `title`, `children` and `action` default
+to the general wording; `action={null}` is the way to say a screen has no way out to offer
+(the customer menu's, where the landing page would be a sales pitch to someone holding a
+phone at a table).
+
+**It is not an `EmptyState`.** An empty list is a state the manager can fix from the screen
+they are on; a 404 is a dead end whose only exit is elsewhere. The path is read with
+`useRouterState`, not taken as a prop — inside a `notFoundComponent` the loader data is
+undefined by construction.
+
+The motion, and why a screen seen this rarely may afford it, is in `not-found.css` and
+`src/styles/CLAUDE.md`.
 
 ## `back-office/`
 

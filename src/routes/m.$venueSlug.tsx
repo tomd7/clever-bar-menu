@@ -1,10 +1,9 @@
 import { createFileRoute, notFound } from '@tanstack/react-router'
-import { QrCode } from 'lucide-react'
 
 import { AddToCartButton } from '#/features/orders/components/add-to-cart-button'
-import { EmptyState } from '#/components/empty-state'
 import { env } from '#/env'
 import { OrderBar } from '#/features/orders/components/order-bar'
+import { NotFound } from '#/components/not-found'
 import { PublicMenu } from '#/features/menu/components/public-menu'
 import { VenueNotFoundError } from '#/features/menu/api'
 import { publicMenuQueryOptions } from '#/features/menu/public-api'
@@ -50,13 +49,17 @@ export const Route = createFileRoute('/m/$venueSlug')({
         }
       : {},
 
+  /*
+    The same slate as the root's 404, with this page's own wording. Whoever
+    reads it scanned a QR code and is holding a phone at a table: the way out
+    the root screen offers — the landing page — sells them a product they
+    didn't come for, so this one offers none and says what to do instead.
+  */
   notFoundComponent: () => (
-    <main className="page-wrap py-20">
-      <EmptyState icon={QrCode} title="Cette carte n’existe pas">
-        L’adresse est peut-être incomplète, ou l’établissement n’utilise plus{' '}
-        {env.VITE_APP_TITLE}.
-      </EmptyState>
-    </main>
+    <NotFound title="Cette carte n’existe pas." action={null}>
+      L’adresse est peut-être incomplète, ou l’établissement n’utilise plus{' '}
+      {env.VITE_APP_TITLE}. Demandez la carte au comptoir.
+    </NotFound>
   ),
 
   component: PublicMenuRoute,

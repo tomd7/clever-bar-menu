@@ -14,6 +14,7 @@ src/
     print.css        .no-print + the white page ground
   components/
     nav-link.css     .nav-link            (next to nav-link.tsx)
+    not-found.css    .slate, .chalk-line  (the 404 slate)
     site-footer.css  .site-footer
     skeleton.css     .skeleton, .skeleton-screen  (l'ossature de chargement)
   features/venues/components/
@@ -141,6 +142,19 @@ Reuse these before inventing new ones.
 | `.rail-fade`     | Right-edge mask on a horizontally scrolling rail — says the row continues where a scrollbar would only dirty the band. Fixed, not scroll-driven: at the end it still dims a millimetre of the last chip                         |
 | `.rise-in`       | Entry animation (stagger via `animationDelay`)                                                                                                                                                                                  |
 | `.site-footer`   | Footer                                                                                                                                                                                                                          |
+
+### The 404 slate
+
+`.slate` (`components/not-found.css`) is a **fourth surface**, and deliberately not one of
+the three above: `.island-shell` and `.panel` are built on `--surface`, which flips with the
+theme, while `--board` is frozen dark. It takes the showcase's `--shadow-2` — a 404 is a
+shopfront, not a tool.
+
+`.chalk-line` plays the theme's gesture **once**: the row writes itself left to right
+(`clip-path`, the same reveal as `.skeleton`), then a stroke crosses it out. Nothing loops —
+that screen is not waiting for anything. Its `prefers-reduced-motion` block is named rather
+than left to `motion.css`: that one collapses durations but leaves `animation-delay`
+standing, which would still drop the stroke into place 900 ms late.
 
 `@media (prefers-reduced-motion: reduce)` neutralises movement while keeping fades. The
 global `transition` rule covers colours only — `transform` is left to the components,

@@ -1,0 +1,97 @@
+/*
+  The 404 slate (`not-found.tsx`): the board, and the chalk line struck
+  through it.
+
+  The board itself is a fourth surface next to `.island-shell` and `.panel`,
+  and it is not one of them: those two are built on `--surface`, which flips
+  with the theme, while `--board` is frozen dark on purpose (a chalkboard is
+  dark at any hour — see `styles/theme.css`). The elevation is the showcase's,
+  `--shadow-2`: this screen is a shopfront, not a tool.
+*/
+.slate {
+  border: 1px solid color-mix(in oklab, var(--on-board) 12%, transparent);
+  background: var(--board);
+  color: var(--on-board);
+  box-shadow: var(--shadow-2);
+}
+
+/*
+  Two gestures, in sequence, and both play once — nothing here loops, unlike
+  the skeleton's sheen: this screen is not waiting for anything.
+
+  1. **The writing.** The row is revealed left to right, the same `clip-path`
+     the loading skeleton uses. It is the theme's gesture: a bar's menu is
+     written line by line, it does not appear all at once.
+  2. **The strike.** A chalk stroke crosses the row once it is legible —
+     reading first, then the verdict. It starts after the writing has finished
+     rather than overlapping it, because a hand cannot cross out a line it has
+     not yet written.
+
+  That one stroke also does the job `.menu-leader` does on the customer menu:
+  it carries the eye from the address at one end of the row to the word at the
+  other. Drawing the dotted leader under it as well was tried and reads as a
+  double border — two near-parallel rules a few pixels apart — so this row
+  keeps the stroke and drops the leader.
+
+  The stroke is dead level. A slight tilt was tried first, for the hand-drawn
+  look — but the row runs some 500px wide, so even a third of a degree lifts
+  the far end clear of the word it is meant to cross, and « épuisé » ended up
+  underlined rather than struck. The hand is already in the writing; the
+  stroke can be a stroke.
+
+  `58%` is where the middle of the lowercase letters sits in this line box, not
+  `50%`: a line box is taller than its glyphs and hangs its leading above the
+  ascenders as well as below the descenders, so the geometric centre lands a
+  couple of pixels high — high enough to read as an underline of the row above
+  rather than as a line through this one.
+*/
+.chalk-line {
+  position: relative;
+  animation: chalk-write 560ms var(--ease-out) 240ms both;
+}
+
+.chalk-line::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  top: calc(58% - 1px);
+  height: 2px;
+  border-radius: 1px;
+  background: var(--on-board);
+  opacity: 0.75;
+  /* Left origin: the stroke is drawn from where the hand starts. */
+  transform-origin: left center;
+  animation: chalk-strike 300ms var(--ease-out) 900ms both;
+}
+
+@keyframes chalk-write {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes chalk-strike {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/*
+  Reduced motion: the row is simply written and struck, with no gesture. Named
+  here rather than left to `motion.css` — that block collapses every duration
+  to 0.01ms but leaves the delays standing, so the stroke would still snap into
+  place nine tenths of a second late, which is the jolt this is meant to avoid.
+  Both elements rest in their finished state, so `none` is all it takes.
+*/
+@media (prefers-reduced-motion: reduce) {
+  .chalk-line,
+  .chalk-line::after {
+    animation: none;
+  }
+}
