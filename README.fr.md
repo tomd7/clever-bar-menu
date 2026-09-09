@@ -17,13 +17,13 @@ en viennent tous. Le rôle humain est celui de la commande, de l'arbitrage et de
 
 ## En ligne
 
-**<https://bar-menu-taupe.vercel.app>**
+**<https://bar-menu.tom-depasse.be>**
 
-|                          | Adresse                                            |
-| ------------------------ | -------------------------------------------------- |
-| Carte publique (exemple) | <https://bar-menu-taupe.vercel.app/m/chez-lambert> |
-| Back-office              | <https://bar-menu-taupe.vercel.app/login>          |
-| Compte de démonstration  | `demo@cbm.be` / `demo`                             |
+|                          | Adresse                                          |
+| ------------------------ | ------------------------------------------------ |
+| Carte publique (exemple) | <https://bar-menu.tom-depasse.be/m/chez-lambert> |
+| Back-office              | <https://bar-menu.tom-depasse.be/login>          |
+| Compte de démonstration  | `demo@cbm.be` / `demo`                           |
 
 La carte d'un établissement vit à `/m/<slug>` — c'est cette adresse qu'encode le QR code
 posé sur les tables.
@@ -443,6 +443,10 @@ Trois comportements à connaître :
 - [x] Socle technique : TanStack Start, Tailwind, shadcn/ui, validation d'environnement
 - [x] Choix et mise en place de la persistance des données (Supabase + Drizzle)
 - [x] Authentification du back-office (Supabase Auth, comptes créés par l'administrateur)
+- [x] Réinitialisation du mot de passe : le lien se demande depuis l'écran de connexion et
+      part par mail via Supabase ; la confirmation est la même selon que l'adresse a un
+      compte ou non, et un lien mort ou déjà utilisé arrive sur un écran qui en propose un
+      nouveau
 - [x] CRUD des établissements
 - [x] CRUD de la carte (catégories, produits, prix, photos)
 - [x] Carte publique
