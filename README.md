@@ -18,13 +18,13 @@ and reviewing.
 
 ## Live
 
-**<https://bar-menu-taupe.vercel.app>**
+**<https://bar-menu.tom-depasse.be>**
 
-|                      | Address                                            |
-| -------------------- | -------------------------------------------------- |
-| Public menu (sample) | <https://bar-menu-taupe.vercel.app/m/chez-lambert> |
-| Back office          | <https://bar-menu-taupe.vercel.app/login>          |
-| Demo account         | `demo@cbm.be` / `demo`                             |
+|                      | Address                                          |
+| -------------------- | ------------------------------------------------ |
+| Public menu (sample) | <https://bar-menu.tom-depasse.be/m/chez-lambert> |
+| Back office          | <https://bar-menu.tom-depasse.be/login>          |
+| Demo account         | `demo@cbm.be` / `demo`                           |
 
 A venue's menu lives at `/m/<slug>` — that is the address the QR code on the tables
 encodes.

@@ -17,13 +17,13 @@ en viennent tous. Le rôle humain est celui de la commande, de l'arbitrage et de
 
 ## En ligne
 
-**<https://bar-menu-taupe.vercel.app>**
+**<https://bar-menu.tom-depasse.be>**
 
-|                          | Adresse                                            |
-| ------------------------ | -------------------------------------------------- |
-| Carte publique (exemple) | <https://bar-menu-taupe.vercel.app/m/chez-lambert> |
-| Back-office              | <https://bar-menu-taupe.vercel.app/login>          |
-| Compte de démonstration  | `demo@cbm.be` / `demo`                             |
+|                          | Adresse                                          |
+| ------------------------ | ------------------------------------------------ |
+| Carte publique (exemple) | <https://bar-menu.tom-depasse.be/m/chez-lambert> |
+| Back-office              | <https://bar-menu.tom-depasse.be/login>          |
+| Compte de démonstration  | `demo@cbm.be` / `demo`                           |
 
 La carte d'un établissement vit à `/m/<slug>` — c'est cette adresse qu'encode le QR code
 posé sur les tables.
