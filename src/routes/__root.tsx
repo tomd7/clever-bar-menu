@@ -9,6 +9,7 @@ import { TanStackDevtools } from '@tanstack/react-devtools'
 
 import TanStackQueryDevtools from '../integrations/tanstack-query/devtools'
 
+import { NotFound } from '#/components/not-found'
 import { env } from '#/env'
 
 import appCss from '../styles.css?url'
@@ -45,6 +46,22 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       },
     ],
   }),
+  /*
+    The application's 404.
+
+    Declared on the root route rather than through the router's
+    `defaultNotFoundComponent`: the shell lives here, and an address matching
+    nothing belongs to no route in particular. The router's default
+    `notFoundMode` (`fuzzy`) walks up to the nearest ancestor declaring one, so
+    every intermediate route that doesn't lands here — `/admin/nawak` gets the
+    same full page, without the back-office column, since there is nothing left
+    to navigate beside.
+
+    `/m/$venueSlug` keeps its own wording: a customer scanning a stale QR code
+    has no use for a venue they never heard of.
+  */
+  notFoundComponent: () => <NotFound />,
+
   shellComponent: RootDocument,
 })
 
