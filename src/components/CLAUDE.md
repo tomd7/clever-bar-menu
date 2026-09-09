@@ -49,7 +49,8 @@ absent. `IconButton` needs none — it has a single child by construction.
 
 That escape hatch does not license drawing every link as a button: **links are not
 buttons** (below). It is for a screen's primary call to action that happens to navigate —
-today, the one entry into the scanner, on the phone.
+today, the one entry into the scanner on the phone, and « Demander un nouveau lien » on
+the dead-recovery-link screen, where it is the only way out.
 
 **One two-step control, not several.** `icon` / `confirmLabel` exist so that cancelling a
 customer's order can reuse `DeleteButton` instead of growing a second confirmation

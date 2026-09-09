@@ -437,6 +437,9 @@ Three behaviours to know:
 - [x] Technical foundation: TanStack Start, Tailwind, shadcn/ui, environment validation
 - [x] Choosing and setting up data persistence (Supabase + Drizzle)
 - [x] Back-office authentication (Supabase Auth, accounts created by the administrator)
+- [x] Password reset: the link is requested from the sign-in screen and mailed by Supabase;
+      the confirmation is the same whether the address has an account or not, and a dead or
+      already-used link lands on a screen that offers a new one
 - [x] Venue CRUD
 - [x] Menu CRUD (categories, products, prices, photos)
 - [x] Public menu
