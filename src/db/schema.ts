@@ -70,11 +70,21 @@ const ownerWrite = (name: string, owns: ReturnType<typeof sql>) => [
 ]
 
 /**
- * Colonnes de dates communes à toutes les tables.
+ * Date columns shared by every table.
  *
- * `updatedAt` est tenu à jour côté application (`$onUpdate`) plutôt que par un
- * trigger Postgres : la logique reste visible dans ce fichier et suit les
- * migrations, au prix d'être contournable par un `UPDATE` écrit à la main.
+ * **`updatedAt` is kept true by a trigger, not by the `$onUpdate` below.** The
+ * original choice was the reverse — keep the logic visible here rather than in
+ * a trigger, accepting that a hand-written `UPDATE` could bypass it. The cost
+ * was misjudged: `$onUpdate` only fills Drizzle's *own* update statements, and
+ * Drizzle is migrations-only in this project. Every application write goes
+ * through PostgREST, so it was not the odd hand-written `UPDATE` that bypassed
+ * it but all of them, and `updated_at` stayed frozen at insert time on every
+ * row the back office edited.
+ *
+ * Migration `0018` adds `set_updated_at()` and a `before update` trigger per
+ * table. `$onUpdate` stays for Drizzle's own writes (the seed scripts), where it
+ * is harmless — the trigger overwrites it anyway. A new table spreading these
+ * columns needs its own trigger: nothing adds one automatically.
  */
 const timestamps = {
   createdAt: timestamp('created_at', { withTimezone: true })
@@ -85,6 +95,35 @@ const timestamps = {
     .defaultNow()
     .$onUpdate(() => new Date()),
 }
+
+/**
+ * The themes a public menu can wear.
+ *
+ * Constrained text rather than a `pgEnum`, for the reason that already governs
+ * `ORDER_STATUSES`: adding a theme must stay a constraint to rewrite, not a
+ * type migration `drizzle-kit` cannot produce on its own.
+ *
+ * `'ardoise'` is the house theme, the one `src/styles/theme.css` paints on
+ * `:root`. It is stored like any other and is **not** represented by `null`: it
+ * is a theme that carries a name, not the absence of one. The distinction has
+ * its counterpart elsewhere in this schema — `products.price_cents` *is*
+ * nullable, because "no price shown" is not a price.
+ *
+ * The same whitelist is written in three places, and they move together: here,
+ * in the `venues_theme_allowed` constraint below, and in the blocks of
+ * `src/styles/menu-theme.css`. `src/lib/menu-theme.ts` carries the note, and is
+ * the copy the browser reads — importing this file into the bundle would drag
+ * the server-side persistence in with it.
+ */
+export const VENUE_THEMES = [
+  'ardoise',
+  'pelouse',
+  'rubis',
+  'prune',
+  'indigo',
+] as const
+
+export type VenueTheme = (typeof VENUE_THEMES)[number]
 
 /**
  * Établissement — un bar ou un café. Racine de tout le cloisonnement
@@ -138,6 +177,14 @@ export const venues = pgTable(
     ordersEnabled: boolean('orders_enabled').notNull().default(false),
 
     /**
+     * The public menu's theme — see `VENUE_THEMES`.
+     *
+     * `not null default 'ardoise'`: existing rows take the house theme, which
+     * is exactly what they were already showing before the column existed.
+     */
+    theme: text('theme').notNull().default('ardoise'),
+
+    /**
      * Archivage — suppression logique.
      *
      * Une date plutôt qu'un booléen : elle répond à « archivé ? » comme à
@@ -185,6 +232,20 @@ export const venues = pgTable(
       to: authenticatedRole,
       using: sql`${authUid} = ${table.ownerId}`,
     }),
+
+    /**
+     * The theme belongs to the catalogue.
+     *
+     * Same relationship `products_barcode_format` has to `normalizeBarcode`:
+     * the constraint restates the shape the client already guarantees. What it
+     * catches is the row written from outside the application — a `curl` on
+     * PostgREST, a hand fix in Drizzle Studio — not the manager, whom
+     * `updateVenue` answers in French before writing anything.
+     */
+    check(
+      'venues_theme_allowed',
+      sql`${table.theme} in ('ardoise', 'pelouse', 'rubis', 'prune', 'indigo')`,
+    ),
 
     ...ownerWrite('venues', sql`${authUid} = ${table.ownerId}`),
   ],

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, Boxes, ConciergeBell, QrCode } from 'lucide-react'
+import { ArrowLeft, Boxes, ConciergeBell, QrCode, Settings } from 'lucide-react'
 
 import { AddCategoryForm } from '#/features/menu/components/add-category-form'
 import { CategorySection } from '#/features/menu/components/category-section'
@@ -95,6 +95,14 @@ export function MenuEditor({ venueSlug }: { venueSlug: string }) {
             className="mt-1 font-medium"
           >
             QR code à imprimer
+          </NavLink>
+          <NavLink
+            to="/admin/$venueSlug/reglages"
+            params={{ venueSlug: venue.slug }}
+            icon={Settings}
+            className="mt-1 font-medium"
+          >
+            Réglages
           </NavLink>
         </div>
       </header>

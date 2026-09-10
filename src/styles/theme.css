@@ -15,8 +15,17 @@
   aplat de bouton (#d99c2b) est la couleur des états d'avertissement par
   défaut. Ici le neutre est quasi achromatique — c'est ce qui laisse le vert
   exister — et le bouton primaire est en encre, pas en couleur.
+  `.light` répond aux mêmes déclarations que `:root`, et n'est là que pour une
+  chose : **forcer** la lecture de jour sur un sous-arbre d'une page passée en
+  nuit. `.dark` savait déjà le faire dans l'autre sens, puisque c'est une classe
+  ; la version jour, elle, n'existait que sur la racine, donc irrattrapable une
+  fois `.dark` posé sur `<html>`. L'aperçu des réglages est ce qui l'a rendu
+  nécessaire — montrer une carte telle qu'elle sera lue à 23h à un gérant qui
+  travaille en plein jour, et l'inverse. Une liste de sélecteurs, pas une
+  seconde palette : les valeurs restent écrites une fois.
 */
-:root {
+:root,
+.light {
   color-scheme: light;
 
   --ink: #171a18;
@@ -139,9 +148,13 @@
   vise `:root` *et* `.dark` pour que la substitution soit recalculée si `.dark`
   atterrit un jour sur un sous-arbre plutôt que sur `<html>` — une propriété
   personnalisée est substituée sur l'élément où elle est déclarée, pas chez ses
-  descendants.
+  descendants. C'est exactement ce qui arrive avec `.light` et `.dark` posées sur
+  un aperçu au milieu de la page : sans elles dans cette liste, l'aperçu
+  hériterait des tokens dérivés de la racine et ne changerait pas de
+  température.
 */
 :root,
+.light,
 .dark {
   /*
     La barre d'une ossature de chargement (`.skeleton`).

@@ -80,8 +80,12 @@ encodes.
 - **Barcode scanning** — stock movements in and out are entered in front of the camera,
   from the phone. Works on every browser, iPhone included.
 - **Light/dark theme** — the "evening bar" theme follows the setting of the phone scanning
-  the QR code, with no switch and no cookie. Per-venue customization and a multilingual
-  menu are on the [roadmap](#roadmap), not here yet.
+  the QR code, with no switch and no cookie. A multilingual menu is on the
+  [roadmap](#roadmap), not here yet.
+- **Per-venue theme** — each venue picks the theme of its public menu from
+  `/admin/<slug>/reglages`. It repaints the header panel and the accents; the page ground
+  and the surfaces stay the house palette, so prices and descriptions keep the contrast
+  they were designed with. Every venue starts on « Ardoise », the house board.
 
 ## Tech stack
 
@@ -462,7 +466,10 @@ Three behaviours to know:
 - [ ] Dashboard: a new back-office home page, replacing the plain venue list — the day's
       figures, alerts (low stock, out of stock, pending orders) and direct access to each
       menu
-- [ ] Per-venue menu theme customization
+- [x] Per-venue menu theme customization: a whitelist of boards, chosen per venue from
+      `/admin/<slug>/reglages`, applied to the public menu's header panel and accents. The
+      settings screen also renames a venue and edits its description; the public address
+      never changes, because the printed QR codes carry it
 - [ ] Internationalization
 - [ ] Shared access: several accounts on one venue, roles, ownership transfer
 

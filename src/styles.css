@@ -32,6 +32,7 @@
 
 /* Le socle, dans l'ordre de la cascade. */
 @import './styles/theme.css';
+@import './styles/menu-theme.css';
 @import './styles/base.css';
 @import './styles/vocabulary.css';
 @import './styles/motion.css';
@@ -43,6 +44,7 @@
 @import './components/skeleton.css';
 @import './components/site-footer.css';
 @import './features/venues/components/venue-nav.css';
+@import './features/venues/components/menu-theme-field.css';
 @import './features/menu/components/menu-nav.css';
 @import './features/menu/components/public-menu.css';
 @import './features/orders/components/open-orders-count.css';

@@ -1,0 +1,2 @@
+ALTER TABLE "venues" DROP CONSTRAINT "venues_theme_allowed";--> statement-breakpoint
+ALTER TABLE "venues" ADD CONSTRAINT "venues_theme_allowed" CHECK ("venues"."theme" in ('ardoise', 'pelouse', 'rubis', 'prune', 'indigo'));

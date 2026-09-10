@@ -2,6 +2,8 @@ import { createClient } from '@supabase/supabase-js'
 
 import { env } from '#/env'
 
+import type { MenuTheme } from '#/lib/menu-theme'
+
 /**
  * Formes des tables telles que PostgREST les renvoie.
  *
@@ -23,6 +25,15 @@ type VenueRow = {
   currency: string
   /** La prise de commande est-elle ouverte sur la carte publique ? */
   orders_enabled: boolean
+  /**
+   * Thème de la carte publique. « ardoise » est le thème maison, et il est
+   * stocké comme les autres — la colonne n'est pas nullable.
+   *
+   * Le type vient de `#/lib/menu-theme`, et non de `src/db/schema.ts` comme
+   * `OrderStatusValue` aurait pu le faire : le catalogue y a déjà une copie
+   * navigateur, il n'y a donc pas de raison d'en écrire une troisième ici.
+   */
+  theme: MenuTheme
   /** Date d'archivage, ou `null` si l'établissement est actif. */
   deleted_at: string | null
   created_at: string
@@ -139,6 +150,7 @@ export type Database = {
           | 'currency'
           | 'deleted_at'
           | 'orders_enabled'
+          | 'theme'
         >
         Update: Partial<VenueRow>
         Relationships: []

@@ -3,7 +3,7 @@ import { Plus } from 'lucide-react'
 import { addToCart, useCart } from '#/features/orders/cart'
 import { productLabel } from '#/components/product-size'
 
-import type { Product } from '#/lib/supabase'
+import type { CartProduct } from '#/features/orders/cart'
 
 /**
  * Le « + » posé en bout de ligne sur chaque produit de la carte.
@@ -26,7 +26,7 @@ export function AddToCartButton({
   product,
 }: {
   venueSlug: string
-  product: Product
+  product: CartProduct
 }) {
   const cart = useCart(venueSlug)
   const quantity =

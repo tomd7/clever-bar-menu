@@ -3,10 +3,14 @@ import { ArrowUp } from 'lucide-react'
 import { MenuNav, sectionId } from '#/features/menu/components/menu-nav'
 import { ProductSize } from '#/components/product-size'
 import { formatPrice } from '#/lib/money'
+import { parseMenuTheme } from '#/lib/menu-theme'
 import { productPhotoUrl } from '#/features/menu/photo'
 
-import type { CategoryWithProducts, Menu } from '#/features/menu/api'
-import type { Product } from '#/lib/supabase'
+import type {
+  PublicCategory,
+  PublicMenuData,
+  PublicProduct,
+} from '#/features/menu/public-api'
 import type { ReactNode } from 'react'
 
 /**
@@ -20,7 +24,7 @@ import type { ReactNode } from 'react'
  * `undefined` est le cas normal : une carte dont l'établissement n'a pas ouvert
  * la commande n'affiche rien de plus qu'avant.
  */
-export type ProductAction = (product: Product) => ReactNode
+export type ProductAction = (product: PublicProduct) => ReactNode
 
 /**
  * Seuil à partir duquel le sommaire collant gagne sa place.
@@ -63,7 +67,7 @@ export function PublicMenu({
   menu,
   productAction,
 }: {
-  menu: Menu
+  menu: PublicMenuData
   productAction?: ProductAction
 }) {
   const { venue, categories } = menu
@@ -82,6 +86,22 @@ export function PublicMenu({
       produit derrière un bandeau opaque.
     */
     <div
+      /*
+        The venue's theme, carried by one attribute on one element.
+
+        It repaints the board and the accents for everything below — the header
+        panel, its chalk kicker, the summary's active chip, the focus rings —
+        because `styles/menu-theme.css` redeclares the tokens they all read.
+        Nothing else is needed: `@theme inline` bakes the `var()` into each
+        Tailwind utility instead of freezing it at `:root`.
+
+        Rendered on the server, from the loader's data, so it is in the first
+        byte of HTML: the board is never seen in the house colour first. The
+        order bar and the cart sheet stay on the house green on purpose — the
+        sheet is portalled to `document.body` (`bottom-sheet.tsx`) and no
+        wrapper here could reach it anyway.
+      */
+      data-menu-theme={parseMenuTheme(venue.theme)}
       className={
         productAction
           ? 'flex min-h-dvh flex-col pb-36'
@@ -209,7 +229,7 @@ function MenuSection({
   isFirst,
   productAction,
 }: {
-  category: CategoryWithProducts
+  category: PublicCategory
   currency: string
   isFirst: boolean
   productAction?: ProductAction
@@ -298,7 +318,7 @@ function MenuItem({
   withPhotoColumn,
   action,
 }: {
-  product: Product
+  product: PublicProduct
   currency: string
   withPhotoColumn: boolean
   action?: ReactNode
