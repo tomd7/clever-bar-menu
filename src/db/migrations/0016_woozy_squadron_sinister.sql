@@ -1,0 +1,2 @@
+ALTER TABLE "venues" ADD COLUMN "theme" text DEFAULT 'ardoise' NOT NULL;--> statement-breakpoint
+ALTER TABLE "venues" ADD CONSTRAINT "venues_theme_allowed" CHECK ("venues"."theme" in ('ardoise', 'pelouse'));

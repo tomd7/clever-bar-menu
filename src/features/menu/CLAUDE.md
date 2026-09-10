@@ -225,7 +225,17 @@ list.
   browser — and drops categories left empty. It lives in this feature because a separate
   one would have to import `VenueNotFoundError` and `CategoryWithProducts` from it.
 - **The page is drawn as an object, not as a document.** An opaque sheet (`.island-shell`)
-  topped by a `--board` panel carrying the venue name in chalk. Full-bleed on the phone (a
+  topped by a `--board` panel carrying the venue name in chalk. **`--board` is no longer
+  always the house slate**: `PublicMenu`'s root element carries `data-menu-theme` from
+  `venues.theme`, and `styles/menu-theme.css` repaints the board and the accents for
+  everything under it. The ground and the surfaces do not move, so this page keeps the
+  contrast it was designed with whatever a venue picks. Server-rendered from the loader's
+  data, so the board is never seen in the house colour first — see `src/styles/CLAUDE.md`
+  for the two token traps that make the override work.
+- **The order bar, the cart sheet and the 404 stay on the house palette, on purpose.**
+  `OrderBar` is a sibling of `<PublicMenu>` in the route, and `BottomSheet` portals to
+  `document.body`, so no wrapper here could reach it anyway; the 404 has no venue and
+  therefore no theme. Full-bleed on the phone (a
   frame and two margins would only eat the reading width on the screen this page is
   actually read on), a sheet laid on the ground from `sm:` up.
 - **Never put `overflow-hidden` on that sheet.** It is the obvious way to clip the board

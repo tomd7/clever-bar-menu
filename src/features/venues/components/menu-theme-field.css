@@ -1,0 +1,50 @@
+/*
+  The theme picker's swatches.
+
+  Each swatch carries `data-menu-theme`, exactly as the customer menu's root
+  element does, so the blocks in `styles/menu-theme.css` paint it. The picker
+  therefore has no palette of its own: retint a theme there and the swatches
+  follow, with no hex anywhere in `features/venues`.
+
+  It is a miniature of the board it stands for — the panel's ground, the chalk
+  accent that writes on it, and the fill the active chip of the summary uses.
+*/
+
+.theme-swatch {
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0 0.4rem;
+  border-radius: 0.5rem;
+  background: var(--board);
+  /* The board is dark in every theme, so the rim is drawn in its own chalk. */
+  box-shadow: inset 0 0 0 1px
+    color-mix(in oklab, var(--on-board) 14%, transparent);
+}
+
+.theme-swatch::before,
+.theme-swatch::after {
+  content: '';
+  height: 3px;
+  border-radius: 999px;
+}
+
+/* The kicker, in the one green legible on the board. */
+.theme-swatch::before {
+  width: 60%;
+  background: var(--bottle-chalk);
+}
+
+/* The name below it, in chalk. */
+.theme-swatch::after {
+  width: 100%;
+  background: var(--on-board);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-option {
+    transition-duration: 0.01ms;
+  }
+}

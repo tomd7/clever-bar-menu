@@ -3,6 +3,7 @@ import { ArrowUp } from 'lucide-react'
 import { MenuNav, sectionId } from '#/features/menu/components/menu-nav'
 import { ProductSize } from '#/components/product-size'
 import { formatPrice } from '#/lib/money'
+import { parseMenuTheme } from '#/lib/menu-theme'
 import { productPhotoUrl } from '#/features/menu/photo'
 
 import type { CategoryWithProducts, Menu } from '#/features/menu/api'
@@ -82,6 +83,22 @@ export function PublicMenu({
       produit derrière un bandeau opaque.
     */
     <div
+      /*
+        The venue's theme, carried by one attribute on one element.
+
+        It repaints the board and the accents for everything below — the header
+        panel, its chalk kicker, the summary's active chip, the focus rings —
+        because `styles/menu-theme.css` redeclares the tokens they all read.
+        Nothing else is needed: `@theme inline` bakes the `var()` into each
+        Tailwind utility instead of freezing it at `:root`.
+
+        Rendered on the server, from the loader's data, so it is in the first
+        byte of HTML: the board is never seen in the house colour first. The
+        order bar and the cart sheet stay on the house green on purpose — the
+        sheet is portalled to `document.body` (`bottom-sheet.tsx`) and no
+        wrapper here could reach it anyway.
+      */
+      data-menu-theme={parseMenuTheme(venue.theme)}
       className={
         productAction
           ? 'flex min-h-dvh flex-col pb-36'

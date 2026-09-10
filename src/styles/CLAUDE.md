@@ -8,6 +8,7 @@ src/
   styles.css                                   entry: @imports only, in cascade order
   styles/
     theme.css        palette, shadcn contract, @theme inline
+    menu-theme.css   per-venue themes: [data-menu-theme] token overrides
     base.css         bare elements (html, body, a, code, pre) + @layer base *
     vocabulary.css   .page-wrap .display-title .island-shell .panel .feature-card .island-kicker
     motion.css       the global transition, .rise-in, prefers-reduced-motion
@@ -103,6 +104,37 @@ reintroduce that combination.
   utilities: `text-ink-soft`, `border-line`, `bg-surface-raised`, `text-bottle-deep`.
   Prefer them over `text-[var(--ink-soft)]`. Tailwind ships no `bottle-*` scale, which is
   the point of the name.
+
+## Per-venue themes
+
+`venues.theme` names a theme; `PublicMenu` puts it on its root element as
+`data-menu-theme`, and `styles/menu-theme.css` repaints a handful of tokens on that
+subtree. Scope is **the board and the accents, never the ground**: `--ground`, `--surface`,
+`--line`, `--ink` and `--primary-fill` stay the house palette, so a menu keeps the contrast
+it was designed with and `--primary` stays ink.
+
+Two substitution facts make or break the approach, and neither is visible from the markup:
+
+- **`--ring` has to be restated on the theme element.** It is derived on `:root, .dark` as
+  `var(--bottle-deep)`, and a custom property is substituted on the element that _declares_
+  it — so it resolves against the root's green and comes down already resolved. Since
+  `base.css` applies `outline-ring/50` to `*`, forgetting this leaves every focus ring on a
+  themed menu in the house colour. `[data-menu-theme] { --ring: var(--bottle-deep) }`
+  replays this file's own `:root, .dark` trick one level down. `--chart-1` and
+  `--sidebar-ring` are frozen the same way and are deliberately left alone — neither
+  appears on the customer menu.
+- **`@theme inline` is what lets the utilities follow.** `inline` bakes the `var()` into
+  each utility, so `bg-board` and `text-bottle-chalk` resolve where they sit, inside the
+  subtree. Verified in the built sheet: `.text-bottle-deep{color:var(--bottle-deep)}` — the
+  utility points at the house token, not at an intermediate frozen on `:root`. (Tailwind
+  does still emit one inert `--color-bottle-deep:var(--bottle-deep)` there; nothing reads
+  it, `var(--color-bottle-deep)` appears zero times.) Drop the `inline` and per-venue
+  theming stops working.
+
+Adding a theme is three edits that travel together: `VENUE_THEMES` + the
+`venues_theme_allowed` check (`src/db/schema.ts`), the catalogue in `src/lib/menu-theme.ts`,
+and a block here. Miss the last one and the menu renders an attribute no rule matches —
+silent, and it reads as a design choice.
 
 ## Dark mode
 

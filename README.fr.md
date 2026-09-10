@@ -80,8 +80,13 @@ posé sur les tables.
 - **Scan des codes-barres** — les entrées et sorties de stock se saisissent devant la
   caméra, depuis le téléphone. Fonctionne sur tous les navigateurs, iPhone compris.
 - **Thème clair/sombre** — le thème « bar du soir » suit le réglage du téléphone qui scanne
-  le QR code, sans interrupteur ni cookie. La personnalisation par établissement et la carte
-  multilingue sont à la [roadmap](#roadmap), pas encore là.
+  le QR code, sans interrupteur ni cookie. La carte multilingue est à la
+  [roadmap](#roadmap), pas encore là.
+- **Thème par établissement** — chaque établissement choisit le thème de sa carte publique
+  depuis `/admin/<slug>/reglages`. Il repeint le bandeau et les accents ; le fond de page et
+  les surfaces gardent la palette maison, si bien que les prix et les descriptions
+  conservent le contraste pour lequel ils ont été dessinés. Tout établissement démarre sur
+  « Ardoise », le thème de la maison.
 
 ## Stack technique
 
@@ -469,7 +474,11 @@ Trois comportements à connaître :
 - [ ] Tableau de bord : nouvelle page d'accueil du back-office, à la place de la simple
       liste des établissements — chiffres de la journée, alertes (stocks bas, ruptures,
       commandes en attente) et accès direct à chaque carte
-- [ ] Personnalisation du thème de la carte par établissement
+- [x] Personnalisation du thème de la carte par établissement : une liste blanche de
+      bandeaux, choisie établissement par établissement depuis `/admin/<slug>/reglages`, et
+      appliquée au bandeau et aux accents de la carte publique. L'écran de réglages permet
+      aussi de renommer un établissement et d'éditer sa description ; l'adresse publique, elle,
+      ne change pas — les QR codes imprimés la portent
 - [ ] Internationalisation
 - [ ] Accès partagés : plusieurs comptes sur un même établissement, rôles, transfert de
       propriété

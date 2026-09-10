@@ -1,0 +1,82 @@
+/*
+  Per-venue themes for the customer menu.
+
+  The house palette in `theme.css` paints `:root`; these blocks repaint a few of
+  its tokens on one subtree — the element carrying `data-menu-theme` — so a
+  venue's card can wear its own colours without a second stylesheet and without
+  a per-request `<style>` (which would cost the single-sheet guarantee that
+  `styles.css` argues for at length).
+
+  **Scope: the board and the accents, never the ground.** `--ground`,
+  `--surface`, `--surface-raised`, `--line`, `--ink` and `--primary-fill` are
+  deliberately absent below. A menu is read, not admired: the page stays stone
+  by day and slate by night whatever the venue, prices and descriptions keep the
+  contrast they were designed with, and `--primary` stays ink — which
+  `styles/CLAUDE.md` calls non-negotiable, since green signals and never fills
+  an « Enregistrer » button.
+
+  Adding a theme means three edits that travel together: `VENUE_THEMES` and the
+  `venues_theme_allowed` check (`src/db/schema.ts`), the catalogue in
+  `src/lib/menu-theme.ts`, and a block here. Miss this one and the menu renders
+  an attribute no rule matches — silent, and it looks like a design choice.
+
+  Two substitution facts govern the shape of what follows, and both are easy to
+  get wrong:
+
+  (a) `--ring` has to be restated here. `theme.css` derives it on `:root, .dark`
+      as `var(--bottle-deep)`, and a custom property is substituted on the
+      element that *declares* it — so `--ring` resolves against the root's green
+      and comes down already resolved, deaf to anything a subtree says about
+      `--bottle-deep`. Since `base.css` applies `outline-ring/50` to `*`, that
+      would leave every focus ring on a themed menu the house colour. The
+      `[data-menu-theme]` block below replays `theme.css`'s own `:root, .dark`
+      trick one level down.
+
+  (b) Tailwind's utilities need nothing, because `@theme inline` bakes the
+      `var()` into the utility instead of emitting a `--color-*` property at
+      `:root`. `text-bottle-chalk`, `bg-board`, `text-on-board-soft` and the
+      rest therefore resolve at the element where they sit, inside the subtree.
+      Drop the `inline` from `@theme` and this whole file stops working.
+
+  `--chart-1` and `--sidebar-ring` derive from the same tokens and stay frozen
+  at `:root` for the same reason as (a). Neither appears on the customer menu,
+  so neither is restated — that is a decision, not an oversight.
+*/
+
+[data-menu-theme] {
+  /* See (a). Declared on the same element that declares `--bottle-deep`, so it
+     resolves against that element's own value — in both themes, since the
+     `.dark` block below only overrides `--bottle-deep` on this same element. */
+  --ring: var(--bottle-deep);
+}
+
+/*
+  « Pelouse » — a football club's green and white.
+
+  The board is what carries it. The house `--board` is a near-black (#151917)
+  and the accents are already a bottle green, so a theme that only retinted the
+  accents would be invisible: the visible gesture is the panel at the top of the
+  card turning club green. The accents follow one step brighter and more
+  saturated than the house green, so they still read as a signal next to it.
+
+  `--board` and `--on-board` do not flip between day and night, for the reason
+  that already freezes the house pair: a board at the door of a bar is dark at
+  any hour. Only `--bottle-deep`, the *text* accent, flips.
+*/
+[data-menu-theme='pelouse'] {
+  --board: #0b3f26;
+  --on-board: #f4f8f2;
+  --on-board-soft: #a9c6b4;
+  --bottle-chalk: #9fe3ba;
+
+  --bottle: #126b41;
+  --bottle-deep: #0f6039;
+  --on-bottle: #f4f8f2;
+}
+
+.dark [data-menu-theme='pelouse'] {
+  /* Raised, like the house green at night: the day value would sink into the
+     slate. The fill stays dark enough for `--on-bottle` to hold 5.2:1 on it. */
+  --bottle: #15764a;
+  --bottle-deep: #8fdcae;
+}

@@ -163,12 +163,34 @@ hosts without IPv6.
 
 ## Deliberately absent
 
-i18n columns and per-venue theming, until their roadmap item comes up. No table numbers:
+i18n columns, until their roadmap item comes up. No table numbers:
 `orders.customer_name` is the reference, called out at the counter. No retention policy on
 `orders` — it grows, and a purge belongs with a decision nobody has made.
 `products.image_path` holds a Storage path, not a URL. `venues.owner_id` has no FK to
 `auth.users` — `drizzle-orm/supabase` exports an `authUsers` reference that would make one
 possible if that is ever wanted.
+
+## `venues.theme`
+
+The public menu's theme, `not null default 'ardoise'`. **`'ardoise'` is stored like any
+other value** — it is a theme that carries a name, not an absence, so the column is not
+nullable. That is the opposite call from `products.price_cents`, and deliberately: there,
+`null` means "no price shown", which `0` cannot say.
+
+`venues_theme_allowed` is a whitelist check, in the same relationship to the client that
+`products_barcode_format` has to `normalizeBarcode`: it restates the shape the application
+already guarantees, and what it actually catches is the row written from outside — a `curl`
+on PostgREST, a hand fix in Studio. The manager never meets it, because `updateVenue`
+refuses an unknown theme in French first.
+
+**No policy changed, and that is worth knowing rather than rediscovering.** RLS is
+row-scoped, not column-scoped: `venues` already carries `venues_public_read` (which is what
+lets the anonymous SSR read serve the new column) and the full `ownerWrite` triple, whose
+`using`/`withCheck` cover an update of any column added later.
+
+The whitelist lives in three places that move together — `VENUE_THEMES` and the check here,
+`src/lib/menu-theme.ts` (the browser's copy, because importing this file into the bundle
+would drag Drizzle in with it), and the token blocks of `src/styles/menu-theme.css`.
 
 ## Known weak point
 

@@ -1,10 +1,12 @@
 import { queryOptions } from '@tanstack/react-query'
 
 import { VENUES_QUERY_KEY } from '#/lib/query-keys'
+import { MENU_THEMES } from '#/lib/menu-theme'
 import { describeError } from '#/lib/postgrest-error'
 import { removeVenuePhotos } from '#/lib/product-photos'
 import { supabase } from '#/lib/supabase'
 
+import type { MenuTheme } from '#/lib/menu-theme'
 import type { Venue } from '#/lib/supabase'
 
 /**
@@ -197,4 +199,59 @@ export async function createVenue(name: string): Promise<void> {
         : describeError(error),
     )
   }
+}
+
+/** Ce qu'un gérant peut changer sur son établissement depuis l'écran de réglages. */
+export type VenueSettings = {
+  name: string
+  description: string | null
+  theme: MenuTheme
+}
+
+/**
+ * Met à jour un établissement.
+ *
+ * **`slug` n'est jamais écrit, et ce n'est pas un oubli.** L'adresse publique
+ * est ce qu'un QR code déjà imprimé et collé sur les tables encode, et
+ * `m.$venueSlug.tsx` répond volontairement 404 sur une adresse inconnue : il
+ * n'existe ni colonne d'alias ni table de redirection, donc un slug renommé
+ * transformerait chaque code en salle en cul-de-sac. S'y ajoute que
+ * `venues_slug_unique` ignore l'archivage — un renommage pourrait échouer
+ * contre un établissement à la corbeille, que le gérant ne peut libérer qu'en
+ * vidant celle-ci, la seule action irréversible de l'application. Changer
+ * l'adresse publique demande d'abord une histoire de redirection ; le nom, lui,
+ * se change librement.
+ *
+ * Le thème est vérifié ici plutôt que laissé à la contrainte : `describeError`
+ * n'a aucun cas pour un `23514`, et la violation remonterait en anglais dans
+ * une interface française.
+ */
+export async function updateVenue(
+  venueId: string,
+  settings: VenueSettings,
+): Promise<void> {
+  const name = settings.name.trim()
+  if (!name) {
+    throw new Error('Un établissement a besoin d’un nom.')
+  }
+
+  if (!MENU_THEMES.some((theme) => theme.id === settings.theme)) {
+    throw new Error('Ce thème n’existe pas.')
+  }
+
+  const { error } = await supabase
+    .from('venues')
+    .update({
+      name,
+      /*
+        Une description vide vaut `null`, jamais `''` : la carte publique teste
+        `venue.description` pour décider d'afficher le paragraphe sous le nom,
+        et une chaîne vide y ouvrirait un bloc sans texte.
+      */
+      description: settings.description?.trim() || null,
+      theme: settings.theme,
+    })
+    .eq('id', venueId)
+
+  if (error) throw new Error(describeError(error))
 }

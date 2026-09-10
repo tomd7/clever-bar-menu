@@ -3,6 +3,7 @@ import {
   Boxes,
   ConciergeBell,
   QrCode,
+  Settings,
   Store,
   UtensilsCrossed,
 } from 'lucide-react'
@@ -139,6 +140,22 @@ export function VenueNav({
                   >
                     <QrCode className="size-4 shrink-0" />
                     QR code
+                  </Link>
+                </li>
+                <li>
+                  {/*
+                    En dernier : c'est la destination la moins fréquente des
+                    cinq — on règle un établissement une fois, on édite sa
+                    carte tous les jours.
+                  */}
+                  <Link
+                    to="/admin/$venueSlug/reglages"
+                    params={{ venueSlug: venue.slug }}
+                    activeProps={{ className: 'is-active' }}
+                    className="rail-link"
+                  >
+                    <Settings className="size-4 shrink-0" />
+                    Réglages
                   </Link>
                 </li>
               </ul>

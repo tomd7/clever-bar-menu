@@ -1,7 +1,7 @@
 # Venues — `src/features/venues/`
 
 `components/` (venues-page, venue-list, venue-card, venue-trash, venue-nav, venue-qr,
-add-venue-form), `api.ts`, `mutations.ts`, `qr.ts`.
+venue-settings, menu-theme-field, add-venue-form), `api.ts`, `mutations.ts`, `qr.ts`.
 
 Same feature rules as `features/menu`: a component never calls `supabase` directly (go
 through `api.ts`, which maps `camelCase` to the API's `snake_case`), mutations live in
@@ -16,7 +16,9 @@ the layout route has no `$venueSlug` of its own, and "where are we" is a routing
 it as a `nav` prop because `src/components/` must not import from `#/features/`.
 
 **The tree never repeats a destination**: the open venue becomes a group label and its
-sections (Carte, Stock, QR code) carry the links, while the other venues stay plain links.
+sections (Carte, Commandes, Stock, QR code, Réglages) carry the links, while the other
+venues stay plain links. « Réglages » comes last — a venue is configured once and its menu
+edited daily.
 
 **`ordersBadge` is a slot, not a number.** Counting open orders belongs to
 `features/orders`, which this feature may not import, so the route composes the two — the
@@ -122,6 +124,50 @@ column, where a fold has to be found and unfolded on every visit.
   a static segment and the router puts it before `/admin/$venueSlug`, so a venue with that
   slug would be created without any error and then be unreachable — its public menu
   working, its editor not. Any new static child of `/admin` goes into that set.
+
+## Settings — `venue-settings.tsx`, `/admin/$venueSlug/reglages`
+
+The screen that was missing: nothing could rename a venue or edit the description shown
+under the title of its public menu — that description was only ever reachable through the
+seed script. It edits three things: name, description, theme.
+
+- **The slug is never written, and `updateVenue`'s JSDoc says so where the temptation is.**
+  The public address is what a printed QR code on a table encodes, and `m.$venueSlug.tsx`
+  answers 404 on an unknown slug on purpose — there is no alias column and no redirect
+  table, so a renamed slug turns every code in the room into a dead end. On top of that,
+  `venues_slug_unique` ignores `deleted_at`, so a rename could collide with a **binned**
+  venue, which the manager can only free by emptying the bin — the one irreversible action
+  in the app. Changing the public address needs a redirect story first.
+- **Two invalidations, and the second is not spare.** `useUpdateVenue` invalidates
+  `VENUES_QUERY_KEY` _and_ `MENU_QUERY_KEY`: `menuQueryOptions` returns `{ venue,
+categories }` and `MenuEditor` renders `venue.name` in its header, so without the second
+  one a rename leaves the editor's own title stale. `PUBLIC_MENU_QUERY_KEY` stays with
+  `features/menu` — it is the customer's cache on the customer's phone, with no reader in
+  this tab.
+- **`reglages` needs no `RESERVED_SLUGS` entry**, unlike `corbeille`: it is a static child
+  of `$venueSlug`, not of `/admin`. The hazard was only ever about static children of
+  `/admin`, which the router puts before the `$venueSlug` param.
+- **The form is mounted with `key={venue.id}`.** Without it, switching venues from the rail
+  re-renders the same component with new props and the `useState` drafts keep the previous
+  bar's name — one click from being written to this one.
+- **Two entry points, or the screen is desktop-only.** The rail only exists from `lg`, so
+  `MenuEditor`'s `lg:hidden` row of section links carries « Réglages » too. Forgetting that
+  row is how a back-office screen becomes unreachable from a phone.
+
+### The theme picker — `menu-theme-field.tsx`
+
+Hand-written native radios, not `Select` and not a new shadcn file: the whole point of the
+control is to _see_ the colour, and a dropdown reduces each theme to a line of text. An
+`<input type="radio">` **wrapped in its own `<label>`** also needs no `id`/`htmlFor` at all,
+which sidesteps the rule `TextField` exists to enforce rather than breaking it — there is
+nothing to wire, so nothing to mistype. A `RadioField` gets extracted the day a second
+radio group appears, not before.
+
+The swatches carry `data-menu-theme` themselves and read `--board`, `--bottle` and
+`--bottle-chalk`, exactly as the customer menu does, so **no hex ever appears in this
+feature** and retinting a palette in `styles/menu-theme.css` moves the picker with it. The
+live preview under it follows the _draft_, not the saved row: choosing an appearance without
+seeing it is the thing this control exists to prevent.
 
 ## Venue card
 
