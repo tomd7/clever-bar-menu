@@ -105,7 +105,13 @@ const timestamps = {
  * the copy the browser reads — importing this file into the bundle would drag
  * the server-side persistence in with it.
  */
-export const VENUE_THEMES = ['ardoise', 'pelouse'] as const
+export const VENUE_THEMES = [
+  'ardoise',
+  'pelouse',
+  'rubis',
+  'prune',
+  'indigo',
+] as const
 
 export type VenueTheme = (typeof VENUE_THEMES)[number]
 
@@ -228,7 +234,7 @@ export const venues = pgTable(
      */
     check(
       'venues_theme_allowed',
-      sql`${table.theme} in ('ardoise', 'pelouse')`,
+      sql`${table.theme} in ('ardoise', 'pelouse', 'rubis', 'prune', 'indigo')`,
     ),
 
     ...ownerWrite('venues', sql`${authUid} = ${table.ownerId}`),

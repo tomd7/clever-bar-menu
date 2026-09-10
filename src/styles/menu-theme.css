@@ -15,6 +15,22 @@
   `styles/CLAUDE.md` calls non-negotiable, since green signals and never fills
   an « Enregistrer » button.
 
+  Every palette below is contrast-checked against the surfaces it actually meets:
+  chalk and soft chalk on its own board, the fill against `--on-bottle`, and the
+  text accent against both grounds — all at 4.5:1 or better, which is the point
+  of a named set rather than a hex field.
+
+  **The board must be a colour, not a tinted black.** A first pass put rubis,
+  prune and indigo at ~8% lightness and ~30% saturation; side by side they read
+  as three more ardoises, told apart only by the chip. Pelouse worked because
+  its board is genuinely green (HSL ~151°, 70%, 15%), so every board now sits in
+  that band — 48–70% saturation, 15–20% lightness — which still leaves chalk
+  above 12:1 on it.
+
+  Deliberately absent: a warm amber or
+  terracotta accent. `styles/CLAUDE.md` records why that family was removed from
+  the house palette, and a light amber is the colour of a default warning state.
+
   Adding a theme means three edits that travel together: `VENUE_THEMES` and the
   `venues_theme_allowed` check (`src/db/schema.ts`), the catalogue in
   `src/lib/menu-theme.ts`, and a block here. Miss this one and the menu renders
@@ -99,6 +115,66 @@
   --theme-bottle-night: #15764a;
   --theme-bottle-deep-day: #0f6039;
   --theme-bottle-deep-night: #8fdcae;
+}
+
+/*
+  « Rubis » — a deep wine red.
+
+  For the room that pours by the glass. The board goes almost black-cherry, and
+  the accent is the same red at full strength by day, a dusty rose by night —
+  the day value would go muddy against the slate.
+*/
+[data-menu-theme='rubis'] {
+  --board: #4a1322;
+  --on-board: #f6f0f1;
+  --on-board-soft: #d9b9c1;
+  --bottle-chalk: #f2b3c0;
+  --on-bottle: #f6f0f1;
+
+  --theme-bottle-day: #8c2740;
+  --theme-bottle-night: #a33350;
+  --theme-bottle-deep-day: #8c2740;
+  --theme-bottle-deep-night: #e8a3b0;
+}
+
+/*
+  « Prune » — a dark plum.
+
+  Between the red and the blue, and the reason the set has five and not four:
+  with only rubis and indigo, every non-green choice reads as either warm or
+  cold. This one is the quiet middle.
+*/
+[data-menu-theme='prune'] {
+  --board: #3a1a4a;
+  --on-board: #f3eef6;
+  --on-board-soft: #cdb9d8;
+  --bottle-chalk: #d9b8ec;
+  --on-bottle: #f3eef6;
+
+  --theme-bottle-day: #5d2f78;
+  --theme-bottle-night: #6f3a8d;
+  --theme-bottle-deep-day: #5d2f78;
+  --theme-bottle-deep-night: #c9a6de;
+}
+
+/*
+  « Indigo » — night blue.
+
+  The one theme whose board is not a tinted black but a real colour at low
+  luminance; it is also the furthest from the house green, which is what makes
+  it worth having in a set of five.
+*/
+[data-menu-theme='indigo'] {
+  --board: #16244a;
+  --on-board: #eff2f8;
+  --on-board-soft: #b3bfdc;
+  --bottle-chalk: #abc4f2;
+  --on-bottle: #eff2f8;
+
+  --theme-bottle-day: #2f4a86;
+  --theme-bottle-night: #3a5a9f;
+  --theme-bottle-deep-day: #2f4a86;
+  --theme-bottle-deep-night: #9fb8e8;
 }
 
 /*

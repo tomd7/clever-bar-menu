@@ -27,7 +27,7 @@
 /** The house board, the one `src/styles/theme.css` already paints on `:root`. */
 export const DEFAULT_MENU_THEME = 'ardoise'
 
-export type MenuTheme = 'ardoise' | 'pelouse'
+export type MenuTheme = 'ardoise' | 'pelouse' | 'rubis' | 'prune' | 'indigo'
 
 /**
  * The catalogue, in the order the picker offers it.
@@ -43,6 +43,13 @@ export const MENU_THEMES: ReadonlyArray<{
 }> = [
   { id: 'ardoise', label: 'Ardoise', hint: 'Le thème maison, noir et craie.' },
   { id: 'pelouse', label: 'Pelouse', hint: 'Vert et blanc, comme un maillot.' },
+  {
+    id: 'rubis',
+    label: 'Rubis',
+    hint: 'Rouge profond, comme un vin de garde.',
+  },
+  { id: 'prune', label: 'Prune', hint: 'Violet sombre, un fond de velours.' },
+  { id: 'indigo', label: 'Indigo', hint: 'Bleu de nuit, pour les cocktails.' },
 ]
 
 /**
