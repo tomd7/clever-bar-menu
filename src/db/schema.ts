@@ -185,6 +185,27 @@ export const venues = pgTable(
     theme: text('theme').notNull().default('ardoise'),
 
     /**
+     * The venue's logo, as a Storage path — a path, not a URL, like
+     * `products.image_path`. `null`: the carte's header shows the name alone.
+     *
+     * It lives in the same bucket and the same flat folder as the product
+     * photos (`<venue_id>/<random>.<ext>`), so the policies of `0004` and the
+     * bin's purge cover it with no change. `src/lib/venue-images.ts` says why
+     * it must never go into a sub-folder.
+     */
+    logoPath: text('logo_path'),
+
+    /**
+     * Whether the logo sits on a light plate on the board.
+     *
+     * The board is dark in every theme and at every hour, and a dark logo on a
+     * transparent background vanishes on it. The browser guesses the value
+     * when the file is picked, and the manager can flip it. Meaningless while
+     * `logo_path` is null — `updateVenue` writes `false` then.
+     */
+    logoPlate: boolean('logo_plate').notNull().default(false),
+
+    /**
      * Archivage — suppression logique.
      *
      * Une date plutôt qu'un booléen : elle répond à « archivé ? » comme à

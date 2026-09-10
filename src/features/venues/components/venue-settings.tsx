@@ -1,15 +1,18 @@
 import { ArrowLeft } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 import { CancelButton } from '#/components/buttons/cancel-button'
 import { ErrorNote } from '#/components/error-note'
+import { ImageField, useObjectUrl } from '#/components/form/image-field'
 import { MenuAddress } from '#/components/back-office/menu-address'
 import { MenuThemeField } from '#/features/venues/components/menu-theme-field'
 import { NavLink } from '#/components/nav-link'
 import { SaveButton } from '#/components/buttons/save-button'
+import { Switch } from '#/components/ui/switch'
 import { TextAreaField } from '#/components/form/textarea-field'
 import { TextField } from '#/components/form/text-field'
+import { VenueLogo } from '#/components/venue-logo'
 import { cn } from '#/lib/utils.ts'
 import {
   Skeleton,
@@ -18,15 +21,18 @@ import {
   SkeletonLine,
   SkeletonScreen,
 } from '#/components/skeleton'
+import { guessLogoPlate } from '#/features/venues/logo'
 import { parseMenuTheme } from '#/lib/menu-theme'
 import { useUpdateVenue } from '#/features/venues/mutations'
 import { venueBySlugQueryOptions } from '#/features/venues/api'
+import { venueImageUrl } from '#/lib/venue-images'
 
 import type { MenuTheme } from '#/lib/menu-theme'
 import type { Venue } from '#/lib/supabase'
 
 /**
- * Réglages d'un établissement : son nom, sa description, le thème de sa carte.
+ * Réglages d'un établissement : son nom, sa description, son logo, le thème de
+ * sa carte.
  *
  * L'écran qui manquait — rien ne permettait de rectifier un nom mal saisi, et
  * la description qui s'affiche sous le titre de la carte publique n'était
@@ -71,15 +77,57 @@ function VenueSettingsForm({ venue }: { venue: Venue }) {
   const [description, setDescription] = useState(venue.description ?? '')
   const [theme, setTheme] = useState<MenuTheme>(parseMenuTheme(venue.theme))
 
+  /*
+    The logo takes three pieces of state, where a product's photo takes two:
+    `logoFile` is picked but not uploaded, `logoPath` is what the row holds (or
+    `null` once removed), `logoPlate` is the plate. Nothing is uploaded before
+    « Enregistrer » — a manager who cancels leaves no file behind.
+  */
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [logoPath, setLogoPath] = useState<string | null>(venue.logo_path)
+  const [logoPlate, setLogoPlate] = useState(venue.logo_plate)
+
+  /*
+    The file whose plate is being guessed. The guess is asynchronous, and
+    picking a second logo before the first one resolves would otherwise let the
+    stale answer land last.
+  */
+  const guessedFile = useRef<File | null>(null)
+
+  const pickedLogoUrl = useObjectUrl(logoFile)
+  const logoUrl = pickedLogoUrl ?? (logoPath ? venueImageUrl(logoPath) : null)
+  const hasLogo = logoFile !== null || logoPath !== null
+
   const isDirty =
     name !== venue.name ||
     description !== (venue.description ?? '') ||
-    theme !== venue.theme
+    theme !== venue.theme ||
+    logoFile !== null ||
+    logoPath !== venue.logo_path ||
+    (hasLogo && logoPlate !== venue.logo_plate)
+
+  function pickLogo(file: File) {
+    guessedFile.current = file
+    setLogoFile(file)
+    void guessLogoPlate(file).then((plate) => {
+      if (guessedFile.current === file) setLogoPlate(plate)
+    })
+  }
+
+  function removeLogo() {
+    guessedFile.current = null
+    setLogoFile(null)
+    setLogoPath(null)
+  }
 
   function reset() {
     setName(venue.name)
     setDescription(venue.description ?? '')
     setTheme(parseMenuTheme(venue.theme))
+    guessedFile.current = null
+    setLogoFile(null)
+    setLogoPath(venue.logo_path)
+    setLogoPlate(venue.logo_plate)
     update.reset()
   }
 
@@ -115,12 +163,31 @@ function VenueSettingsForm({ venue }: { venue: Venue }) {
       <form
         onSubmit={(event) => {
           event.preventDefault()
-          update.mutate({
-            venueId: venue.id,
-            name,
-            description,
-            theme,
-          })
+          update.mutate(
+            {
+              venueId: venue.id,
+              name,
+              description,
+              theme,
+              logoFile,
+              logoPath,
+              logoPlate,
+              previousLogoPath: venue.logo_path,
+            },
+            {
+              /*
+                The picked file has become a stored path: the draft takes it, so
+                it matches the row again. Otherwise the form would stay dirty
+                after a successful save, and a second click would upload the
+                same logo twice.
+              */
+              onSuccess: (saved) => {
+                guessedFile.current = null
+                setLogoFile(null)
+                setLogoPath(saved.logoPath)
+              },
+            },
+          )
         }}
         /*
           Une colonne au téléphone, deux à partir de `lg`. L'ordre du DOM est
@@ -154,6 +221,56 @@ function VenueSettingsForm({ venue }: { venue: Venue }) {
               maxLength={280}
               rows={3}
             />
+
+            {/*
+              The logo belongs to the identity, not to the theme: it is the bar's
+              own mark, and it stays when the board changes colour. Its effect is
+              shown in the preview next door, on both boards.
+            */}
+            <ImageField
+              label={
+                <>
+                  Logo{' '}
+                  <span className="font-normal text-ink-soft">
+                    (facultatif)
+                  </span>
+                </>
+              }
+              addLabel="Ajouter un logo"
+              hint="PNG ou WebP à fond transparent de préférence, JPEG accepté. L’image est réduite dans le navigateur avant l’envoi."
+              fit="contain"
+              previewUrl={logoUrl}
+              onSelect={pickLogo}
+              onRemove={removeLogo}
+            />
+
+            {/*
+              The switch only exists while there is a logo to lay on the plate.
+              Its value is guessed from the file when it is picked — the manager
+              should rarely touch it, and needs it the day the guess is wrong.
+
+              A native `<label>` around the switch: Radix renders a `<button>`,
+              which is labelable, so the text names it and a tap on the text
+              toggles it — no `id` to wire.
+            */}
+            {hasLogo ? (
+              <label className="flex min-h-11 cursor-pointer items-start gap-3 select-none">
+                <Switch
+                  checked={logoPlate}
+                  onCheckedChange={setLogoPlate}
+                  className="mt-0.5"
+                />
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium">
+                    Pastille claire derrière le logo
+                  </span>
+                  <span className="mt-0.5 block text-xs text-ink-soft">
+                    Pour un logo foncé, qui disparaîtrait sur le bandeau. Réglée
+                    d’après l’image : vérifiez l’aperçu.
+                  </span>
+                </span>
+              </label>
+            ) : null}
           </div>
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -200,8 +317,16 @@ function VenueSettingsForm({ venue }: { venue: Venue }) {
               theme={theme}
               mode="light"
               name={name || venue.name}
+              logoUrl={logoUrl}
+              logoPlate={logoPlate}
             />
-            <ThemePreview theme={theme} mode="dark" name={name || venue.name} />
+            <ThemePreview
+              theme={theme}
+              mode="dark"
+              name={name || venue.name}
+              logoUrl={logoUrl}
+              logoPlate={logoPlate}
+            />
           </div>
         </section>
       </form>
@@ -226,10 +351,14 @@ function ThemePreview({
   theme,
   mode,
   name,
+  logoUrl,
+  logoPlate,
 }: {
   theme: MenuTheme
   mode: 'light' | 'dark'
   name: string
+  logoUrl: string | null
+  logoPlate: boolean
 }) {
   return (
     <div
@@ -242,6 +371,18 @@ function ThemePreview({
         data-menu-theme={theme}
         className="rounded-lg bg-board px-3 py-4 text-on-board"
       >
+        {/*
+          The same component the carte renders, at preview scale — so the plate
+          the manager judges here is the one a customer will see.
+        */}
+        {logoUrl ? (
+          <VenueLogo
+            src={logoUrl}
+            plate={logoPlate}
+            size="preview"
+            className="mb-2"
+          />
+        ) : null}
         <p className="text-[0.6875rem] font-semibold text-bottle-chalk">
           La carte
         </p>
@@ -295,6 +436,7 @@ function VenueSettingsSkeleton() {
           <Skeleton className="h-4 w-20 rounded-full" delay={180} />
           <Skeleton className="mt-4 h-11 w-full" delay={220} />
           <Skeleton className="mt-4 h-20 w-full" delay={260} />
+          <Skeleton className="mt-4 h-16 w-48" delay={280} />
           <Skeleton className="mt-4 h-11 w-36" delay={300} />
         </div>
 

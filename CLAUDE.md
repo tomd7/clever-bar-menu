@@ -74,7 +74,7 @@ queries and its domain rules in one directory.
 src/
   features/    auth/  menu/  orders/  venues/   each: components/, api.ts, mutations.ts, domain modules
   components/  ui/ (shadcn), buttons/, form/, back-office/, home/, cross-screen pieces
-  lib/         supabase.ts, postgrest-error.ts, public-menu-url.ts, product-photos.ts,
+  lib/         supabase.ts, postgrest-error.ts, public-menu-url.ts, venue-images.ts,
                money.ts, query-keys.ts, utils.ts
 ```
 

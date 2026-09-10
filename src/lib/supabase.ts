@@ -34,6 +34,10 @@ type VenueRow = {
    * navigateur, il n'y a donc pas de raison d'en écrire une troisième ici.
    */
   theme: MenuTheme
+  /** Storage path of the logo, or `null`: the carte shows the name alone. */
+  logo_path: string | null
+  /** Whether the logo sits on a light plate on the board. */
+  logo_plate: boolean
   /** Date d'archivage, ou `null` si l'établissement est actif. */
   deleted_at: string | null
   created_at: string
@@ -151,6 +155,8 @@ export type Database = {
           | 'deleted_at'
           | 'orders_enabled'
           | 'theme'
+          | 'logo_path'
+          | 'logo_plate'
         >
         Update: Partial<VenueRow>
         Relationships: []

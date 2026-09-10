@@ -1,7 +1,8 @@
 # Venues — `src/features/venues/`
 
 `components/` (venues-page, venue-list, venue-card, venue-trash, venue-nav, venue-qr,
-venue-settings, menu-theme-field, add-venue-form), `api.ts`, `mutations.ts`, `qr.ts`.
+venue-settings, menu-theme-field, add-venue-form), `api.ts`, `mutations.ts`, `qr.ts`,
+`logo.ts`.
 
 Same feature rules as `features/menu`: a component never calls `supabase` directly (go
 through `api.ts`, which maps `camelCase` to the API's `snake_case`), mutations live in
@@ -69,7 +70,8 @@ manager who expected one must be able to see it before confirming.
   `public.venues`; once the venue row is gone the join finds nothing and the files become
   **indestructible** while still being served by the CDN — the bucket is public for reads.
   This is the reverse of the product order, where the row goes first because its venue
-  stays. `removeVenuePhotos` (`lib/product-photos.ts`) carries the same warning.
+  stays. `removeVenueImages` (`lib/venue-images.ts`) carries the same warning, and
+  the logo is covered by it: it lives in the same flat folder as the photos.
 - **A storage failure aborts the purge and surfaces**, unlike `removeProductPhoto` which
   swallows its errors: here the venue is still in the bin, retrying is free and resumes
   where it stopped. Swallowing would leave photos online with no remaining way to remove
@@ -79,7 +81,7 @@ manager who expected one must be able to see it before confirming.
   `delete` then re-checks `deleted_at is not null`, so a venue restored from another
   device between the read and the write is not destroyed by a purge decided on an older
   state.
-- The paging in `removeVenuePhotos` deliberately has **no `offset`** — each page is
+- The paging in `removeVenueImages` deliberately has **no `offset`** — each page is
   deleted before the next is listed, so the next page is always the first. An offset
   walking a shrinking list would skip every other photo. A page that comes back with
   nothing deleted (a policy refusal returns an empty `data`, not an error) raises rather
@@ -129,7 +131,7 @@ column, where a fold has to be found and unfolded on every visit.
 
 The screen that was missing: nothing could rename a venue or edit the description shown
 under the title of its public menu — that description was only ever reachable through the
-seed script. It edits three things: name, description, theme.
+seed script. It edits four things: name, description, logo, theme.
 
 - **The slug is never written, and `updateVenue`'s JSDoc says so where the temptation is.**
   The public address is what a printed QR code on a table encodes, and `m.$venueSlug.tsx`
@@ -159,6 +161,33 @@ categories }` and `MenuEditor` renders `venue.name` in its header, so without th
 - **Two entry points, or the screen is desktop-only.** The rail only exists from `lg`, so
   `MenuEditor`'s `lg:hidden` row of section links carries « Réglages » too. Forgetting that
   row is how a back-office screen becomes unreachable from a phone.
+
+### The logo — `logo.ts`
+
+`venues.logo_path` + `venues.logo_plate`, edited in the « Identité » panel through
+`ImageField` and drawn by `VenueLogo` (both in `src/components/`) on the carte and in
+`ThemePreview`.
+
+- **It saves with the rest of the form**, like a product's photo: nothing is uploaded
+  before « Enregistrer », so cancelling leaves no file behind. `useUpdateVenue` uploads
+  first, writes the row, removes the fresh file if the row refuses, and removes the previous
+  logo only once the row no longer points at it. It returns the resolved path and the form
+  takes it into its draft — **without that step the form stayed dirty after a successful
+  save, and a second click uploaded the same logo again.**
+- **Same bucket and flat folder as the product photos**, so the policies and
+  `purgeArchivedVenues` cover it unchanged. See `lib/venue-images.ts` for why a
+  `logo/` sub-folder would make the bin impossible to empty.
+- **600px, and PNG rather than JPEG when WebP is unavailable and the image has any
+  transparency** (`keep-alpha`): a JPEG would lay a transparent logo on a black rectangle.
+- **The plate is guessed, then shown, then adjustable.** The board is dark in every theme,
+  and the commonest logo file is dark ink on transparency — invisible on it.
+  `guessLogoPlate` reads a 48px thumbnail: under 5% transparent pixels, the image carries
+  its own background (no plate); otherwise the opacity-weighted mean luminance of the
+  visible pixels decides (under 0.18, plate). A two-tone logo can fool it, hence the switch
+  right under the field and the preview on both boards. The guess is async: a ref keeps a
+  first pick's late answer from overwriting a second pick's.
+- **`logo_plate` is written `false` when there is no logo**, so a removed logo doesn't hand
+  its plate to the next upload before the guess runs.
 
 ### The theme picker — `menu-theme-field.tsx`
 

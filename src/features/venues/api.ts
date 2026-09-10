@@ -3,7 +3,7 @@ import { queryOptions } from '@tanstack/react-query'
 import { VENUES_QUERY_KEY } from '#/lib/query-keys'
 import { MENU_THEMES } from '#/lib/menu-theme'
 import { describeError } from '#/lib/postgrest-error'
-import { removeVenuePhotos } from '#/lib/product-photos'
+import { removeVenueImages } from '#/lib/venue-images'
 import { supabase } from '#/lib/supabase'
 
 import type { MenuTheme } from '#/lib/menu-theme'
@@ -107,7 +107,7 @@ export async function restoreVenue(venueId: string): Promise<void> {
  * requête ci-dessous rapporte est ce qui est archivé maintenant.
  *
  * **Les photos partent avant la ligne, et l'ordre n'est pas négociable** — la
- * raison est dans `removeVenuePhotos`. Une erreur de stockage interrompt donc
+ * raison est dans `removeVenueImages`. Une erreur de stockage interrompt donc
  * la purge : l'établissement reste à la corbeille, et réessayer reprend là où
  * l'on s'était arrêté.
  *
@@ -130,7 +130,7 @@ export async function purgeArchivedVenues(ownerId: string): Promise<void> {
   if (error) throw new Error(describeError(error))
 
   for (const venue of data) {
-    await removeVenuePhotos(venue.id)
+    await removeVenueImages(venue.id)
 
     const { error: deleteError } = await supabase
       .from('venues')
@@ -206,6 +206,9 @@ export type VenueSettings = {
   name: string
   description: string | null
   theme: MenuTheme
+  /** Storage path of the logo, already uploaded — or `null` for no logo. */
+  logoPath: string | null
+  logoPlate: boolean
 }
 
 /**
@@ -250,6 +253,12 @@ export async function updateVenue(
       */
       description: settings.description?.trim() || null,
       theme: settings.theme,
+      logo_path: settings.logoPath,
+      /*
+        No logo, no plate: the flag would otherwise survive a removed logo and
+        resurface, already on, the day another is uploaded.
+      */
+      logo_plate: settings.logoPath ? settings.logoPlate : false,
     })
     .eq('id', venueId)
     /*
@@ -258,7 +267,7 @@ export async function updateVenue(
       rows and answers 204, exactly like a successful one. Without this line a
       manager who does not own the venue — or whose session has gone stale —
       clicked « Enregistrer », watched nothing happen, and was told nothing.
-      Same trap `removeVenuePhotos` documents for storage.
+      Same trap `removeVenueImages` documents for storage.
     */
     .select('id')
 

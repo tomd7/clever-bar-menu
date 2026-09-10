@@ -222,6 +222,24 @@ The whitelist lives in three places that move together — `VENUE_THEMES` and th
 `src/lib/menu-theme.ts` (the browser's copy, because importing this file into the bundle
 would drag Drizzle in with it), and the token blocks of `src/styles/menu-theme.css`.
 
+## `venues.logo_path` / `venues.logo_plate`
+
+The logo, as a Storage path (`null`: no logo), and a `not null default false` flag saying
+whether it sits on a light plate on the board. Migration `0020` is drizzle-kit's plain
+`alter table`, and no policy changed — for the reason given for `venues.theme` above.
+
+- **Same bucket, same flat folder as the product photos** (`<venue_id>/<random>.<ext>`).
+  The policies of `0004` join that first segment to `venues.owner_id`, and the bin's purge
+  lists that one folder, so both cover the logo with no change. A `<venue_id>/logo/`
+  sub-folder would pass the policies just as well, but `list()` is not recursive: the purge
+  would meet a folder entry it cannot remove and raise on every attempt, leaving the bin
+  impossible to empty. `src/lib/venue-images.ts` carries the warning.
+- **No SVG, and nothing to add for it**: the bucket's `allowed_mime_types` already stops at
+  JPEG, PNG and WebP. An SVG served from our storage domain can carry script.
+- **`logo_plate` is written `false` whenever `logo_path` is `null`**, by `updateVenue`, so
+  a removed logo does not hand its plate to the next one. No check constraint restates it:
+  a stray `true` with no logo draws nothing.
+
 ## Known weak point
 
 `src/lib/supabase.ts` holds a **hand-written** `Database` type in snake_case: PostgREST

@@ -4,7 +4,8 @@ import { CancelButton } from '#/components/buttons/cancel-button'
 import { SaveButton } from '#/components/buttons/save-button'
 import { ErrorNote } from '#/components/error-note'
 import { TextAreaField } from '#/components/form/textarea-field'
-import { PhotoField } from '#/features/menu/components/photo-field'
+import { ImageField, useObjectUrl } from '#/components/form/image-field'
+import { productPhotoUrl } from '#/features/menu/photo'
 import { TextField } from '#/components/form/text-field'
 import { SIZE_MAX_LENGTH, SIZE_SUGGESTIONS } from '#/features/menu/size'
 import { centsToInput } from '#/features/menu/price'
@@ -53,6 +54,7 @@ export function ProductForm({
   const [imagePath, setImagePath] = useState<string | null>(
     product?.image_path ?? null,
   )
+  const pickedPhotoUrl = useObjectUrl(photoFile)
   const [stock, setStock] = useState(
     product ? stockToInput(product.stock_quantity) : '',
   )
@@ -227,10 +229,19 @@ export function ProductForm({
         onChange={(event) => setDescription(event.target.value)}
       />
 
-      <PhotoField
+      <ImageField
         className="mt-3"
-        imagePath={imagePath}
-        file={photoFile}
+        label={
+          <>
+            Photo{' '}
+            <span className="font-normal text-ink-soft">(facultative)</span>
+          </>
+        }
+        addLabel="Ajouter une photo"
+        hint="JPEG, PNG ou WebP. L'image est réduite dans le navigateur avant l'envoi."
+        previewUrl={
+          pickedPhotoUrl ?? (imagePath ? productPhotoUrl(imagePath) : null)
+        }
         onSelect={setPhotoFile}
         onRemove={() => {
           setPhotoFile(null)
