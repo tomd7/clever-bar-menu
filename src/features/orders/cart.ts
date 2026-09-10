@@ -28,6 +28,8 @@
 
 import { useCallback, useEffect, useSyncExternalStore } from 'react'
 
+import type { Product } from '#/lib/supabase'
+
 /** Une ligne de panier : un produit, une quantité. */
 export type CartLine = {
   productId: string
@@ -145,6 +147,18 @@ function sanitize(value: unknown): Cart {
 }
 
 /** Ajoute une unité d'un produit, ou l'incrémente s'il est déjà au panier. */
+/**
+ * Ce que la prise de commande a besoin de savoir d'un produit de la carte.
+ *
+ * Déclaré ici, en `Pick` sur la ligne partagée, plutôt qu'importé de
+ * `features/menu` — un import entre features est interdit, et de toute façon
+ * cette feature n'a que faire d'une photo ou d'une catégorie. La carte publique
+ * renvoie un objet plus large ; le typage structurel fait le reste, et le jour
+ * où elle cesserait de servir l'une de ces quatre colonnes, c'est ici que ça
+ * casse.
+ */
+export type CartProduct = Pick<Product, 'id' | 'name' | 'size' | 'price_cents'>
+
 export function addToCart(venueSlug: string, productId: string): void {
   const cart = getCart(venueSlug)
   const existing = cart.find((line) => line.productId === productId)

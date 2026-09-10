@@ -15,7 +15,7 @@ import { guestOrderQueryOptions } from '#/features/orders/public-api'
 import { useTickets } from '#/features/orders/ticket'
 
 import type { OrderStatus } from '#/features/orders/status'
-import type { Product } from '#/lib/supabase'
+import type { CartProduct } from '#/features/orders/cart'
 import type { ReactNode } from 'react'
 
 /**
@@ -54,7 +54,7 @@ export function OrderBar({
 }: {
   venueSlug: string
   /** La carte affichée, pour retrouver le nom et le prix d'une ligne. */
-  products: Array<Product>
+  products: Array<CartProduct>
   currency: string
 }) {
   const tickets = useTickets(venueSlug)

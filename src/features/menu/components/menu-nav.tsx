@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 
-import type { CategoryWithProducts } from '#/features/menu/api'
+import type { Category } from '#/lib/supabase'
 
 /** Ancre d'une section de la carte. Partagée avec `PublicMenu`, qui la pose. */
 export function sectionId(categoryId: string): string {
@@ -29,7 +29,10 @@ export function sectionId(categoryId: string): string {
 export function MenuNav({
   categories,
 }: {
-  categories: Array<CategoryWithProducts>
+  /* Le strict nécessaire : le sommaire n'a besoin que d'une ancre et d'un
+     intitulé. Une signature plus large lui interdirait d'être appelé avec la
+     charge utile resserrée de la carte publique. */
+  categories: Array<Pick<Category, 'id' | 'name'>>
 }) {
   const [activeId, setActiveId] = useState<string | null>(null)
   const visibleRef = useRef(new Set<string>())

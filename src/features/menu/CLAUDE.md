@@ -224,6 +224,18 @@ list.
   an exhausted `stock_quantity` **in the query** — a hidden product must never reach the
   browser — and drops categories left empty. It lives in this feature because a separate
   one would have to import `VenueNotFoundError` and `CategoryWithProducts` from it.
+- **It names its columns; it does not `select('*')`.** This payload is server-rendered
+  _and_ dehydrated into the page, so every extra column travels twice to a phone on mobile
+  data — and it is read as `anon`, which is the real argument: `owner_id` has no business
+  in a public page and `barcode` names the item on the shelf, which is counter information,
+  not menu information. `is_available`, `stock_quantity` and `position` are absent from the
+  columns even though the query uses them: they filter and order **server-side**. The
+  payload types are `Pick`s on the shared rows (`PublicVenue`, `PublicProduct`,
+  `PublicCategory`), so a renamed column breaks here instead of drifting.
+- **`features/orders` declares its own `CartProduct`** — a `Pick` on the shared row, in
+  `cart.ts` — rather than importing this feature's product type. Structural typing makes
+  the public payload satisfy it, and the cross-feature import stays forbidden. The day the
+  carte stops serving one of those four columns, the break lands there.
 - **The page is drawn as an object, not as a document.** An opaque sheet (`.island-shell`)
   topped by a `--board` panel carrying the venue name in chalk. **`--board` is no longer
   always the house slate**: `PublicMenu`'s root element carries `data-menu-theme` from
