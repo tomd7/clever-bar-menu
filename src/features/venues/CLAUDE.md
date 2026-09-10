@@ -147,6 +147,12 @@ categories }` and `MenuEditor` renders `venue.name` in its header, so without th
 - **`reglages` needs no `RESERVED_SLUGS` entry**, unlike `corbeille`: it is a static child
   of `$venueSlug`, not of `/admin`. The hazard was only ever about static children of
   `/admin`, which the router puts before the `$venueSlug` param.
+- **A zero-row update is a refusal, and `updateVenue` treats it as one.** Under RLS a
+  refused `update` matches no row and PostgREST answers **204**, identical to a success. So
+  the call asks the row back (`.select('id')`) and throws in French when nothing comes. Found
+  in the browser: a non-owner saving a theme got a 204, both invalidations refetched the
+  unchanged row, the form stayed dirty, and neither a confirmation nor an error appeared.
+  Any new write in this feature needs the same line.
 - **The form is mounted with `key={venue.id}`.** Without it, switching venues from the rail
   re-renders the same component with new props and the `useState` drafts keep the previous
   bar's name — one click from being written to this one.

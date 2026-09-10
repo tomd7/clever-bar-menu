@@ -239,7 +239,7 @@ export async function updateVenue(
     throw new Error('Ce thème n’existe pas.')
   }
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('venues')
     .update({
       name,
@@ -252,6 +252,21 @@ export async function updateVenue(
       theme: settings.theme,
     })
     .eq('id', venueId)
+    /*
+      The row is asked back, and its absence is the error. Under RLS a refused
+      `update` is not a failure as far as PostgREST is concerned: it matches zero
+      rows and answers 204, exactly like a successful one. Without this line a
+      manager who does not own the venue — or whose session has gone stale —
+      clicked « Enregistrer », watched nothing happen, and was told nothing.
+      Same trap `removeVenuePhotos` documents for storage.
+    */
+    .select('id')
 
   if (error) throw new Error(describeError(error))
+
+  if (data.length === 0) {
+    throw new Error(
+      'Ces réglages n’ont pas été enregistrés : cet établissement n’est pas rattaché à votre compte.',
+    )
+  }
 }
