@@ -165,9 +165,17 @@ radio group appears, not before.
 
 The swatches carry `data-menu-theme` themselves and read `--board`, `--bottle` and
 `--bottle-chalk`, exactly as the customer menu does, so **no hex ever appears in this
-feature** and retinting a palette in `styles/menu-theme.css` moves the picker with it. The
-live preview under it follows the _draft_, not the saved row: choosing an appearance without
-seeing it is the thing this control exists to prevent.
+feature** and retinting a palette in `styles/menu-theme.css` moves the picker with it.
+
+The preview follows the _draft_, not the saved row, and it shows **both temperatures side
+by side**. Dark mode follows the phone with no switch, so a manager choosing a theme at noon
+is also choosing, without being told, what a customer reads at 11pm — the hour a bar's carte
+is most read. Each box wraps the themed element in `.light` or `.dark`, which carry the
+whole house palette, so the ground behind the board is the _customer's_, not the manager's;
+a preview on the manager's own ground would lie about the one thing it promises.
+`ThemePreview` also renders a menu line under the board, because that is where the other
+half of the theme lives: the text accent flips between day and night while the board stays
+frozen.
 
 ## Venue card
 

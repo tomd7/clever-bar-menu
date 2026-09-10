@@ -10,6 +10,7 @@ import { NavLink } from '#/components/nav-link'
 import { SaveButton } from '#/components/buttons/save-button'
 import { TextAreaField } from '#/components/form/textarea-field'
 import { TextField } from '#/components/form/text-field'
+import { cn } from '#/lib/utils.ts'
 import {
   Skeleton,
   SkeletonAddress,
@@ -187,24 +188,87 @@ function VenueSettingsForm({ venue }: { venue: Venue }) {
           {/*
             L'aperçu suit le **brouillon**, pas la ligne enregistrée : choisir
             un thème sans le voir reviendrait à choisir un habillage de mémoire.
-            Il rejoue le bandeau de la carte, qui est ce que le thème repeint.
+
+            Et il le montre **dans les deux températures**. Le mode sombre suit
+            le téléphone, sans interrupteur : un gérant qui règle sa carte à midi
+            choisit donc aussi, sans le savoir, ce que lira un client à 23h —
+            l'heure où une carte de bar est le plus consultée. Aller vérifier à
+            une table n'est pas un flux.
           */}
-          <div
-            data-menu-theme={theme}
-            className="mt-4 overflow-hidden rounded-xl bg-board px-4 py-5 text-on-board"
-          >
-            <p className="text-[0.8125rem] font-semibold text-bottle-chalk">
-              La carte
-            </p>
-            <p className="display-title mt-1 text-xl leading-tight">
-              {name || venue.name}
-            </p>
-            <span className="mt-3 inline-flex rounded-full bg-bottle px-3 py-1 text-xs font-medium text-on-bottle">
-              Bières pression
-            </span>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+            <ThemePreview
+              theme={theme}
+              mode="light"
+              name={name || venue.name}
+            />
+            <ThemePreview theme={theme} mode="dark" name={name || venue.name} />
           </div>
         </section>
       </form>
+    </div>
+  )
+}
+
+/**
+ * La carte telle qu'un client la verra, dans une température donnée.
+ *
+ * `mode` pose `light` ou `dark` sur l'enveloppe, et ces deux classes déclarent
+ * la palette maison entière (voir `styles/theme.css`) : c'est ce qui permet à un
+ * aperçu de jour d'exister au milieu d'un back-office passé en nuit, ce qu'une
+ * page ne sait pas faire autrement — `.dark` vit sur `<html>` et surplombe tout.
+ * Le fond de l'enveloppe est donc le vrai fond de page du client, et non celui
+ * du gérant, sans quoi l'aperçu mentirait sur la seule chose qu'il promet.
+ *
+ * Le thème, lui, va sur l'élément intérieur : `styles/menu-theme.css` cible
+ * `.light [data-menu-theme]`, un descendant.
+ */
+function ThemePreview({
+  theme,
+  mode,
+  name,
+}: {
+  theme: MenuTheme
+  mode: 'light' | 'dark'
+  name: string
+}) {
+  return (
+    <div
+      className={cn(
+        'overflow-hidden rounded-xl border border-line bg-ground p-2',
+        mode,
+      )}
+    >
+      <div
+        data-menu-theme={theme}
+        className="rounded-lg bg-board px-3 py-4 text-on-board"
+      >
+        <p className="text-[0.6875rem] font-semibold text-bottle-chalk">
+          La carte
+        </p>
+        <p className="display-title mt-0.5 truncate text-base leading-tight">
+          {name}
+        </p>
+        <span className="mt-2 inline-flex rounded-full bg-bottle px-2 py-0.5 text-[0.6875rem] font-medium text-on-bottle">
+          Bières pression
+        </span>
+      </div>
+
+      {/*
+        Une ligne de carte sous le bandeau : c'est là que vit l'autre moitié du
+        thème — l'accent de texte, qui bascule d'une température à l'autre alors
+        que le bandeau, lui, est figé.
+      */}
+      <div data-menu-theme={theme} className="px-3 pt-3 pb-1">
+        <p className="flex items-baseline justify-between gap-2 text-xs">
+          <span className="truncate font-semibold text-ink">Jupiler</span>
+          <span className="shrink-0 font-semibold text-ink tabular-nums">
+            2,50 €
+          </span>
+        </p>
+        <p className="mt-1 text-[0.6875rem] font-semibold text-bottle-deep">
+          {mode === 'light' ? 'Le jour' : 'Le soir'}
+        </p>
+      </div>
     </div>
   )
 }

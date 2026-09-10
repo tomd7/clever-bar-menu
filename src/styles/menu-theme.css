@@ -43,11 +43,34 @@
   so neither is restated — that is a decision, not an oversight.
 */
 
+/*
+  Which reading is in force — the generic half, written once for every theme.
+
+  Each theme below declares its day and its night values as `--theme-*-day` /
+  `--theme-*-night`, so every colour is written exactly once; these three rules
+  decide which pair is live. The order matters and is the whole trick: `.dark`
+  and `.light` have the same specificity, so the later block wins, which is what
+  lets a `.light` preview show the day reading **inside** a back office that is
+  itself in night mode. `.dark` alone could never be undone that way — it sits on
+  `<html>` and is an ancestor of everything.
+*/
 [data-menu-theme] {
+  --bottle: var(--theme-bottle-day);
+  --bottle-deep: var(--theme-bottle-deep-day);
+
   /* See (a). Declared on the same element that declares `--bottle-deep`, so it
-     resolves against that element's own value — in both themes, since the
-     `.dark` block below only overrides `--bottle-deep` on this same element. */
+     resolves against that element's own value, in either reading. */
   --ring: var(--bottle-deep);
+}
+
+.dark [data-menu-theme] {
+  --bottle: var(--theme-bottle-night);
+  --bottle-deep: var(--theme-bottle-deep-night);
+}
+
+.light [data-menu-theme] {
+  --bottle: var(--theme-bottle-day);
+  --bottle-deep: var(--theme-bottle-deep-day);
 }
 
 /*
@@ -61,22 +84,37 @@
 
   `--board` and `--on-board` do not flip between day and night, for the reason
   that already freezes the house pair: a board at the door of a bar is dark at
-  any hour. Only `--bottle-deep`, the *text* accent, flips.
+  any hour. Only the two greens have two readings — the night one is raised,
+  like the house green, because the day value would sink into the slate. The
+  fill stays dark enough for `--on-bottle` to hold 5.2:1 on it.
 */
 [data-menu-theme='pelouse'] {
   --board: #0b3f26;
   --on-board: #f4f8f2;
   --on-board-soft: #a9c6b4;
   --bottle-chalk: #9fe3ba;
-
-  --bottle: #126b41;
-  --bottle-deep: #0f6039;
   --on-bottle: #f4f8f2;
+
+  --theme-bottle-day: #126b41;
+  --theme-bottle-night: #15764a;
+  --theme-bottle-deep-day: #0f6039;
+  --theme-bottle-deep-night: #8fdcae;
 }
 
-.dark [data-menu-theme='pelouse'] {
-  /* Raised, like the house green at night: the day value would sink into the
-     slate. The fill stays dark enough for `--on-bottle` to hold 5.2:1 on it. */
-  --bottle: #15764a;
-  --bottle-deep: #8fdcae;
+/*
+  « Ardoise » — the house board, restated as `--theme-*` so the generic rules
+  above have something to select for it too.
+
+  The values are the ones `theme.css` puts on `:root` and `.dark`; they are
+  repeated here for one reason only, and it is worth stating so nobody
+  "simplifies" it away: a preview forced to the *other* reading has to be able
+  to reach them, and `:root`'s day values are unreachable from inside a `.dark`
+  page. Everywhere else this block is a no-op, since it restates what the
+  element already inherits.
+*/
+[data-menu-theme='ardoise'] {
+  --theme-bottle-day: #35604a;
+  --theme-bottle-night: #3d6c54;
+  --theme-bottle-deep-day: #2c5540;
+  --theme-bottle-deep-night: #8fbca4;
 }
