@@ -72,7 +72,14 @@ export function MenuThemeField({
               <span className="block truncate text-sm font-medium">
                 {theme.label}
               </span>
-              <span className="block truncate text-xs text-ink-soft">
+              {/*
+                Two lines, not one: on the narrow desktop column a single line
+                cut every hint mid-word (« Le thème maiso… »), which is worse
+                than no hint. The clamp keeps a long one from growing the row —
+                and it must stay alone: `line-clamp-*` sets its own `display`,
+                so a `block` next to it silently cancels the clamp.
+              */}
+              <span className="line-clamp-2 text-xs text-ink-soft">
                 {theme.hint}
               </span>
             </span>
