@@ -125,6 +125,36 @@ invoker` matters here more than usual: `products_public_read` is `using true`, s
   see. Split from `0014` (drizzle-kit's `alter table` plus the format check) for the same
   reason as `0012`/`0013`.
 
+- `0018_updated_at_triggers.sql` — `set_updated_at()` and one `before update` trigger per
+  table carrying `updated_at`. **`$onUpdate` in the `timestamps` helper is a Drizzle
+  feature, and Drizzle writes nothing at run time here**: every application write goes
+  through PostgREST, which never heard of it, so `updated_at` stayed frozen at insert time
+  on every row the back office edited. The trigger is the real guarantee; `$onUpdate` only
+  still matters for Drizzle's own writes (the seed scripts). `before update` only, never
+  insert — `seed-demo.ts` inserts a back-dated order history on purpose. A write that
+  changes nothing (`new is not distinct from old`) leaves the stamp alone. `accept_order`
+  and `cancel_order` still set `updated_at = now()` by hand: redundant now, identical in
+  value, deliberately left untouched. **A new table with `...timestamps` needs its own
+  trigger** — nothing adds it automatically.
+
+- `0019_set_updated_at_grants.sql` — revokes `execute` on `set_updated_at()` from `anon`
+  and `authenticated` **by name**, because `0018`'s `revoke ... from public` did not. It
+  changes no behaviour (a trigger function cannot be called outside a trigger) and does
+  not stop the triggers from firing — Postgres checks that privilege when a trigger is
+  created, not when it runs; both were verified against the live database.
+
+**`revoke execute ... from public` closes nothing on Supabase.** The project's default
+privileges (`pg_default_acl`, set by `postgres` and `supabase_admin`) grant `execute` on
+every new function in `public` to `anon`, `authenticated` and `service_role` by name, and
+revoking the `public` pseudo-role leaves those grants standing. To restrict a function,
+revoke from the named roles, then grant back what is intended — and check with
+`has_function_privilege('anon', '<signature>', 'execute')` rather than trusting the
+migration's wording. As of `0019`, the functions of `0007`, `0009`, `0011` and `0015` are
+**still executable by `anon`**, whatever their comments say — including the `0007` and
+`0009` bullets above, which describe `adjust_product_stock` and `accept_order` as granted
+to `authenticated` alone. RLS still stands behind both (they are `security invoker`), but
+the grant those bullets promise does not exist.
+
 **Parameter names in these functions avoid every column name** (`guest_name` not
 `customer_name`, `lookup_id` not `order_id`). Not style: in plpgsql, a parameter that is a
 homonym of a column visible in the statement raises an ambiguity **at run time**, which is

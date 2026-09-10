@@ -199,7 +199,12 @@ export async function setOrderStatus(
           n'a plus eu lieu.
         */
         cancelled_by: status === 'cancelled' ? 'venue' : null,
-        updated_at: new Date().toISOString(),
+        /*
+          No `updated_at` here. It used to be sent from the browser's clock,
+          which drifts from the database's; the `orders_set_updated_at` trigger
+          (migration 0018) now stamps every real change with the server's
+          `now()`, and a value sent from here would only be overwritten.
+        */
       })
       .eq('id', orderId),
   )

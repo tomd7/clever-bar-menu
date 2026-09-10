@@ -127,6 +127,20 @@
       "when": 1789046962590,
       "tag": "0017_lean_archangel",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1789050013477,
+      "tag": "0018_updated_at_triggers",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1789050211726,
+      "tag": "0019_set_updated_at_grants",
+      "breakpoints": true
     }
   ]
 }

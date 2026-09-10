@@ -70,11 +70,21 @@ const ownerWrite = (name: string, owns: ReturnType<typeof sql>) => [
 ]
 
 /**
- * Colonnes de dates communes à toutes les tables.
+ * Date columns shared by every table.
  *
- * `updatedAt` est tenu à jour côté application (`$onUpdate`) plutôt que par un
- * trigger Postgres : la logique reste visible dans ce fichier et suit les
- * migrations, au prix d'être contournable par un `UPDATE` écrit à la main.
+ * **`updatedAt` is kept true by a trigger, not by the `$onUpdate` below.** The
+ * original choice was the reverse — keep the logic visible here rather than in
+ * a trigger, accepting that a hand-written `UPDATE` could bypass it. The cost
+ * was misjudged: `$onUpdate` only fills Drizzle's *own* update statements, and
+ * Drizzle is migrations-only in this project. Every application write goes
+ * through PostgREST, so it was not the odd hand-written `UPDATE` that bypassed
+ * it but all of them, and `updated_at` stayed frozen at insert time on every
+ * row the back office edited.
+ *
+ * Migration `0018` adds `set_updated_at()` and a `before update` trigger per
+ * table. `$onUpdate` stays for Drizzle's own writes (the seed scripts), where it
+ * is harmless — the trigger overwrites it anyway. A new table spreading these
+ * columns needs its own trigger: nothing adds one automatically.
  */
 const timestamps = {
   createdAt: timestamp('created_at', { withTimezone: true })
