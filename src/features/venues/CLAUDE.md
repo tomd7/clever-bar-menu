@@ -225,6 +225,12 @@ checks would in English.
   every face. That is the back office; a customer's carte downloads only the faces it uses.
 - **« Revenir à Archivo partout »** resets the four roles at once, and only exists while one
   of them differs.
+- **Each chip's `<label>` is `relative`, and it has to be.** `sr-only` is
+  `position: absolute`; with no positioned ancestor inside the rail, the radio sat outside the
+  rail's scroll box, so clicking one of the last chips — off screen to the right — focused it
+  and scrolled the whole page sideways (`<html>` `scrollLeft` 335), pushing the back office's
+  column out of view. `body`'s `overflow-x: hidden` hides that scroll, it doesn't prevent it.
+  Any `sr-only` input inside a scrolling rail needs the same.
 - It sits in the theme's panel, above the preview. The separator is on a wrapper, not on the
   `<fieldset>`: a fieldset draws its legend across its own top border.
 - The preview renders all four roles with the carte's own classes, `.menu-text` included, so

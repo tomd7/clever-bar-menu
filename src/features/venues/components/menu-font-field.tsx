@@ -74,7 +74,16 @@ export function MenuFontField({
               <ul className="scrollbar-none rail-fade mt-1 flex gap-2 overflow-x-auto py-1">
                 {menuFontsFor(role.id).map((font) => (
                   <li key={font.id} className="shrink-0">
-                    <label className="flex min-h-11 cursor-pointer items-center rounded-full border border-line bg-surface px-3.5 whitespace-nowrap transition-[border-color,background-color,transform] duration-150 ease-out select-none has-[:checked]:border-bottle has-[:checked]:bg-surface-raised has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring active:scale-[0.97] lg:min-h-9">
+                    {/*
+                      `relative` keeps the visually hidden radio inside its chip.
+                      `sr-only` is `position: absolute`, and with no positioned
+                      ancestor in the rail the input sat outside the rail's
+                      scroll box: focusing a chip scrolled off to the right — the
+                      last four of nine — scrolled the whole page sideways and
+                      pushed the back office's column off screen. Contained, the
+                      focus scrolls the rail instead.
+                    */}
+                    <label className="relative flex min-h-11 cursor-pointer items-center rounded-full border border-line bg-surface px-3.5 whitespace-nowrap transition-[border-color,background-color,transform] duration-150 ease-out select-none has-[:checked]:border-bottle has-[:checked]:bg-surface-raised has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring active:scale-[0.97] lg:min-h-9">
                       <input
                         type="radio"
                         name={`menu-font-${role.id}`}
