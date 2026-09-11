@@ -24,17 +24,20 @@
   que l'ordre de la cascade reste lisible : il est ci-dessous, dans l'ordre.
 */
 
-@import url('https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap');
 @import 'tailwindcss';
 @plugin '@tailwindcss/typography';
 
 @import 'tw-animate-css';
 
 /* Le socle, dans l'ordre de la cascade. */
+/* The typefaces, self-hosted: declarations only, so their place is free. */
+@import './styles/fonts.css';
 @import './styles/theme.css';
 @import './styles/menu-theme.css';
 @import './styles/base.css';
 @import './styles/vocabulary.css';
+/* After the vocabulary: a face set on a `.display-title` must win against it. */
+@import './styles/menu-fonts.css';
 @import './styles/motion.css';
 
 /* Les composants, après le socle : une règle de composant doit pouvoir

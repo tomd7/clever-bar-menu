@@ -4,6 +4,7 @@ import { MenuNav, sectionId } from '#/features/menu/components/menu-nav'
 import { ProductSize } from '#/components/product-size'
 import { formatPrice } from '#/lib/money'
 import { parseMenuTheme } from '#/lib/menu-theme'
+import { menuFace, parseMenuFonts } from '#/lib/menu-fonts'
 import { productPhotoUrl } from '#/features/menu/photo'
 import { VenueLogo } from '#/components/venue-logo'
 import { venueImageUrl } from '#/lib/venue-images'
@@ -13,6 +14,7 @@ import type {
   PublicMenuData,
   PublicProduct,
 } from '#/features/menu/public-api'
+import type { MenuFonts } from '#/lib/menu-fonts'
 import type { ReactNode } from 'react'
 
 /**
@@ -74,6 +76,15 @@ export function PublicMenu({
 }) {
   const { venue, categories } = menu
   const hasNav = categories.length >= NAV_MIN_CATEGORIES
+
+  /*
+    The venue's typefaces, one per role. Each content element names its face in
+    `data-menu-face` (`styles/menu-fonts.css`), and in the SSR'd HTML like the
+    theme — the face is known before the first paint, only its file may be late,
+    which the fallback metrics of `styles/fonts.css` absorb. The kicker, the
+    summary rail and the back-to-top link are controls: they keep the house face.
+  */
+  const fonts = parseMenuFonts(venue)
 
   return (
     /*
@@ -177,12 +188,18 @@ export function PublicMenu({
               La carte
             </p>
 
-            <h1 className="display-title mt-2 text-4xl leading-[1.02] text-balance sm:text-5xl">
+            <h1
+              data-menu-face={menuFace(fonts.title)}
+              className="display-title mt-2 text-4xl leading-[1.02] text-balance sm:text-5xl"
+            >
               {venue.name}
             </h1>
 
             {venue.description ? (
-              <p className="mt-4 max-w-prose text-base leading-relaxed text-on-board-soft">
+              <p
+                data-menu-face={menuFace(fonts.description)}
+                className="menu-text mt-4 max-w-prose text-base leading-relaxed text-on-board-soft"
+              >
                 {venue.description}
               </p>
             ) : null}
@@ -209,6 +226,7 @@ export function PublicMenu({
                     category={category}
                     currency={venue.currency}
                     isFirst={index === 0}
+                    fonts={fonts}
                     productAction={productAction}
                   />
                 ))}
@@ -244,11 +262,13 @@ function MenuSection({
   category,
   currency,
   isFirst,
+  fonts,
   productAction,
 }: {
   category: PublicCategory
   currency: string
   isFirst: boolean
+  fonts: MenuFonts
   productAction?: ProductAction
 }) {
   /*
@@ -291,7 +311,10 @@ function MenuSection({
           : 'scroll-mt-24 border-t border-line pt-10'
       }
     >
-      <h2 className="display-title text-2xl sm:text-[1.75rem]">
+      <h2
+        data-menu-face={menuFace(fonts.category)}
+        className="display-title text-2xl sm:text-[1.75rem]"
+      >
         {category.name}
       </h2>
 
@@ -303,7 +326,10 @@ function MenuSection({
         paraître brute.
       */}
       {category.description ? (
-        <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">
+        <p
+          data-menu-face={menuFace(fonts.description)}
+          className="menu-text mt-1.5 text-sm leading-relaxed text-ink-soft"
+        >
           {category.description}
         </p>
       ) : null}
@@ -321,6 +347,7 @@ function MenuSection({
             product={product}
             currency={currency}
             withPhotoColumn={hasPhotos}
+            fonts={fonts}
             action={productAction?.(product)}
           />
         ))}
@@ -333,11 +360,13 @@ function MenuItem({
   product,
   currency,
   withPhotoColumn,
+  fonts,
   action,
 }: {
   product: PublicProduct
   currency: string
   withPhotoColumn: boolean
+  fonts: MenuFonts
   action?: ReactNode
 }) {
   return (
@@ -357,7 +386,10 @@ function MenuItem({
       className={itemLayout(withPhotoColumn, action !== undefined)}
     >
       <div className="min-w-0">
-        <p className="flex items-baseline gap-2">
+        <p
+          data-menu-face={menuFace(fonts.product)}
+          className="menu-text flex items-baseline gap-2"
+        >
           {/*
             Le format est dans la boîte du nom, avant la conduite : « Blonde
             50cl ······ 5,50 € », comme sur une carte imprimée. Posé en frère
@@ -387,7 +419,10 @@ function MenuItem({
         </p>
 
         {product.description ? (
-          <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">
+          <p
+            data-menu-face={menuFace(fonts.description)}
+            className="menu-text mt-1.5 text-sm leading-relaxed text-ink-soft"
+          >
             {product.description}
           </p>
         ) : null}

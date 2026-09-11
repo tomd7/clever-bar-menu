@@ -6,6 +6,7 @@ import { CancelButton } from '#/components/buttons/cancel-button'
 import { ErrorNote } from '#/components/error-note'
 import { ImageField, useObjectUrl } from '#/components/form/image-field'
 import { MenuAddress } from '#/components/back-office/menu-address'
+import { MenuFontField } from '#/features/venues/components/menu-font-field'
 import { MenuThemeField } from '#/features/venues/components/menu-theme-field'
 import { NavLink } from '#/components/nav-link'
 import { SaveButton } from '#/components/buttons/save-button'
@@ -23,16 +24,18 @@ import {
 } from '#/components/skeleton'
 import { guessLogoPlate } from '#/features/venues/logo'
 import { parseMenuTheme } from '#/lib/menu-theme'
+import { MENU_FONT_ROLES, menuFace, parseMenuFonts } from '#/lib/menu-fonts'
 import { useUpdateVenue } from '#/features/venues/mutations'
 import { venueBySlugQueryOptions } from '#/features/venues/api'
 import { venueImageUrl } from '#/lib/venue-images'
 
+import type { MenuFonts } from '#/lib/menu-fonts'
 import type { MenuTheme } from '#/lib/menu-theme'
 import type { Venue } from '#/lib/supabase'
 
 /**
- * Réglages d'un établissement : son nom, sa description, son logo, le thème de
- * sa carte.
+ * Réglages d'un établissement : son nom, sa description, son logo, le thème et
+ * les polices de sa carte.
  *
  * L'écran qui manquait — rien ne permettait de rectifier un nom mal saisi, et
  * la description qui s'affiche sous le titre de la carte publique n'était
@@ -77,6 +80,10 @@ function VenueSettingsForm({ venue }: { venue: Venue }) {
   const [description, setDescription] = useState(venue.description ?? '')
   const [theme, setTheme] = useState<MenuTheme>(parseMenuTheme(venue.theme))
 
+  /* The row's faces, parsed: what the draft starts from and is compared to. */
+  const savedFonts = parseMenuFonts(venue)
+  const [fonts, setFonts] = useState<MenuFonts>(savedFonts)
+
   /*
     The logo takes three pieces of state, where a product's photo takes two:
     `logoFile` is picked but not uploaded, `logoPath` is what the row holds (or
@@ -102,6 +109,7 @@ function VenueSettingsForm({ venue }: { venue: Venue }) {
     name !== venue.name ||
     description !== (venue.description ?? '') ||
     theme !== venue.theme ||
+    MENU_FONT_ROLES.some((role) => fonts[role.id] !== savedFonts[role.id]) ||
     logoFile !== null ||
     logoPath !== venue.logo_path ||
     (hasLogo && logoPlate !== venue.logo_plate)
@@ -124,6 +132,7 @@ function VenueSettingsForm({ venue }: { venue: Venue }) {
     setName(venue.name)
     setDescription(venue.description ?? '')
     setTheme(parseMenuTheme(venue.theme))
+    setFonts(savedFonts)
     guessedFile.current = null
     setLogoFile(null)
     setLogoPath(venue.logo_path)
@@ -169,6 +178,7 @@ function VenueSettingsForm({ venue }: { venue: Venue }) {
               name,
               description,
               theme,
+              fonts,
               logoFile,
               logoPath,
               logoPlate,
@@ -303,6 +313,16 @@ function VenueSettingsForm({ venue }: { venue: Venue }) {
           <MenuThemeField value={theme} onChange={setTheme} />
 
           {/*
+            In the theme's panel, between its picker and the preview, so the
+            preview sits right under whatever was touched last. The rule is on a
+            wrapper and not on the fieldset: a fieldset draws its legend across
+            its own top border.
+          */}
+          <div className="mt-6 border-t border-line pt-4">
+            <MenuFontField value={fonts} onChange={setFonts} />
+          </div>
+
+          {/*
             L'aperçu suit le **brouillon**, pas la ligne enregistrée : choisir
             un thème sans le voir reviendrait à choisir un habillage de mémoire.
 
@@ -315,6 +335,7 @@ function VenueSettingsForm({ venue }: { venue: Venue }) {
           <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
             <ThemePreview
               theme={theme}
+              fonts={fonts}
               mode="light"
               name={name || venue.name}
               logoUrl={logoUrl}
@@ -322,6 +343,7 @@ function VenueSettingsForm({ venue }: { venue: Venue }) {
             />
             <ThemePreview
               theme={theme}
+              fonts={fonts}
               mode="dark"
               name={name || venue.name}
               logoUrl={logoUrl}
@@ -349,12 +371,14 @@ function VenueSettingsForm({ venue }: { venue: Venue }) {
  */
 function ThemePreview({
   theme,
+  fonts,
   mode,
   name,
   logoUrl,
   logoPlate,
 }: {
   theme: MenuTheme
+  fonts: MenuFonts
   mode: 'light' | 'dark'
   name: string
   logoUrl: string | null
@@ -386,7 +410,10 @@ function ThemePreview({
         <p className="text-[0.6875rem] font-semibold text-bottle-chalk">
           La carte
         </p>
-        <p className="display-title mt-0.5 truncate text-base leading-tight">
+        <p
+          data-menu-face={menuFace(fonts.title)}
+          className="display-title mt-0.5 truncate text-base leading-tight"
+        >
           {name}
         </p>
         <span className="mt-2 inline-flex rounded-full bg-bottle px-2 py-0.5 text-[0.6875rem] font-medium text-on-bottle">
@@ -399,12 +426,32 @@ function ThemePreview({
         thème — l'accent de texte, qui bascule d'une température à l'autre alors
         que le bandeau, lui, est figé.
       */}
+      {/*
+        Every role appears once, with the carte's own classes — `.menu-text` on
+        the reading lines included, so the size correction of `menu-fonts.css`
+        is previewed too.
+      */}
       <div data-menu-theme={theme} className="px-3 pt-3 pb-1">
-        <p className="flex items-baseline justify-between gap-2 text-xs">
+        <p
+          data-menu-face={menuFace(fonts.category)}
+          className="display-title truncate text-sm leading-tight text-ink"
+        >
+          Bières pression
+        </p>
+        <p
+          data-menu-face={menuFace(fonts.product)}
+          className="menu-text mt-1.5 flex items-baseline justify-between gap-2 text-xs"
+        >
           <span className="truncate font-semibold text-ink">Jupiler</span>
           <span className="shrink-0 font-semibold text-ink tabular-nums">
             2,50 €
           </span>
+        </p>
+        <p
+          data-menu-face={menuFace(fonts.description)}
+          className="menu-text mt-0.5 truncate text-[0.6875rem] text-ink-soft"
+        >
+          Blonde légère, servie bien fraîche.
         </p>
         <p className="mt-1 text-[0.6875rem] font-semibold text-bottle-deep">
           {mode === 'light' ? 'Le jour' : 'Le soir'}
@@ -446,7 +493,10 @@ function VenueSettingsSkeleton() {
             <Skeleton className="h-14 w-full" delay={240} />
             <Skeleton className="h-14 w-full" delay={280} />
           </div>
-          <Skeleton className="mt-4 h-28 w-full" delay={320} />
+          <Skeleton className="mt-6 h-4 w-40 rounded-full" delay={300} />
+          <Skeleton className="mt-3 h-11 w-full" delay={320} />
+          <Skeleton className="mt-3 h-11 w-full" delay={340} />
+          <Skeleton className="mt-4 h-28 w-full" delay={360} />
         </div>
       </div>
     </SkeletonScreen>

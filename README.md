@@ -90,6 +90,10 @@ encodes.
   board. The browser shrinks it before upload and guesses whether a dark logo needs a light
   plate to stay legible on the board; the manager can flip that, and sees the result in
   both the day and the night preview.
+- **Per-venue typefaces** — the venue title, the category headings, the product lines and
+  the descriptions each take a face from a curated list of nine, chosen from the same
+  settings screen and previewed day and night. Faces are served from the application's own
+  domain, not from Google, and a menu downloads only the ones it uses.
 
 ## Tech stack
 
@@ -477,7 +481,9 @@ Three behaviours to know:
 - [x] Venue logo: uploaded from `/admin/<slug>/reglages`, shown at the head of the public
       menu's board, with a light plate for dark logos — guessed from the image, adjustable
       by the manager
-- [ ] Custom colours, typefaces and background image for the public menu
+- [x] Per-venue typefaces: a face per role (title, categories, products, descriptions) from a
+      curated list, self-hosted, previewed day and night
+- [ ] Custom colours and background image for the public menu
 - [ ] Internationalization
 - [ ] Shared access: several accounts on one venue, roles, ownership transfer
 

@@ -260,6 +260,13 @@ list.
   name: a title set at 4xl keeps its width, and a long wordmark cannot push it onto a third
   line. Not `loading="lazy"` — it is in the first screen read. `fetchPublicMenu` names
   `logo_path` and `logo_plate` among its columns.
+- **Each content element names its typeface** in `data-menu-face`, from
+  `parseMenuFonts(venue)`: the venue title, the category headings, the product lines (name,
+  size, price) and every description. The house face writes no attribute, so a carte that
+  never changed its fonts renders exactly as before. Reading lines also carry `.menu-text`,
+  which `styles/menu-fonts.css` uses to keep Archivo's x-height. All of it is in the SSR'd
+  HTML, `m.$venueSlug.tsx` preloads the title face when it isn't Archivo, and
+  `fetchPublicMenu` names the four `font_*` columns. See `src/styles/CLAUDE.md`.
 - **The order bar, the cart sheet and the 404 stay on the house palette, on purpose.**
   `OrderBar` is a sibling of `<PublicMenu>` in the route, and `BottomSheet` portals to
   `document.body`, so no wrapper here could reach it anyway; the 404 has no venue and
