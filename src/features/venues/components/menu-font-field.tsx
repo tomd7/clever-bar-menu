@@ -48,14 +48,14 @@ export function MenuFontField({
     /* `min-w-0`: a fieldset's minimum width is its content's, and a rail of
        nine chips would otherwise widen the whole column. */
     <fieldset className={cn('min-w-0', className)}>
-      <legend className="text-sm font-medium">Polices de la carte</legend>
+      <legend className="text-sm font-semibold">Polices de la carte</legend>
 
       <p className="mt-1 text-xs text-ink-soft">
         Choisies usage par usage. Les polices de titre ne sont pas proposées
         pour les descriptions : elles se lisent mal en petit.
       </p>
 
-      <div className="mt-3 space-y-4">
+      <div className="mt-4 space-y-4">
         {MENU_FONT_ROLES.map((role) => {
           const selected =
             MENU_FONTS.find((font) => font.id === value[role.id]) ??
@@ -63,8 +63,18 @@ export function MenuFontField({
 
           return (
             <fieldset key={role.id} className="min-w-0">
-              <legend className="text-xs font-medium text-ink-soft">
-                {role.label}
+              {/*
+                The hint of the selected face only, on the role's own line: nine
+                hints would not fit in chips a thumb can scroll, and a hint shown
+                on hover would not exist on the phone. On a line of its own under
+                the rail it cost four rows of the same sentence while every role
+                was still on Archivo; here it wraps on the phone and takes no row
+                of its own from `sm`. It also becomes part of the group's name,
+                so a screen reader hears what the current face is like.
+              */}
+              <legend className="text-xs">
+                <span className="font-medium">{role.label}</span>
+                <span className="text-ink-soft"> · {selected.hint}</span>
               </legend>
 
               {/*
@@ -104,13 +114,6 @@ export function MenuFontField({
                   </li>
                 ))}
               </ul>
-
-              {/*
-                The hint of the selected face only, under the rail: nine hints
-                would not fit in chips a thumb can scroll, and a hint shown on
-                hover would not exist on the phone.
-              */}
-              <p className="mt-1 text-xs text-ink-soft">{selected.hint}</p>
             </fieldset>
           )
         })}

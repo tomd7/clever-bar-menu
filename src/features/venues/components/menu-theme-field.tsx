@@ -35,7 +35,7 @@ export function MenuThemeField({
 }) {
   return (
     <fieldset className={cn('min-w-0', className)}>
-      <legend className="text-sm font-medium">Thème de la carte</legend>
+      <legend className="text-sm font-semibold">Thème de la carte</legend>
 
       <p className="mt-1 text-xs text-ink-soft">
         Il habille le bandeau et les accents de votre carte publique. Le fond ne
@@ -43,11 +43,12 @@ export function MenuThemeField({
       </p>
 
       {/*
-        Deux colonnes dès le téléphone — une pastille de couleur perd son sens
-        étirée sur toute la largeur —, trois quand la place existe, et deux à
-        nouveau dans la colonne de droite du bureau, qui est étroite.
+        Two columns from the phone up — a colour swatch stretched across the
+        whole width loses its point —, three once the form is full width at
+        `sm`. Back to two at `lg`, where the preview takes the right column and
+        leaves the form about 300px at 1024; three again from `xl`.
       */}
-      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-2">
+      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3">
         {MENU_THEMES.map((theme) => (
           <label
             key={theme.id}
