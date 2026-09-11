@@ -31,6 +31,10 @@ export type PublicVenue = Pick<
   | 'theme'
   | 'logo_path'
   | 'logo_plate'
+  | 'font_title'
+  | 'font_category'
+  | 'font_product'
+  | 'font_description'
 >
 
 export type PublicProduct = Pick<
@@ -60,7 +64,7 @@ export type PublicMenuData = {
   pas à les recevoir pour autant.
 */
 const VENUE_COLUMNS =
-  'id,slug,name,description,currency,orders_enabled,theme,logo_path,logo_plate'
+  'id,slug,name,description,currency,orders_enabled,theme,logo_path,logo_plate,font_title,font_category,font_product,font_description'
 const CATEGORY_COLUMNS = 'id,name,description'
 const PRODUCT_COLUMNS =
   'id,category_id,name,description,size,price_cents,image_path'

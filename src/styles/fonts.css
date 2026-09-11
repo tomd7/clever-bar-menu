@@ -1,0 +1,235 @@
+/*
+  Every typeface the application ships, served from our own origin.
+
+  The stylesheet used to `@import` Archivo from fonts.googleapis.com. That sent
+  every visitor's IP address to Google — customers scanning a table's QR code
+  included — and put a third-party connection in front of the first line of
+  text, on mobile data. The files now come from the `@fontsource*` packages and
+  Vite hashes them into the build.
+
+  **The declarations are written here, not imported from the packages.** Theirs
+  declare every subset — cyrillic, greek, vietnamese — and Vite would copy each
+  file into the build for a French carte. Latin only: every face was checked
+  in its own file for the French accents, « », œ and €. Two characters are
+  missing from all of them, Archivo included — `Ÿ` and the narrow no-break
+  space (U+202F, the thousands separator of a French price over 999 €) — and
+  the browser takes those from the fallback, as it always has.
+
+  **A face costs nothing until something uses it.** A browser downloads an
+  `@font-face` only once its family is applied to rendered text, so nine
+  families declared in the one stylesheet do not make a carte download nine
+  files: a venue that never changed its fonts downloads Archivo alone.
+
+  **Each face has a fallback twin**, a local system font resized to the face's
+  proportions, so the text keeps its box while the real file arrives and
+  nothing jumps under a thumb. The values were measured, not guessed:
+
+    size-adjust      = the face's width ÷ the local font's width, both set in
+                       the browser (canvas) over the same French carte sample —
+                       the face at the weight it mostly sets (400 for Archivo,
+                       the body of every page; 700 for the two titles-only
+                       faces; 600, a product line, for the others), the local
+                       font at its regular weight
+    ascent-override  = ascender ÷ (unitsPerEm × size-adjust)
+    descent-override = |descender| ÷ (unitsPerEm × size-adjust)
+
+  (typo metrics from the files, since every face here sets USE_TYPO_METRICS;
+  line gap 0 for all). **Measure at the weight used, never at the file's
+  default instance.** A variable file's default can be anything — Archivo's is
+  600, Big Shoulders' 100 — and a first pass that read the default advances put
+  Big Shoulders' fallback 30% too narrow and Archivo's 4% too wide. **And measure
+  the local font at its regular weight**, whatever the face's: a fallback face
+  declares no weight, so a 600 or 700 request synthesizes bold from the regular
+  file, which does not widen it. Measured against Arial Bold instead, every
+  fallback set at 600 or 700 came out 6–7% too narrow. Arial, Times New Roman and Courier New are absent on Android: there the
+  `local()` finds nothing, the twin is skipped, and the stack falls through to
+  the generic family — no worse than before.
+
+  The catalogue a manager picks from is `src/lib/menu-fonts.ts`; the rules that
+  put a face on the carte are `menu-fonts.css`.
+*/
+
+/* Archivo — the house face, variable on weight and width. */
+@font-face {
+  font-family: 'Archivo';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  font-stretch: 62% 125%;
+  src: url('@fontsource-variable/archivo/files/archivo-latin-wdth-normal.woff2')
+    format('woff2');
+}
+
+@font-face {
+  font-family: 'Archivo Fallback';
+  src: local('Arial');
+  size-adjust: 98.42%;
+  ascent-override: 89.21%;
+  descent-override: 21.34%;
+  line-gap-override: 0%;
+}
+
+/* Playfair Display — a bistro serif. */
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400 900;
+  src: url('@fontsource-variable/playfair-display/files/playfair-display-latin-wght-normal.woff2')
+    format('woff2');
+}
+
+@font-face {
+  font-family: 'Playfair Display Fallback';
+  src: local('Times New Roman');
+  size-adjust: 112.7%;
+  ascent-override: 96.01%;
+  descent-override: 22.27%;
+  line-gap-override: 0%;
+}
+
+/* Newsreader — a text serif, readable small. */
+@font-face {
+  font-family: 'Newsreader';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 800;
+  src: url('@fontsource-variable/newsreader/files/newsreader-latin-wght-normal.woff2')
+    format('woff2');
+}
+
+@font-face {
+  font-family: 'Newsreader Fallback';
+  src: local('Times New Roman');
+  size-adjust: 109.85%;
+  ascent-override: 66.91%;
+  descent-override: 24.12%;
+  line-gap-override: 0%;
+}
+
+/* Fredoka — rounded. */
+@font-face {
+  font-family: 'Fredoka';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 300 700;
+  src: url('@fontsource-variable/fredoka/files/fredoka-latin-wght-normal.woff2')
+    format('woff2');
+}
+
+@font-face {
+  font-family: 'Fredoka Fallback';
+  src: local('Arial');
+  size-adjust: 101.48%;
+  ascent-override: 95.98%;
+  descent-override: 23.25%;
+  line-gap-override: 0%;
+}
+
+/*
+  Courier Prime — a typewriter. The one family here that is not variable: two
+  static files, and a `font-weight: 600` (a product name) resolves to the bold,
+  the nearest heavier weight.
+*/
+@font-face {
+  font-family: 'Courier Prime';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url('@fontsource/courier-prime/files/courier-prime-latin-400-normal.woff2')
+    format('woff2');
+}
+
+@font-face {
+  font-family: 'Courier Prime';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url('@fontsource/courier-prime/files/courier-prime-latin-700-normal.woff2')
+    format('woff2');
+}
+
+@font-face {
+  font-family: 'Courier Prime Fallback';
+  src: local('Courier New');
+  size-adjust: 99.92%;
+  ascent-override: 78.19%;
+  descent-override: 34.21%;
+  line-gap-override: 0%;
+}
+
+/* Oswald — condensed, brasserie signage. */
+@font-face {
+  font-family: 'Oswald';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 700;
+  src: url('@fontsource-variable/oswald/files/oswald-latin-wght-normal.woff2')
+    format('woff2');
+}
+
+@font-face {
+  font-family: 'Oswald Fallback';
+  src: local('Arial');
+  size-adjust: 89.77%;
+  ascent-override: 132.9%;
+  descent-override: 32.2%;
+  line-gap-override: 0%;
+}
+
+/* Caveat — chalk handwriting. */
+@font-face {
+  font-family: 'Caveat';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400 700;
+  src: url('@fontsource-variable/caveat/files/caveat-latin-wght-normal.woff2')
+    format('woff2');
+}
+
+@font-face {
+  font-family: 'Caveat Fallback';
+  src: local('Arial');
+  size-adjust: 76.16%;
+  ascent-override: 126.06%;
+  descent-override: 39.4%;
+  line-gap-override: 0%;
+}
+
+/* Cormorant Garamond — an elegant display serif. */
+@font-face {
+  font-family: 'Cormorant Garamond';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 300 700;
+  src: url('@fontsource-variable/cormorant-garamond/files/cormorant-garamond-latin-wght-normal.woff2')
+    format('woff2');
+}
+
+@font-face {
+  font-family: 'Cormorant Garamond Fallback';
+  src: local('Times New Roman');
+  size-adjust: 97.06%;
+  ascent-override: 95.21%;
+  descent-override: 29.57%;
+  line-gap-override: 0%;
+}
+
+/* Big Shoulders Display — industrial, very condensed. */
+@font-face {
+  font-family: 'Big Shoulders Display';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('@fontsource-variable/big-shoulders-display/files/big-shoulders-display-latin-wght-normal.woff2')
+    format('woff2');
+}
+
+@font-face {
+  font-family: 'Big Shoulders Display Fallback';
+  src: local('Arial');
+  size-adjust: 77.73%;
+  ascent-override: 126.59%;
+  descent-override: 27.4%;
+  line-gap-override: 0%;
+}

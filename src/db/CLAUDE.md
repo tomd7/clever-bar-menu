@@ -240,6 +240,18 @@ whether it sits on a light plate on the board. Migration `0020` is drizzle-kit's
   a removed logo does not hand its plate to the next one. No check constraint restates it:
   a stray `true` with no logo draws nothing.
 
+## `venues.font_title` / `font_category` / `font_product` / `font_description`
+
+The carte's typefaces, one `text not null default 'archivo'` per role — the house face stored
+as a name, like `'ardoise'`. Migration `0021` is drizzle-kit's plain `alter table`, and no
+policy changed, for the reason given for `venues.theme`.
+
+**Four checks, not one**, because the whitelist differs per role: titles and categories take
+all nine faces, products seven, descriptions five (`venues_font_*_allowed`). They restate the
+role lists of `src/lib/menu-fonts.ts`, which `updateVenue` enforces in French first. Three
+places move together: `VENUE_FONTS` with those checks, the catalogue, and
+`src/styles/fonts.css` with `src/styles/menu-fonts.css`.
+
 ## Known weak point
 
 `src/lib/supabase.ts` holds a **hand-written** `Database` type in snake_case: PostgREST

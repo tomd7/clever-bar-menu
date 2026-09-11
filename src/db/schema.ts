@@ -126,6 +126,33 @@ export const VENUE_THEMES = [
 export type VenueTheme = (typeof VENUE_THEMES)[number]
 
 /**
+ * The typefaces a public menu can be set in, one column per role.
+ *
+ * Constrained text again, for the reason `VENUE_THEMES` gives. `'archivo'` is
+ * the house face and, like `'ardoise'`, it is stored as a name, never as `null`.
+ *
+ * Unlike the theme, **not every face is allowed everywhere**: the four checks on
+ * `venues` restate the role lists of `src/lib/menu-fonts.ts` — a handwritten or
+ * condensed face may head a section but not set a 14px description. The
+ * whitelist lives in three places that move together: here with those checks,
+ * `src/lib/menu-fonts.ts` (the browser's copy), and `src/styles/fonts.css` with
+ * `src/styles/menu-fonts.css`.
+ */
+export const VENUE_FONTS = [
+  'archivo',
+  'playfair-display',
+  'newsreader',
+  'fredoka',
+  'courier-prime',
+  'oswald',
+  'caveat',
+  'cormorant-garamond',
+  'big-shoulders-display',
+] as const
+
+export type VenueFont = (typeof VENUE_FONTS)[number]
+
+/**
  * Établissement — un bar ou un café. Racine de tout le cloisonnement
  * multi-établissements : catégories et produits n'existent qu'à travers lui.
  */
@@ -206,6 +233,17 @@ export const venues = pgTable(
     logoPlate: boolean('logo_plate').notNull().default(false),
 
     /**
+     * The public menu's typefaces, role by role — see `VENUE_FONTS`.
+     *
+     * `not null default 'archivo'`: existing rows keep exactly the face they
+     * were already showing.
+     */
+    fontTitle: text('font_title').notNull().default('archivo'),
+    fontCategory: text('font_category').notNull().default('archivo'),
+    fontProduct: text('font_product').notNull().default('archivo'),
+    fontDescription: text('font_description').notNull().default('archivo'),
+
+    /**
      * Archivage — suppression logique.
      *
      * Une date plutôt qu'un booléen : elle répond à « archivé ? » comme à
@@ -266,6 +304,31 @@ export const venues = pgTable(
     check(
       'venues_theme_allowed',
       sql`${table.theme} in ('ardoise', 'pelouse', 'rubis', 'prune', 'indigo')`,
+    ),
+
+    /**
+     * Each face belongs to the catalogue **and** to its role's list.
+     *
+     * Titles and categories take all nine; products lose the two titles-only
+     * faces; descriptions keep the five that stay readable small. Same
+     * relationship to `updateVenue` as `venues_theme_allowed`: the application
+     * refuses in French first, these catch a row written from outside it.
+     */
+    check(
+      'venues_font_title_allowed',
+      sql`${table.fontTitle} in ('archivo', 'playfair-display', 'newsreader', 'fredoka', 'courier-prime', 'oswald', 'caveat', 'cormorant-garamond', 'big-shoulders-display')`,
+    ),
+    check(
+      'venues_font_category_allowed',
+      sql`${table.fontCategory} in ('archivo', 'playfair-display', 'newsreader', 'fredoka', 'courier-prime', 'oswald', 'caveat', 'cormorant-garamond', 'big-shoulders-display')`,
+    ),
+    check(
+      'venues_font_product_allowed',
+      sql`${table.fontProduct} in ('archivo', 'playfair-display', 'newsreader', 'fredoka', 'courier-prime', 'oswald', 'caveat')`,
+    ),
+    check(
+      'venues_font_description_allowed',
+      sql`${table.fontDescription} in ('archivo', 'playfair-display', 'newsreader', 'fredoka', 'courier-prime')`,
     ),
 
     ...ownerWrite('venues', sql`${authUid} = ${table.ownerId}`),

@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 
 import { env } from '#/env'
 
+import type { MenuFont } from '#/lib/menu-fonts'
 import type { MenuTheme } from '#/lib/menu-theme'
 
 /**
@@ -38,6 +39,14 @@ type VenueRow = {
   logo_path: string | null
   /** Whether the logo sits on a light plate on the board. */
   logo_plate: boolean
+  /**
+   * The carte's typefaces, role by role. Typed from `#/lib/menu-fonts` like
+   * `theme`; read through `parseMenuFonts`, which also checks the role.
+   */
+  font_title: MenuFont
+  font_category: MenuFont
+  font_product: MenuFont
+  font_description: MenuFont
   /** Date d'archivage, ou `null` si l'établissement est actif. */
   deleted_at: string | null
   created_at: string
@@ -157,6 +166,10 @@ export type Database = {
           | 'theme'
           | 'logo_path'
           | 'logo_plate'
+          | 'font_title'
+          | 'font_category'
+          | 'font_product'
+          | 'font_description'
         >
         Update: Partial<VenueRow>
         Relationships: []

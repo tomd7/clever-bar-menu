@@ -11,6 +11,7 @@ import TanStackQueryDevtools from '../integrations/tanstack-query/devtools'
 
 import { NotFound } from '#/components/not-found'
 import { env } from '#/env'
+import { DEFAULT_MENU_FONT, menuFontPreload } from '#/lib/menu-fonts'
 
 import appCss from '../styles.css?url'
 
@@ -44,6 +45,13 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
         rel: 'stylesheet',
         href: appCss,
       },
+      /*
+        Archivo, the house face, sets the body of every page: fetched in
+        parallel with the stylesheet rather than once the stylesheet has been
+        parsed and a first text node asks for it. It lives in the carte's font
+        catalogue only because that is where the file's hashed URL is imported.
+      */
+      menuFontPreload(DEFAULT_MENU_FONT),
     ],
   }),
   /*
