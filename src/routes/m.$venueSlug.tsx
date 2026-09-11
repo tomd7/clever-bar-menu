@@ -6,6 +6,7 @@ import { OrderBar } from '#/features/orders/components/order-bar'
 import { NotFound } from '#/components/not-found'
 import { PublicMenu } from '#/features/menu/components/public-menu'
 import { VenueNotFoundError } from '#/features/menu/api'
+import { menuFontPreloads, parseMenuFonts } from '#/lib/menu-fonts'
 import { publicMenuQueryOptions } from '#/features/menu/public-api'
 
 /**
@@ -46,6 +47,8 @@ export const Route = createFileRoute('/m/$venueSlug')({
               ? [{ name: 'description', content: loaderData.venue.description }]
               : []),
           ],
+          /* The venue's title face, when it isn't Archivo — see `menuFontPreloads`. */
+          links: menuFontPreloads(parseMenuFonts(loaderData.venue)),
         }
       : {},
 

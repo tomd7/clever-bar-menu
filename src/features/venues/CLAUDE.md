@@ -1,7 +1,7 @@
 # Venues — `src/features/venues/`
 
 `components/` (venues-page, venue-list, venue-card, venue-trash, venue-nav, venue-qr,
-venue-settings, menu-theme-field, add-venue-form), `api.ts`, `mutations.ts`, `qr.ts`,
+venue-settings, menu-theme-field, menu-font-field, add-venue-form), `api.ts`, `mutations.ts`, `qr.ts`,
 `logo.ts`.
 
 Same feature rules as `features/menu`: a component never calls `supabase` directly (go
@@ -131,7 +131,7 @@ column, where a fold has to be found and unfolded on every visit.
 
 The screen that was missing: nothing could rename a venue or edit the description shown
 under the title of its public menu — that description was only ever reachable through the
-seed script. It edits four things: name, description, logo, theme.
+seed script. It edits five things: name, description, logo, theme, typefaces.
 
 - **The slug is never written, and `updateVenue`'s JSDoc says so where the temptation is.**
   The public address is what a printed QR code on a table encodes, and `m.$venueSlug.tsx`
@@ -211,6 +211,24 @@ a preview on the manager's own ground would lie about the one thing it promises.
 `ThemePreview` also renders a menu line under the board, because that is where the other
 half of the theme lives: the text accent flips between day and night while the board stays
 frozen.
+
+### The font picker — `menu-font-field.tsx`
+
+Four roles, one rail of native radio chips each, and every chip set in the face it names —
+the theme picker's reasoning (see the face, don't read its name) applied to type, on the rail
+the size suggestions already use. `menuFontsFor(role)` filters the catalogue: the handwritten
+and condensed faces are not offered where they would ruin reading (`src/lib/menu-fonts.ts`),
+and `updateVenue` refuses a face its role doesn't allow, in French, before the database
+checks would in English.
+
+- **This screen downloads the nine latin files** (~400 KB, once, cached), since it renders
+  every face. That is the back office; a customer's carte downloads only the faces it uses.
+- **« Revenir à Archivo partout »** resets the four roles at once, and only exists while one
+  of them differs.
+- It sits in the theme's panel, above the preview. The separator is on a wrapper, not on the
+  `<fieldset>`: a fieldset draws its legend across its own top border.
+- The preview renders all four roles with the carte's own classes, `.menu-text` included, so
+  the size correction is previewed too.
 
 ## Venue card
 

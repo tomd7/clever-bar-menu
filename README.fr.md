@@ -91,6 +91,10 @@ posé sur les tables.
   bandeau de la carte publique. Le navigateur le réduit avant l'envoi et devine si un logo
   foncé a besoin d'une pastille claire pour rester lisible sur le bandeau ; le gérant peut
   corriger ce choix, et en voit le résultat dans l'aperçu de jour comme de nuit.
+- **Polices par établissement** — le nom, les titres de catégorie, les lignes de produit et
+  les descriptions reçoivent chacun une police parmi neuf, choisie depuis le même écran de
+  réglages et prévisualisée de jour comme de nuit. Les polices sont servies depuis le domaine
+  de l'application, pas par Google, et une carte ne télécharge que celles qu'elle emploie.
 
 ## Stack technique
 
@@ -486,7 +490,10 @@ Trois comportements à connaître :
 - [x] Logo de l'établissement : déposé depuis `/admin/<slug>/reglages`, affiché en tête du
       bandeau de la carte publique, avec une pastille claire pour les logos foncés —
       devinée d'après l'image, ajustable par le gérant
-- [ ] Couleurs, polices et image de fond personnalisées pour la carte publique
+- [x] Polices par établissement : une police par usage (nom, catégories, produits,
+      descriptions) parmi une liste choisie, hébergées par l'application, prévisualisées de
+      jour comme de nuit
+- [ ] Couleurs et image de fond personnalisées pour la carte publique
 - [ ] Internationalisation
 - [ ] Accès partagés : plusieurs comptes sur un même établissement, rôles, transfert de
       propriété

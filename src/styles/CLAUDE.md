@@ -7,10 +7,12 @@
 src/
   styles.css                                   entry: @imports only, in cascade order
   styles/
+    fonts.css        self-hosted @font-face + measured fallback twins
     theme.css        palette, shadcn contract, @theme inline
     menu-theme.css   per-venue themes: [data-menu-theme] token overrides
     base.css         bare elements (html, body, a, code, pre) + @layer base *
     vocabulary.css   .page-wrap .display-title .island-shell .panel .feature-card .island-kicker
+    menu-fonts.css   per-venue typefaces: [data-menu-face] rules, x-height correction
     motion.css       the global transition, .rise-in, prefers-reduced-motion
     print.css        .no-print + the white page ground
   components/
@@ -170,12 +172,73 @@ Two `theme-color` metas are written **directly in the shell's `<head>`**, not in
 
 ## Fonts
 
-**One family, Archivo**, loaded variable on two axes (`wdth` 62–125, `wght` 100–900) by a
-Google Fonts `@import` at the top of `styles.css`. `--font-sans` and `--font-display` are
-both Archivo: the difference between a heading and a paragraph is carried by **width and
-weight**, not by a second typeface. `.display-title` is where that identity lives
-(`font-stretch: 112%`, weight 700) — the one place this theme raises its voice, which is
-why everything around it stays quiet.
+**The house has one family, Archivo**, variable on two axes (`wdth` 62–125, `wght`
+100–900). `--font-sans` and `--font-display` are both Archivo: the difference between a
+heading and a paragraph is carried by **width and weight**, not by a second typeface.
+`.display-title` is where that identity lives (`font-stretch: 112%`, weight 700) — the one
+place this theme raises its voice, which is why everything around it stays quiet.
+
+**Self-hosted, never from Google.** Archivo used to come from a Google Fonts `@import` at
+the top of `styles.css`, which sent every visitor's IP — customers scanning a table's code
+included — to Google, and put a third-party connection in front of the first text on mobile
+data. The files now come from `@fontsource-variable/*` and `@fontsource/courier-prime`
+(approved dependencies: file-only packages, zero transitive deps, OFL — no runtime code, so
+nothing to be SSR-compatible with), declared in `styles/fonts.css`.
+
+- **The `@font-face` rules are hand-written, not the packages' CSS.** Theirs declare every
+  subset (cyrillic, greek, vietnamese…) and Vite copies each referenced file into the build.
+  Ours point at the **latin** file only, by bare specifier
+  (`url('@fontsource-variable/…/files/…woff2')`): Vite's CSS plugin resolves `url()` through
+  its module resolver, and the packages export `./files/*.woff2`. Latin covers French —
+  checked glyph by glyph in each file — except `Ÿ` and U+202F (the narrow no-break space of a
+  price over 999 €), missing from every face, Archivo included; the browser takes them from
+  the fallback.
+- **Declaring a face is free, using it downloads it.** Nine families in the one stylesheet
+  cost a few KB of CSS; a browser fetches a file only once its family is applied to rendered
+  text.
+- **Every face has a `… Fallback` twin**: a `local()` Arial, Times New Roman or Courier New
+  with `size-adjust` and ascent/descent overrides that hold the text's box while the file
+  loads. **Widths are measured in the browser**: the face at the weight it mostly sets
+  (400 Archivo, 600 a product line, 700 the titles-only faces), the local font at its
+  **regular** weight — a fallback face declares no weight, so bold is synthesized from the
+  regular file, which doesn't widen it. Vertical metrics come from the files; method in
+  `fonts.css`. Both traps were hit: measuring a variable file at its default instance
+  (Archivo's is 600, Big Shoulders' 100) put one fallback 30% off, and measuring against
+  Arial Bold put every bold-leaning fallback 6–7% narrow. Re-measure when a file changes;
+  don't eyeball it.
+- **Archivo is preloaded on every page** (`__root.tsx`); the carte adds at most one more, its
+  title face when that isn't Archivo (`menuFontPreloads`). Preloads carry `crossorigin`: a
+  font fetch is CORS-mode even from the same origin, and a preload without it downloads the
+  file twice.
+
+## Per-venue typefaces
+
+`venues.font_title`, `font_category`, `font_product` and `font_description` each name a face
+from the catalogue in `src/lib/menu-fonts.ts`. `PublicMenu` puts `data-menu-face` on the
+elements of each role — the house face writes **no** attribute — and
+`styles/menu-fonts.css` holds one rule per face.
+
+- **An attribute per element, not tokens on the theme element.** Tokens would take a rule per
+  role _and_ per face, and a face's own tweaks would be restated in each. The same attribute
+  sets the picker's chips and the preview's lines.
+- **`menu-fonts.css` is imported after `vocabulary.css`, on purpose.** Titles are
+  `.display-title`, unlayered and of the same specificity as an attribute selector: order
+  decides. The face rules set `font-family` (and the tracking of Courier and Caveat), never a
+  weight or a size — unlayered, they would beat a `font-semibold` at the call site.
+- **`.menu-text` keeps Archivo's x-height** on product lines and descriptions, when a face is
+  set: `font-size-adjust: 0.526`, Archivo's own ratio read from its file. The catalogue's
+  x-heights run from 0.40 (Caveat) to 0.60 (Big Shoulders); without it, a Caveat product line
+  at 16px reads like Archivo at 12px. Titles keep their natural size — it is part of a
+  display face's character.
+- **Reading text gets lining figures** (`lining-nums tabular-nums` on `.menu-text` and its
+  descendants, when a face is set). Playfair defaults to old-style figures, and on the carte
+  « 50cl » read « 5ocl ». The descendants are named because the price's `tabular-nums`
+  utility sets the property on its own span — which this unlayered rule overrides, hence
+  both values restated.
+- **Controls keep Archivo**: the kicker, the summary rail, the back-to-top link, and the order
+  bar and cart sheet, which sit outside `PublicMenu` anyway.
+- Adding a face: `VENUE_FONTS` and the role checks (`src/db/schema.ts`), the catalogue, an
+  `@font-face` pair with measured metrics in `fonts.css`, and a rule in `menu-fonts.css`.
 
 ## Visual vocabulary
 

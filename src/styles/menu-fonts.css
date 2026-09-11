@@ -1,0 +1,99 @@
+/*
+  The carte's typefaces: one rule per face, keyed on `data-menu-face`.
+
+  A carte element set in a face other than the house one carries that face's id
+  (`public-menu.tsx`, through `menuFace`). The house face writes no attribute at
+  all, which is why Archivo has no rule below: every element already inherits
+  it from `body`, and a carte that never changed its fonts is untouched.
+
+  **Attribute rules, not tokens on the theme element.** Tokens would take a rule
+  per role *and* per face — 36 — and a face's own adjustments would have to be
+  restated in each. Here a face is written once, and the same attribute sets a
+  picker chip, a preview line and the carte itself.
+
+  **Imported after `vocabulary.css`, and that order is load-bearing.** Titles
+  are `.display-title`, whose `font-family` is unlayered and of the same
+  specificity as an attribute selector: the later rule wins. These rules set the
+  family and, for two faces, the tracking — never a weight or a size. They are
+  unlayered too, so a `font-weight` here would silently beat a Tailwind
+  `font-semibold` at the call site.
+
+  Every family is followed by its fallback twin (`fonts.css`) and a generic
+  family, so a phone that cannot fetch the file still reads a serif as a serif.
+*/
+
+[data-menu-face='playfair-display'] {
+  font-family: 'Playfair Display', 'Playfair Display Fallback', serif;
+}
+
+[data-menu-face='newsreader'] {
+  font-family: 'Newsreader', 'Newsreader Fallback', serif;
+}
+
+[data-menu-face='fredoka'] {
+  font-family: 'Fredoka', 'Fredoka Fallback', ui-rounded, sans-serif;
+}
+
+/*
+  Tracking back to zero for the typewriter and the hand: `.display-title`
+  tightens by 0.02em, which breaks a monospace's even rhythm and pulls joined
+  strokes into each other.
+*/
+[data-menu-face='courier-prime'] {
+  font-family:
+    'Courier Prime', 'Courier Prime Fallback', ui-monospace, monospace;
+  letter-spacing: 0;
+}
+
+[data-menu-face='oswald'] {
+  font-family: 'Oswald', 'Oswald Fallback', sans-serif;
+}
+
+[data-menu-face='caveat'] {
+  font-family: 'Caveat', 'Caveat Fallback', cursive;
+  letter-spacing: 0;
+}
+
+[data-menu-face='cormorant-garamond'] {
+  font-family: 'Cormorant Garamond', 'Cormorant Garamond Fallback', serif;
+}
+
+[data-menu-face='big-shoulders-display'] {
+  font-family:
+    'Big Shoulders Display', 'Big Shoulders Display Fallback', sans-serif;
+}
+
+/*
+  Reading text keeps Archivo's apparent size, whatever the face.
+
+  Two faces at the same `font-size` do not look the same size: the eye reads the
+  x-height, and in this catalogue it runs from 0.40 of the em (Caveat) to 0.58
+  (Oswald), against Archivo's 0.526. A product line in Caveat at 16px reads like
+  Archivo at 12px. `font-size-adjust` rescales each face so its x-height lands
+  where Archivo's does — the value is Archivo's own, read from its file like the
+  fallback metrics.
+
+  Only on `.menu-text` — product lines and descriptions — never on titles: a
+  heading's size is part of its face's character, and scaling a condensed
+  display face up would push a long venue name onto a third line. And only when
+  a face is set, since the house face carries no attribute. A browser without
+  `font-size-adjust` (Safari before 17) shows the faces at their natural size.
+*/
+.menu-text[data-menu-face] {
+  font-size-adjust: 0.526;
+}
+
+/*
+  Lining figures in reading text, whatever the face.
+
+  Playfair Display draws old-style figures by default: on a menu line « 50cl »
+  read « 5ocl » and a price lost its shape — found on the carte, not in the
+  catalogue. Set on the descendants as well, because the price's `tabular-nums`
+  utility sets `font-variant-numeric` on its own span, and this unlayered rule
+  wins against it there; both values are therefore restated. Titles keep their
+  face's own figures, which at display size are part of its character.
+*/
+.menu-text[data-menu-face],
+.menu-text[data-menu-face] * {
+  font-variant-numeric: lining-nums tabular-nums;
+}

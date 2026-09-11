@@ -1,11 +1,13 @@
 import { queryOptions } from '@tanstack/react-query'
 
 import { VENUES_QUERY_KEY } from '#/lib/query-keys'
+import { MENU_FONT_ROLES, isMenuFontAllowed } from '#/lib/menu-fonts'
 import { MENU_THEMES } from '#/lib/menu-theme'
 import { describeError } from '#/lib/postgrest-error'
 import { removeVenueImages } from '#/lib/venue-images'
 import { supabase } from '#/lib/supabase'
 
+import type { MenuFonts } from '#/lib/menu-fonts'
 import type { MenuTheme } from '#/lib/menu-theme'
 import type { Venue } from '#/lib/supabase'
 
@@ -209,6 +211,7 @@ export type VenueSettings = {
   /** Storage path of the logo, already uploaded — or `null` for no logo. */
   logoPath: string | null
   logoPlate: boolean
+  fonts: MenuFonts
 }
 
 /**
@@ -242,6 +245,19 @@ export async function updateVenue(
     throw new Error('Ce thème n’existe pas.')
   }
 
+  /*
+    Checked here for the theme's reason — a violated `venues_font_*_allowed`
+    would surface as an English `23514` — and per role, since a face can exist
+    in the catalogue and still not be offered for descriptions.
+  */
+  if (
+    !MENU_FONT_ROLES.every((role) =>
+      isMenuFontAllowed(settings.fonts[role.id], role.id),
+    )
+  ) {
+    throw new Error('Cette police n’est pas proposée pour cet usage.')
+  }
+
   const { data, error } = await supabase
     .from('venues')
     .update({
@@ -259,6 +275,10 @@ export async function updateVenue(
         resurface, already on, the day another is uploaded.
       */
       logo_plate: settings.logoPath ? settings.logoPlate : false,
+      font_title: settings.fonts.title,
+      font_category: settings.fonts.category,
+      font_product: settings.fonts.product,
+      font_description: settings.fonts.description,
     })
     .eq('id', venueId)
     /*

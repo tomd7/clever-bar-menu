@@ -212,9 +212,15 @@
     Fraunces/Manrope) mais par la *largeur* et la graisse d'Archivo — voir
     `.display-title`. Une police en moins à charger, et une identité qui tient
     dans un seul fichier de fonte.
+
+    Self-hosted (`styles/fonts.css`), and followed by its fallback twin: a
+    local Arial resized to Archivo's proportions, which holds the text's box
+    until the file arrives.
   */
-  --font-sans: 'Archivo', ui-sans-serif, system-ui, sans-serif;
-  --font-display: 'Archivo', ui-sans-serif, system-ui, sans-serif;
+  --font-sans:
+    'Archivo', 'Archivo Fallback', ui-sans-serif, system-ui, sans-serif;
+  --font-display:
+    'Archivo', 'Archivo Fallback', ui-sans-serif, system-ui, sans-serif;
 
   /* La palette maison est exposée à Tailwind : `text-ink-soft`, `border-line`,
      `bg-surface-raised`, `text-bottle-deep` plutôt que des `text-[var(--x)]`. */
