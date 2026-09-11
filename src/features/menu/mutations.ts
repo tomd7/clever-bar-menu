@@ -11,6 +11,7 @@ import {
   setProductAvailability,
   setProductBarcode,
   setProductStock,
+  setProductVisibility,
   swapPositions,
   updateProduct,
 } from '#/features/menu/api'
@@ -65,12 +66,6 @@ export function useDeleteCategory() {
 
 export function useDeleteProduct() {
   return useMenuMutation(deleteProduct)
-}
-
-export function useSetProductAvailability() {
-  return useMenuMutation((input: { productId: string; isAvailable: boolean }) =>
-    setProductAvailability(input.productId, input.isAvailable),
-  )
 }
 
 export function useMoveItem() {
@@ -303,6 +298,35 @@ export function useSetProductStock() {
     (input: { productId: string; quantity: number | null }) =>
       setProductStock(input.productId, input.quantity),
     (product, input) => ({ ...product, stock_quantity: input.quantity }),
+  )
+}
+
+/**
+ * Puts a product back on sale, or marks it out of stock by hand.
+ *
+ * Optimistic like the stock gestures, and it was not before. A toggle that
+ * waits for the round trip — and for the refetch behind it — before moving
+ * reads as a tap that didn't take, and gets tapped again, which on a toggle
+ * undoes the first one.
+ */
+export function useSetProductAvailability() {
+  return useOptimisticProductMutation(
+    (input: { productId: string; isAvailable: boolean }) =>
+      setProductAvailability(input.productId, input.isAvailable),
+    (product, input) => ({ ...product, is_available: input.isAvailable }),
+  )
+}
+
+/**
+ * Takes a product off the customer's menu, or puts it back. Optimistic for the
+ * reason `useSetProductAvailability` gives: the two toggles sit side by side on
+ * the same row, and must answer the finger the same way.
+ */
+export function useSetProductVisibility() {
+  return useOptimisticProductMutation(
+    (input: { productId: string; isVisible: boolean }) =>
+      setProductVisibility(input.productId, input.isVisible),
+    (product, input) => ({ ...product, is_visible: input.isVisible }),
   )
 }
 

@@ -449,16 +449,40 @@ export const products = pgTable(
     imagePath: text('image_path'),
 
     /**
-     * Rupture décidée à la main : masque le produit sur la carte publique.
+     * A shortage decided by hand: the product stays on the public menu, marked
+     * sold out, and can no longer be ordered.
      *
-     * Distinct de l'épuisement du stock, qui se déduit de `stockQuantity`. Un
-     * gérant retire un produit pour des raisons qu'aucun compteur ne connaît —
-     * la machine est en panne, le fournisseur a changé, la recette ne suit
-     * plus. Écraser ce drapeau à chaque fois qu'un stock retombe à zéro ferait
-     * réapparaître, à la livraison suivante, un produit que personne n'avait
-     * demandé à remettre.
+     * Distinct from an exhausted stock, which is derived from `stockQuantity`.
+     * A manager pulls a product for reasons no counter knows — the machine is
+     * down, the keg is pierced. Overwriting this flag every time a stock falls
+     * to zero would bring back, at the next delivery, a product nobody had
+     * asked to put back on sale.
+     *
+     * It says nothing about whether the product is *listed* — that is
+     * `isVisible`. Before that column existed, this flag hid the product
+     * outright, so it did both jobs at once.
      */
     isAvailable: boolean('is_available').notNull().default(true),
+
+    /**
+     * Whether the product is listed on the public menu at all.
+     *
+     * `false` takes it off the customer's menu entirely — no row, no « épuisé »
+     * — while it stays in the editor: a seasonal drink out of season, a
+     * cocktail not launched yet, a line the manager keeps for later. A sold-out
+     * product, by contrast, is still on the menu; the customer reads that it
+     * has run out, which is information, where a vanished line is a question.
+     *
+     * `not null default true`: a new column must not take anything off a menu
+     * the minute the migration runs. Migration `0023` hides the products that
+     * were unavailable by hand before this column existed, since hiding was
+     * what that switch did at the time.
+     *
+     * Checked by `fetchPublicMenu` (not listed) and by `place_order` (not
+     * orderable) — the second because a menu left open in a tab can be older
+     * than the gesture.
+     */
+    isVisible: boolean('is_visible').notNull().default(true),
 
     /**
      * Niveau de stock restant, ou `null` si le produit n'est pas suivi.

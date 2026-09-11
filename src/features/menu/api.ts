@@ -335,6 +335,25 @@ export async function setProductAvailability(
 }
 
 /**
+ * Lists a product on the customer's menu, or takes it off.
+ *
+ * Independent of `setProductAvailability`, on purpose: a hidden product keeps
+ * the sale state it had, so putting it back shows it exactly as it was left —
+ * on sale, or marked sold out.
+ */
+export async function setProductVisibility(
+  productId: string,
+  isVisible: boolean,
+): Promise<void> {
+  await write(
+    supabase
+      .from('products')
+      .update({ is_visible: isVisible })
+      .eq('id', productId),
+  )
+}
+
+/**
  * Fixe le niveau de stock à une valeur absolue.
  *
  * C'est le geste de la livraison — « il y en a trente » — et celui qui active

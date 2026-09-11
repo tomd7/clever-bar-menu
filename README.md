@@ -64,10 +64,10 @@ encodes.
 - **Public menu behind a QR code** — every table points at the venue's menu, readable on a
   phone, with no install and no account.
 - **Management back office** — create and edit categories, products, prices, descriptions
-  and photos; a product that has run out can be hidden in one click.
+  and photos; a product can be hidden from the menu, or marked out of stock, in one click.
 - **Stock tracking** — enabled product by product, with an alert threshold and a page built
-  to be held standing behind the bar. A product that runs out leaves the customer menu and
-  comes back on its own when restocked.
+  to be held standing behind the bar. A product that runs out stays on the customer menu,
+  marked sold out, and is back on sale on its own when restocked.
 - **Counter ordering** — the customer builds a cart from the scanned menu, leaves a first
   name, and follows the order through to "ready". The bar sees it arrive in a queue that
   refreshes itself. **No online payment**: settlement happens at the counter, and no
@@ -285,8 +285,10 @@ is copied onto the order line when the order is sent: two "Blonde" on one ticket
 and one 50cl, would otherwise be a ticket you have to guess at.
 
 The order of categories and products is carried by a `position` column, stepping by 100 so
-that a row can be inserted between two neighbours without rewriting the list. A product that
-has run out stays in the manager's menu, struck through, and is hidden on the customer side.
+that a row can be inserted between two neighbours without rewriting the list. A product can
+be **hidden** — struck through in the manager's menu, absent from the customer's — or **out
+of stock**, which the customer's menu still lists, marked sold out, without letting it be
+ordered. The two are independent switches on the row.
 
 #### Stock tracking
 
@@ -303,8 +305,8 @@ would move a row up at the very moment a finger presses its "−1".
 Two design points are worth knowing:
 
 - **Running out is inferred, never written.** `is_available` stays the manager's manual
-  gesture; a stock at zero hides the product from the public menu through a query filter,
-  and restocking brings it back with no intervention. Actually flipping the column would
+  gesture; a stock at zero marks the product sold out on the public menu, and restocking
+  puts it back on sale with no intervention. Actually flipping the column would
   force reactivating every product by hand after a delivery, and would overwrite a decision
   taken for an entirely different reason along the way.
 - **The decrement goes through a Postgres function**, `adjust_product_stock` (migration
@@ -436,9 +438,10 @@ network of a seated customer.
 
 Three behaviours to know:
 
-- **Unavailable products are dropped in the query**, not at render: they never leave the
-  server. Two independent causes drop them — availability turned off by hand, and an
-  exhausted stock. A category whose products have all gone disappears as well.
+- **Hidden products are dropped in the query**, not at render: they never leave the server,
+  and a category left with none disappears as well. **Out-of-stock products stay listed**,
+  "épuisé" where the price would be and with no add-to-cart button — whether turned off by
+  hand or run down to zero.
 - **A product without a price shows nothing** — not "No price set", which is a message meant
   for the manager. That is what a printed menu does for a dish of the day.
 - **An unknown address answers a real 404**, not an error page with a 200: these URLs are
@@ -461,6 +464,8 @@ Three behaviours to know:
 - [x] Theme: day and night variants following the system
 - [x] Venue deletion (soft, with trash and restoration)
 - [x] Out-of-stock handling
+- [x] Hiding a product from the menu, independent of stock: a hidden product is gone from the
+      customer menu, an out-of-stock one stays listed as sold out
 - [x] Inventory management: stock levels enabled per product, alert thresholds, manual
       decrements and automatic switch to unavailable
 - [x] Counter ordering: customer-side cart, sent to the bar from the scanned menu, state

@@ -63,10 +63,11 @@ posé sur les tables.
 - **Carte publique via QR code** — chaque table renvoie vers la carte de l'établissement,
   consultable sur mobile, sans installation ni compte.
 - **Back-office de gestion** — création et édition des catégories, produits, prix,
-  descriptions et photos ; un produit en rupture peut être masqué en un clic.
+  descriptions et photos ; un produit peut être masqué de la carte, ou marqué en rupture, en
+  un clic.
 - **Suivi de stock** — activable produit par produit, avec un seuil d'alerte et une page
-  faite pour être tenue debout derrière le bar. Un produit épuisé quitte la carte des
-  clients et y revient de lui-même au réapprovisionnement.
+  faite pour être tenue debout derrière le bar. Un produit épuisé reste sur la carte des
+  clients, marqué épuisé, et redevient commandable de lui-même au réapprovisionnement.
 - **Commande au comptoir** — le client compose son panier depuis la carte scannée, laisse
   un prénom, et suit l'état de sa commande jusqu'à « prête ». Le bar la voit arriver dans
   une file qui se rafraîchit toute seule. **Sans paiement en ligne** : le règlement se fait
@@ -284,8 +285,10 @@ avant la conduite qui mène au prix. Il est recopié sur la ligne de commande à
 faut deviner.
 
 L'ordre des catégories et des produits est porté par une colonne `position`, avançant de 100
-en 100 pour permettre d'insérer entre deux voisines sans réécrire la liste. Un produit en
-rupture reste dans la carte du gérant, barré, et sera masqué côté client.
+en 100 pour permettre d'insérer entre deux voisines sans réécrire la liste. Un produit peut
+être **masqué** — barré dans la carte du gérant, absent de celle du client — ou **en
+rupture** : la carte du client le montre alors toujours, marqué épuisé, sans permettre de le
+commander. Ce sont deux interrupteurs indépendants sur la ligne.
 
 #### Suivi de stock
 
@@ -303,8 +306,8 @@ appuie sur son « −1 ».
 Deux points de conception valent d'être connus :
 
 - **La rupture par épuisement est déduite, jamais écrite.** `is_available` reste le geste
-  manuel du gérant ; un stock à zéro masque le produit de la carte publique par un filtre de
-  requête, et le réapprovisionnement le fait réapparaître sans intervention. Basculer
+  manuel du gérant ; un stock à zéro marque le produit épuisé sur la carte publique, et le
+  réapprovisionnement le remet en vente sans intervention. Basculer
   vraiment la colonne obligerait à réactiver chaque produit à la main après une livraison,
   et écraserait au passage une décision prise pour une tout autre raison.
 - **Le décompte passe par une fonction Postgres**, `adjust_product_stock` (migration
@@ -442,10 +445,10 @@ réseau mobile d'un client attablé.
 
 Trois comportements à connaître :
 
-- **Les produits en rupture sont écartés dans la requête**, pas à l'affichage : ils ne
-  quittent jamais le serveur. Deux causes indépendantes les écartent — la rupture décidée à
-  la main, et un stock épuisé. Une catégorie dont tous les produits sont partis disparaît
-  également.
+- **Les produits masqués sont écartés dans la requête**, pas à l'affichage : ils ne
+  quittent jamais le serveur, et une catégorie qui n'en garde aucun disparaît également.
+  **Les produits en rupture restent affichés**, « épuisé » à la place du prix et sans bouton
+  d'ajout au panier — rupture décidée à la main ou stock tombé à zéro.
 - **Un produit sans prix n'affiche rien** — pas « Prix non renseigné », qui est un message
   destiné au gérant. C'est ce que fait une carte imprimée pour un plat du jour.
 - **Une adresse inconnue répond un vrai 404**, et non une page d'erreur en 200 : ces URL sont
@@ -469,6 +472,8 @@ Trois comportements à connaître :
 - [x] Thème : variantes jour et nuit suivant le système
 - [x] Suppression d'un établissement (logique, avec corbeille et restauration)
 - [x] Gestion des ruptures de stock
+- [x] Masquer un produit de la carte, indépendamment du stock : un produit masqué disparaît de
+      la carte client, un produit en rupture y reste affiché comme épuisé
 - [x] Gestion de l'inventaire : niveaux de stock activables par produit, seuils d'alerte,
       décompte manuel et passage automatique en rupture
 - [x] Commande au comptoir : panier côté client, envoi au bar depuis la carte scannée,
