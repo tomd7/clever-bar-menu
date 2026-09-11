@@ -162,6 +162,43 @@ categories }` and `MenuEditor` renders `venue.name` in its header, so without th
   `MenuEditor`'s `lg:hidden` row of section links carries « Réglages » too. Forgetting that
   row is how a back-office screen becomes unreachable from a phone.
 
+### Layout — the preview stays, the save bar floats
+
+Four panels and a bar on one grid (`SETTINGS_GRID`, shared with the skeleton): Identité,
+Thème, Aperçu, Polices. The previous layout filed « Enregistrer » under Identité and put the
+preview at the foot of a 24rem column — a manager clicked a swatch 400px from the top and
+its preview started at 1058px.
+
+- **`grid-cols-1` on the phone is load-bearing.** A grid with no column template gets an
+  implicit `auto` track, sized to max-content: the font rails' nowrap chips widened the
+  whole phone layout past the screen (each preview board 426px in a 390px viewport).
+  `grid-cols-1` is `minmax(0, 1fr)`. Any grid holding a scrolling rail needs it.
+- **The DOM order is the phone's reading order** (identity, theme, preview, fonts, bar);
+  from `lg` the grid lifts the preview into the right column over the three control rows.
+  Reordering is safe only because the preview holds no control — the tab order follows the
+  DOM. Put a button in the preview and that stops being true.
+- **The preview is `sticky` from `lg`, and `self-start` is what lets it stick**: a grid item
+  stretched to its rows' height has nowhere to go. The page scrolls on the viewport (`main`
+  has no overflow), so `top-10` lines up with `main`'s own padding.
+- **The right column is 18rem at `lg`, 24rem at `xl`.** 24rem at 1024px left the form
+  ~250px; 22rem at `xl` made each board 116px inside and truncated « Chez Lambert ». The
+  boards stack at `lg` and sit side by side on the phone and from `xl`. **The preview's
+  name wraps, it never truncates** — the carte's title doesn't, and at ~100px on the phone
+  an ellipsis would show the manager something no customer sees.
+- **One save bar for the whole form**, `sticky` at the bottom, not `fixed`: it rides the
+  viewport while the form scrolls and rests at the form's end, so it never covers the last
+  rail. It stays **in the flow while hidden** for the same reason — the reserved space is
+  what the last panel scrolls clear of. `visibility` removes it from the tab order and the
+  accessibility tree, and flips after the exit fade.
+- **The confirmation leaves on its own.** `showSaved` (`isSuccess && !isDirty`) starts a
+  2.5s timer that calls `update.reset()`; React Query keeps holding the state, nothing is
+  mirrored. The effect's cleanup drops the timer on a keystroke, a new submit or an
+  unmount, so a late `reset()` can't wipe a save still in flight. `role="status"` is always
+  rendered: a live region inserted together with its message is often not announced.
+- **Tailwind v4's `translate-y-*` writes the `translate` property, not `transform`.** A
+  `transition-[opacity,transform]` therefore faded the bar and never slid it — the computed
+  `transform` read `none`. Name `translate` in the transition list.
+
 ### The logo — `logo.ts`
 
 `venues.logo_path` + `venues.logo_plate`, edited in the « Identité » panel through
@@ -231,8 +268,9 @@ checks would in English.
   and scrolled the whole page sideways (`<html>` `scrollLeft` 335), pushing the back office's
   column out of view. `body`'s `overflow-x: hidden` hides that scroll, it doesn't prevent it.
   Any `sr-only` input inside a scrolling rail needs the same.
-- It sits in the theme's panel, above the preview. The separator is on a wrapper, not on the
-  `<fieldset>`: a fieldset draws its legend across its own top border.
+- It has its own panel, the last of the left column. **The selected face's hint sits on the
+  role's legend line**, not under the rail: there it printed « La police maison, large et
+  nette. » four times over while every role was still on Archivo, one row each.
 - The preview renders all four roles with the carte's own classes, `.menu-text` included, so
   the size correction is previewed too.
 
