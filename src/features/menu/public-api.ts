@@ -29,6 +29,8 @@ export type PublicVenue = Pick<
   | 'currency'
   | 'orders_enabled'
   | 'theme'
+  | 'logo_path'
+  | 'logo_plate'
 >
 
 export type PublicProduct = Pick<
@@ -57,7 +59,8 @@ export type PublicMenuData = {
   requête s'en sert : ils filtrent et ordonnent **côté serveur**, le client n'a
   pas à les recevoir pour autant.
 */
-const VENUE_COLUMNS = 'id,slug,name,description,currency,orders_enabled,theme'
+const VENUE_COLUMNS =
+  'id,slug,name,description,currency,orders_enabled,theme,logo_path,logo_plate'
 const CATEGORY_COLUMNS = 'id,name,description'
 const PRODUCT_COLUMNS =
   'id,category_id,name,description,size,price_cents,image_path'

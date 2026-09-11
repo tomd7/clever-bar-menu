@@ -66,10 +66,11 @@ the trash button, not inline (it pushed the surrounding row around) and not
 
 ## Fields — `form/`
 
-| Component       | Owns                                                                                  |
-| --------------- | ------------------------------------------------------------------------------------- |
-| `TextField`     | `useId()` wiring, `<Label>`, height from `surface`, optional `hint`, `hiddenLabel`    |
-| `TextAreaField` | Same, minus `surface` — a textarea sizes by `rows`, it has no resting height to match |
+| Component       | Owns                                                                                                             |
+| --------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `TextField`     | `useId()` wiring, `<Label>`, height from `surface`, optional `hint`, `hiddenLabel`                               |
+| `TextAreaField` | Same, minus `surface` — a textarea sizes by `rows`, it has no resting height to match                            |
+| `ImageField`    | A hidden file input driven by a button, a thumbnail, « Remplacer » / « Retirer » — and no image state of its own |
 
 On both, `className` dresses the **block** (that's what you put in a grid or grow with
 `flex-1`); `inputClassName` / `textareaClassName` dress the control.
@@ -78,6 +79,33 @@ On both, `className` dresses the **block** (that's what you put in a grid or gro
 silence: a typo raises no error and fails no type — it just leaves the input nameless to a
 screen reader and stops the label from focusing it. `hiddenLabel` keeps the wiring where
 the layout replaces a title and can show no label.
+
+**`ImageField` takes its preview as a URL**, resolved by the form: `useObjectUrl(file)`
+(exported next to it, revokes on change and unmount) for a file just picked, the public
+Storage URL otherwise. The settings screen draws the same logo twice — in the field and in
+the day/night preview — and one URL serves both. `fit="contain"` lays the thumbnail on a
+flat mid-tone (`--ink` and `--surface` mixed half and half), where a dark logo and a white
+one both stay legible. **Not a checkerboard**, though it is the usual sign for
+transparency: tried with a cream logo, it vanished on `--line`/`--surface` squares, and
+even with darker squares half of it still sat on white — at 64px the pattern was louder
+than the logo. How the logo really looks on the board is the preview's job. Its hidden input is out of the tab order; the button is the control. It needs no
+`htmlFor`: the label names a group, not an input.
+
+## `venue-logo.tsx`
+
+`VenueLogo` draws a venue's logo on the board. It is here because the customer menu
+(`features/menu`) and the settings preview (`features/venues`) both render it, and it takes
+a **URL**, not a storage path, because the preview shows a file that has no path yet.
+
+- **Fixed height, free width.** The height is in the SSR'd HTML, so nothing below moves
+  when the image arrives; the logo sits on a row of its own, so its growing width pushes
+  nothing aside. `object-contain` under `max-w-*` keeps a long wordmark in proportion.
+- **`plate`** lays it on `bg-on-board`, the chalk. The `plated` sizes are the `bare` ones
+  minus the plate's padding, so toggling the plate never moves the kicker and the title
+  below. `size="preview"` is the same component at the scale of `ThemePreview`: the plate
+  the manager judges is the one the customer sees.
+- **`alt=""`**: the venue's name is set in full right under it. Same call as the product
+  photos on the carte.
 
 ## `surface.ts`
 

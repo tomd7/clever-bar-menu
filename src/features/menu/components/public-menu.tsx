@@ -5,6 +5,8 @@ import { ProductSize } from '#/components/product-size'
 import { formatPrice } from '#/lib/money'
 import { parseMenuTheme } from '#/lib/menu-theme'
 import { productPhotoUrl } from '#/features/menu/photo'
+import { VenueLogo } from '#/components/venue-logo'
+import { venueImageUrl } from '#/lib/venue-images'
 
 import type {
   PublicCategory,
@@ -150,6 +152,21 @@ export function PublicMenu({
             intérieure du cadre.
           */}
           <header className="bg-board px-5 pt-11 pb-12 text-on-board sm:rounded-t-[calc(1.5rem-1px)] sm:px-9 sm:pt-14 sm:pb-16">
+            {/*
+              The venue's logo, above the kicker rather than beside the name: on
+              a row of its own it keeps its reserved height without squeezing a
+              title set at 4xl, and a long wordmark can't push the name onto a
+              third line. Not lazy — it is in the first screen the customer
+              reads.
+            */}
+            {venue.logo_path ? (
+              <VenueLogo
+                src={venueImageUrl(venue.logo_path)}
+                plate={venue.logo_plate}
+                className="mb-6 sm:mb-8"
+              />
+            ) : null}
+
             {/*
               Le libellé reprend le rôle de `.island-kicker` sans sa classe :
               celle-ci impose `--bottle-deep`, le vert sombre, illisible sur
