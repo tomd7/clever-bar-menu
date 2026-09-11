@@ -13,7 +13,7 @@ import { formatPrice } from '#/lib/money'
 import { usePlaceOrder } from '#/features/orders/mutations'
 
 import type { FormEvent } from 'react'
-import type { Product } from '#/lib/supabase'
+import type { CartProduct } from '#/features/orders/cart'
 
 /**
  * Le panier, et le formulaire qui l'envoie.
@@ -37,7 +37,7 @@ export function CartSheet({
   onOpenChange: (open: boolean) => void
   venueSlug: string
   /** La carte affichée, pour retrouver le nom et le prix d'une ligne. */
-  products: Array<Product>
+  products: Array<CartProduct>
   currency: string
 }) {
   const cart = useCart(venueSlug)
@@ -60,7 +60,7 @@ export function CartSheet({
   const lines = cart
     .map((line) => ({ line, product: byId.get(line.productId) }))
     .filter(
-      (entry): entry is { line: (typeof cart)[number]; product: Product } =>
+      (entry): entry is { line: (typeof cart)[number]; product: CartProduct } =>
         entry.product !== undefined,
     )
 

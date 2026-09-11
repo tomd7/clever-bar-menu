@@ -74,7 +74,7 @@ queries and its domain rules in one directory.
 src/
   features/    auth/  menu/  orders/  venues/   each: components/, api.ts, mutations.ts, domain modules
   components/  ui/ (shadcn), buttons/, form/, back-office/, home/, cross-screen pieces
-  lib/         supabase.ts, postgrest-error.ts, public-menu-url.ts, product-photos.ts,
+  lib/         supabase.ts, postgrest-error.ts, public-menu-url.ts, venue-images.ts,
                money.ts, query-keys.ts, utils.ts
 ```
 
@@ -261,8 +261,10 @@ is **not** ignored wholesale: `settings.json` and `hooks/` live there and are sh
 ## Project status
 
 The data layer, the back office, the customer-facing menu (`/m/$venueSlug`), the printable
-QR sheet (`/admin/$venueSlug/qr`), the stock screen (`/admin/$venueSlug/stock`) and counter
-ordering (`/admin/$venueSlug/commandes`, plus the order bar on the public menu) all exist.
+QR sheet (`/admin/$venueSlug/qr`), the stock screen (`/admin/$venueSlug/stock`), the venue
+settings screen (`/admin/$venueSlug/reglages` — name, description, per-venue menu theme)
+and counter ordering (`/admin/$venueSlug/commandes`, plus the order bar on the public menu)
+all exist.
 The "ardoise" theme is in place across the home page, `/login`, the back office and the
 public menu.
 

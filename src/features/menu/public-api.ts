@@ -4,7 +4,66 @@ import { VenueNotFoundError } from '#/features/menu/api'
 import { describeError } from '#/lib/postgrest-error'
 import { supabase } from '#/lib/supabase'
 
-import type { CategoryWithProducts, Menu } from '#/features/menu/api'
+import type { Category, Product, Venue } from '#/lib/supabase'
+
+/**
+ * La carte telle qu'elle voyage jusqu'au client — colonne par colonne.
+ *
+ * Volontairement plus étroite que `Menu`, qui sert l'éditeur : cette charge
+ * utile est rendue au serveur **et** déshydratée dans le HTML de la page, donc
+ * chaque colonne inutile est envoyée deux fois à un téléphone sur réseau
+ * mobile. Et surtout, elle est lue sous le rôle `anon` : `owner_id` n'a rien à
+ * faire dans une page publique, `barcode` non plus — il désigne l'article en
+ * rayon, ce qui est une information de comptoir et pas de carte.
+ *
+ * Les `Pick` partent des types partagés plutôt que d'une forme réécrite à la
+ * main : une colonne renommée dans `src/lib/supabase.ts` casse ici, ce qu'une
+ * copie indépendante n'aurait pas fait.
+ */
+export type PublicVenue = Pick<
+  Venue,
+  | 'id'
+  | 'slug'
+  | 'name'
+  | 'description'
+  | 'currency'
+  | 'orders_enabled'
+  | 'theme'
+  | 'logo_path'
+  | 'logo_plate'
+>
+
+export type PublicProduct = Pick<
+  Product,
+  | 'id'
+  | 'category_id'
+  | 'name'
+  | 'description'
+  | 'size'
+  | 'price_cents'
+  | 'image_path'
+>
+
+export type PublicCategory = Pick<Category, 'id' | 'name' | 'description'> & {
+  products: Array<PublicProduct>
+}
+
+export type PublicMenuData = {
+  venue: PublicVenue
+  categories: Array<PublicCategory>
+}
+
+/*
+  Les colonnes demandées à PostgREST, écrites une fois et lues par la requête.
+  `is_available`, `stock_quantity` et `position` sont absents alors que la
+  requête s'en sert : ils filtrent et ordonnent **côté serveur**, le client n'a
+  pas à les recevoir pour autant.
+*/
+const VENUE_COLUMNS =
+  'id,slug,name,description,currency,orders_enabled,theme,logo_path,logo_plate'
+const CATEGORY_COLUMNS = 'id,name,description'
+const PRODUCT_COLUMNS =
+  'id,category_id,name,description,size,price_cents,image_path'
 
 /**
  * Lecture de la carte telle qu'un client la voit.
@@ -21,10 +80,12 @@ import type { CategoryWithProducts, Menu } from '#/features/menu/api'
  * type `CategoryWithProducts` d'ici, ce que la règle du projet interdit entre
  * features.
  */
-export async function fetchPublicMenu(venueSlug: string): Promise<Menu> {
+export async function fetchPublicMenu(
+  venueSlug: string,
+): Promise<PublicMenuData> {
   const venueResult = await supabase
     .from('venues')
-    .select('*')
+    .select(VENUE_COLUMNS)
     .eq('slug', venueSlug)
     .maybeSingle()
 
@@ -35,7 +96,7 @@ export async function fetchPublicMenu(venueSlug: string): Promise<Menu> {
 
   const categoriesResult = await supabase
     .from('categories')
-    .select('*')
+    .select(CATEGORY_COLUMNS)
     .eq('venue_id', venue.id)
     .order('position', { ascending: true })
     .order('name', { ascending: true })
@@ -49,7 +110,7 @@ export async function fetchPublicMenu(venueSlug: string): Promise<Menu> {
 
   const productsResult = await supabase
     .from('products')
-    .select('*')
+    .select(PRODUCT_COLUMNS)
     .in(
       'category_id',
       categories.map((category) => category.id),
@@ -83,7 +144,7 @@ export async function fetchPublicMenu(venueSlug: string): Promise<Menu> {
     throw new Error(describeError(productsResult.error))
   }
 
-  const byCategory = new Map<string, CategoryWithProducts['products']>()
+  const byCategory = new Map<string, Array<PublicProduct>>()
   for (const product of productsResult.data) {
     const bucket = byCategory.get(product.category_id)
     if (bucket) bucket.push(product)

@@ -80,8 +80,17 @@ posé sur les tables.
 - **Scan des codes-barres** — les entrées et sorties de stock se saisissent devant la
   caméra, depuis le téléphone. Fonctionne sur tous les navigateurs, iPhone compris.
 - **Thème clair/sombre** — le thème « bar du soir » suit le réglage du téléphone qui scanne
-  le QR code, sans interrupteur ni cookie. La personnalisation par établissement et la carte
-  multilingue sont à la [roadmap](#roadmap), pas encore là.
+  le QR code, sans interrupteur ni cookie. La carte multilingue est à la
+  [roadmap](#roadmap), pas encore là.
+- **Thème par établissement** — chaque établissement choisit le thème de sa carte publique
+  depuis `/admin/<slug>/reglages`. Il repeint le bandeau et les accents ; le fond de page et
+  les surfaces gardent la palette maison, si bien que les prix et les descriptions
+  conservent le contraste pour lequel ils ont été dessinés. Tout établissement démarre sur
+  « Ardoise », le thème de la maison.
+- **Logo de l'établissement** — déposé depuis le même écran de réglages, il coiffe le
+  bandeau de la carte publique. Le navigateur le réduit avant l'envoi et devine si un logo
+  foncé a besoin d'une pastille claire pour rester lisible sur le bandeau ; le gérant peut
+  corriger ce choix, et en voit le résultat dans l'aperçu de jour comme de nuit.
 
 ## Stack technique
 
@@ -190,7 +199,7 @@ src/
 │   └── migrations/  # Généré par drizzle-kit — ne pas éditer à la main
 ├── integrations/    # Providers (TanStack Query)
 ├── lib/             # Sans domaine : supabase.ts, money.ts, query-keys.ts,
-│                    # postgrest-error.ts, product-photos.ts, public-menu-url.ts, utils.ts
+│                    # postgrest-error.ts, venue-images.ts, public-menu-url.ts, utils.ts
 ├── env.ts           # Variables d'environnement client
 ├── env.server.ts    # Variables d'environnement serveur
 ├── router.tsx       # Configuration du router
@@ -469,7 +478,15 @@ Trois comportements à connaître :
 - [ ] Tableau de bord : nouvelle page d'accueil du back-office, à la place de la simple
       liste des établissements — chiffres de la journée, alertes (stocks bas, ruptures,
       commandes en attente) et accès direct à chaque carte
-- [ ] Personnalisation du thème de la carte par établissement
+- [x] Personnalisation du thème de la carte par établissement : une liste blanche de
+      bandeaux, choisie établissement par établissement depuis `/admin/<slug>/reglages`, et
+      appliquée au bandeau et aux accents de la carte publique. L'écran de réglages permet
+      aussi de renommer un établissement et d'éditer sa description ; l'adresse publique, elle,
+      ne change pas — les QR codes imprimés la portent
+- [x] Logo de l'établissement : déposé depuis `/admin/<slug>/reglages`, affiché en tête du
+      bandeau de la carte publique, avec une pastille claire pour les logos foncés —
+      devinée d'après l'image, ajustable par le gérant
+- [ ] Couleurs, polices et image de fond personnalisées pour la carte publique
 - [ ] Internationalisation
 - [ ] Accès partagés : plusieurs comptes sur un même établissement, rôles, transfert de
       propriété

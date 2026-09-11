@@ -1,7 +1,7 @@
 # Menu — `src/features/menu/`
 
 Owns the back-office menu editor, the stock screen and the customer-facing menu:
-`components/` (menu-editor, category-\*, product-\*, menu-nav, public-menu, photo-field),
+`components/` (menu-editor, category-\*, product-\*, menu-nav, public-menu),
 `api.ts`, `public-api.ts`, `mutations.ts`, `price.ts`, `size.ts`, `photo.ts`, `stock.ts`,
 `barcode.ts`, `scanner.ts`.
 
@@ -77,9 +77,16 @@ stock).
 
 ## Photos — `photo.ts`
 
-- **Downscaled in the browser** before upload (canvas, max 1200px, WebP with a JPEG
-  fallback). `imageOrientation: 'from-image'` applies the EXIF rotation — without it,
-  photos taken sideways arrive lying down.
+`photo.ts` is now three thin functions over `lib/venue-images.ts`, which holds the
+mechanics since the venue's logo needed them too and `features/venues` may not import from
+here. What stays in this file is what a photo asks for: a 1200px side and a JPEG fallback.
+
+- **Downscaled in the browser** before upload (canvas, WebP first). The fallback is taken
+  when the browser hands back anything but WebP — **not** when it hands back a type the
+  bucket refuses: a browser without a WebP encoder silently returns PNG, which the bucket
+  accepts, so the older test let those browsers upload every photo as a much heavier PNG.
+  `imageOrientation: 'from-image'` applies the EXIF rotation — without it, photos taken
+  sideways arrive lying down.
 - **File names are random, never derived from the product id.** Replacing a photo must
   write a new path: public URLs are CDN-cached, and reusing a path keeps serving the old
   image.
@@ -87,11 +94,15 @@ stock).
   a category collects its products' paths _before_ the DB cascade wipes them. Order
   matters: an orphan file is invisible, a row pointing at a deleted file shows a broken
   image to a customer.
-- **The bucket's name lives in `lib/product-photos.ts`, not here.** `features/venues`
-  wipes a venue's whole folder when the bin is emptied, so two features address the same
-  bucket and only one of them may own its name. That module also documents why a venue's
-  photos must go **before** its row, which is the reverse of the order above — the storage
-  policies find the owner by joining the path's first segment to `venues`.
+- **The bucket's name lives in `lib/venue-images.ts`, not here.** `features/venues` puts
+  the logo in the same folder and wipes the whole folder when the bin is emptied, so two
+  features address the same bucket and only one module may own its name. That module also
+  documents why a venue's images must go **before** its row, which is the reverse of the
+  order above — the storage policies find the owner by joining the path's first segment to
+  `venues` — and why that folder must stay flat.
+- **The picker is `ImageField`** (`src/components/form/`), moved down from here for the
+  logo. The form resolves the preview URL itself (`useObjectUrl` for a picked file,
+  `productPhotoUrl` otherwise).
 
 ## Stock — `stock.ts`, `/admin/$venueSlug/stock`
 
@@ -224,8 +235,35 @@ list.
   an exhausted `stock_quantity` **in the query** — a hidden product must never reach the
   browser — and drops categories left empty. It lives in this feature because a separate
   one would have to import `VenueNotFoundError` and `CategoryWithProducts` from it.
+- **It names its columns; it does not `select('*')`.** This payload is server-rendered
+  _and_ dehydrated into the page, so every extra column travels twice to a phone on mobile
+  data — and it is read as `anon`, which is the real argument: `owner_id` has no business
+  in a public page and `barcode` names the item on the shelf, which is counter information,
+  not menu information. `is_available`, `stock_quantity` and `position` are absent from the
+  columns even though the query uses them: they filter and order **server-side**. The
+  payload types are `Pick`s on the shared rows (`PublicVenue`, `PublicProduct`,
+  `PublicCategory`), so a renamed column breaks here instead of drifting.
+- **`features/orders` declares its own `CartProduct`** — a `Pick` on the shared row, in
+  `cart.ts` — rather than importing this feature's product type. Structural typing makes
+  the public payload satisfy it, and the cross-feature import stays forbidden. The day the
+  carte stops serving one of those four columns, the break lands there.
 - **The page is drawn as an object, not as a document.** An opaque sheet (`.island-shell`)
-  topped by a `--board` panel carrying the venue name in chalk. Full-bleed on the phone (a
+  topped by a `--board` panel carrying the venue name in chalk. **`--board` is no longer
+  always the house slate**: `PublicMenu`'s root element carries `data-menu-theme` from
+  `venues.theme`, and `styles/menu-theme.css` repaints the board and the accents for
+  everything under it. The ground and the surfaces do not move, so this page keeps the
+  contrast it was designed with whatever a venue picks. Server-rendered from the loader's
+  data, so the board is never seen in the house colour first — see `src/styles/CLAUDE.md`
+  for the two token traps that make the override work.
+- **The venue's logo heads the board**, on a row of its own above « La carte », through
+  `VenueLogo` (`src/components/venue-logo.tsx`). Above the kicker rather than beside the
+  name: a title set at 4xl keeps its width, and a long wordmark cannot push it onto a third
+  line. Not `loading="lazy"` — it is in the first screen read. `fetchPublicMenu` names
+  `logo_path` and `logo_plate` among its columns.
+- **The order bar, the cart sheet and the 404 stay on the house palette, on purpose.**
+  `OrderBar` is a sibling of `<PublicMenu>` in the route, and `BottomSheet` portals to
+  `document.body`, so no wrapper here could reach it anyway; the 404 has no venue and
+  therefore no theme. Full-bleed on the phone (a
   frame and two margins would only eat the reading width on the screen this page is
   actually read on), a sheet laid on the ground from `sm:` up.
 - **Never put `overflow-hidden` on that sheet.** It is the obvious way to clip the board
