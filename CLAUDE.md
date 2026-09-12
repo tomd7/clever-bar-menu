@@ -11,7 +11,7 @@ Guidance for Claude Code (claude.ai/code) working in this repository.
 | `src/routes/CLAUDE.md`          | SSR settings, guards, the root shell, `login`'s search param |
 | `src/styles/CLAUDE.md`          | The "ardoise" theme, stylesheet layout, visual vocabulary    |
 | `src/components/CLAUDE.md`      | Button family, form fields, `surface.ts`, links              |
-| `src/features/auth/CLAUDE.md`   | Sign-in only, error translation                              |
+| `src/features/auth/CLAUDE.md`   | Sign-in, password reset and change, error translation        |
 | `src/features/menu/CLAUDE.md`   | Prices, photos, stock, the customer menu                     |
 | `src/features/orders/CLAUDE.md` | Counter ordering: the two SQL doors, cart, queue             |
 | `src/features/venues/CLAUDE.md` | Sidebar, soft delete, QR code                                |
@@ -264,7 +264,7 @@ The data layer, the back office, the customer-facing menu (`/m/$venueSlug`), the
 QR sheet (`/admin/$venueSlug/qr`), the stock screen (`/admin/$venueSlug/stock`), the venue
 settings screen (`/admin/$venueSlug/reglages` — name, description, per-venue menu theme)
 and counter ordering (`/admin/$venueSlug/commandes`, plus the order bar on the public menu)
-all exist.
+all exist, as does the account screen (`/admin/compte` — password change).
 The "ardoise" theme is in place across the home page, `/login`, the back office and the
 public menu.
 

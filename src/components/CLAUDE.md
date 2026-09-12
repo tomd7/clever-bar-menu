@@ -224,6 +224,11 @@ apart: one stretched `nav` would make the shell responsible for the gap between 
 items. Like `nav`, it only renders from `lg`, and it draws **no separator of its own** —
 that belongs to whatever is put in it, so an empty zone leaves no trace.
 
+A third slot, **`account`**, is the way into the manager's own account (`AccountLink` from
+`features/auth`), and it is the one that renders **at every width**: in the phone's top bar
+next to « Déconnexion », under the address in the column from `lg`. Before it, the phone
+bar held nothing but the sign-out — a screen reachable only from `lg` is unfinished.
+
 `MenuAddress` (`back-office/menu-address.tsx`) draws `/m/<slug>` as a **control, not a
 caption**: a link opening the customer menu in a **new tab** — the manager checks the
 result and comes back to the form they left — next to a `CopyButton` that copies the

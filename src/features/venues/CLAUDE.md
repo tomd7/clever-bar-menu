@@ -125,7 +125,13 @@ column, where a fold has to be found and unfolded on every visit.
 - **`corbeille` is a reserved slug** (`RESERVED_SLUGS` in `api.ts`). `/admin/corbeille` is
   a static segment and the router puts it before `/admin/$venueSlug`, so a venue with that
   slug would be created without any error and then be unreachable — its public menu
-  working, its editor not. Any new static child of `/admin` goes into that set.
+  working, its editor not. `compte` (`/admin/compte`, the account screen) is the second.
+- **Postgres enforces the list, not `createVenue`.** The `venues_slug_not_reserved` check
+  (`src/db/schema.ts`) refuses those slugs on insert _and_ update, for every client — a
+  hand-written PostgREST call never meets `createVenue`. `RESERVED_SLUGS` stays for the
+  French message, since `describeError` has no case for `23514`. **Every future static
+  segment under `/admin/` goes into both, in the same commit**, with its migration — and
+  that migration fails if a venue, binned ones included, already holds the slug.
 
 ## Settings — `venue-settings.tsx`, `/admin/$venueSlug/reglages`
 

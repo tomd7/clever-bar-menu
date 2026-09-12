@@ -169,6 +169,13 @@
       "when": 1789135568066,
       "tag": "0023_product_visibility_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1789167993972,
+      "tag": "0024_venue_slug_not_reserved",
+      "breakpoints": true
     }
   ]
 }

@@ -37,8 +37,15 @@ export function slugify(value: string): string {
  * sans la moindre erreur puis resterait introuvable — sa carte publique
  * marcherait, son écran d'édition non. Le refus à la création est le seul
  * endroit où le problème est encore explicable.
+ *
+ * `/admin/compte` is the second one. This set is not the boundary: Postgres
+ * is, through the `venues_slug_not_reserved` check in `src/db/schema.ts`,
+ * which also stops a hand-written `insert` or an `update` of `slug`. This copy
+ * exists for the French message, since `describeError` has no case for the
+ * check's `23514`. **The two lists change together**, and every new static
+ * child of `/admin/` joins both in the same commit.
  */
-const RESERVED_SLUGS = new Set(['corbeille'])
+const RESERVED_SLUGS = new Set(['corbeille', 'compte'])
 
 /**
  * Les établissements d'un gérant, du plus ancien au plus récent.

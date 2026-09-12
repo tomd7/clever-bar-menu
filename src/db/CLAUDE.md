@@ -191,6 +191,31 @@ Nullable `text`, holding a **zero-padded 14-digit GTIN**, with
   payload this project is careful about — narrowing that select is a separate change,
   because its return type is the full `Product`.
 
+## `venues.slug` — reserved slugs
+
+`venues_slug_not_reserved` (`slug not in ('corbeille', 'compte')`) refuses a slug the back
+office uses as a static segment under `/admin/`. Migration `0024` is drizzle-kit's plain
+`alter table`, and no policy changed.
+
+**`0024`'s journal `when` is set by hand to `1789167993972`**, the stamp it carried when it
+was generated as `0022` and applied to production under that number. drizzle's migrator
+matches applied rows by that value, so the edit is what keeps it from running the
+migration a second time after the renumbering. Don't regenerate it.
+
+- **It is a boundary, not a restatement.** `createVenue` refuses those slugs too, but the
+  browser writes to PostgREST directly, so a hand-written `insert` — or an `update` that
+  sets `slug`, which `updateVenue` never does and nothing else stops — gets past it. The
+  check covers both, for every client. `RESERVED_SLUGS` stays in `features/venues/api.ts`
+  only for the French message: `describeError` has no case for `23514`.
+- **The list lives in two places that change together**, the check and `RESERVED_SLUGS`,
+  and each carries the note. Importing `schema.ts` into the bundle is not the way to share
+  it.
+- **Adding a slug to the list fails the migration if a row already has it** — including a
+  binned venue, since `venues_slug_unique` ignores `deleted_at`. Query for it before
+  running the migration, and decide what to do with a match first: its public URL is
+  printed on QR codes. Before `0024` ran, no venue used `corbeille` or `compte` (checked
+  read-only against production, soft-deleted rows included).
+
 ## Connection strings
 
 Three, from the Supabase dashboard: transaction pooler (6543, IPv4) for the app, session

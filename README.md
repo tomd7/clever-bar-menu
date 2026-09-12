@@ -256,6 +256,7 @@ and its first paint matters.
 | `/login`                       | Sign in                                                  |
 | `/admin`                       | The manager's venues, and venue creation                 |
 | `/admin/corbeille`             | Deleted venues, and restoration                          |
+| `/admin/compte`                | The manager's account: password change                   |
 | `/admin/$venueSlug`            | Menu editing: categories, products, prices, availability |
 | `/admin/$venueSlug/stock`      | Stock tracking: levels, alerts, decrements               |
 | `/admin/$venueSlug/stock/scan` | Stock movements at the camera, by barcode                |
@@ -455,6 +456,9 @@ Three behaviours to know:
 - [x] Password reset: the link is requested from the sign-in screen and mailed by Supabase;
       the confirmation is the same whether the address has an account or not, and a dead or
       already-used link lands on a screen that offers a new one
+- [x] Password change from the back office (`/admin/compte`): the current password is
+      checked by Supabase, a session older than a day confirms with a code mailed to the
+      account, and the other devices are signed out after every change
 - [x] Venue CRUD
 - [x] Menu CRUD (categories, products, prices, photos)
 - [x] Public menu

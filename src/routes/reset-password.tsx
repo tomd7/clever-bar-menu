@@ -48,7 +48,7 @@ function ResetPasswordRoute() {
   const router = useRouter()
   const { linkError } = Route.useRouteContext()
 
-  /* `useUpdatePassword` a déjà invalidé le routeur : il ne reste que la destination. */
+  /* `useResetPassword` a déjà invalidé le routeur : il ne reste que la destination. */
   return (
     <ResetPasswordScreen
       linkError={linkError}

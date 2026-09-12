@@ -266,6 +266,29 @@ export const venues = pgTable(
     index('venues_owner_id_idx').on(table.ownerId),
 
     /**
+     * No venue may take a slug the back office uses as a static segment under
+     * `/admin/`. The router puts `/admin/corbeille` and `/admin/compte` before
+     * `/admin/$venueSlug`, so such a venue would be created without an error
+     * and then be unreachable from the back office while its public menu
+     * worked.
+     *
+     * Enforced here because the browser writes to PostgREST directly: a
+     * hand-written `insert`, or an `update` that sets `slug`, never meets
+     * `createVenue`. Unlike `venues_theme_allowed` this one also covers a
+     * column the application never updates — and that is the point.
+     *
+     * **The list lives in two places that change together**: here and
+     * `RESERVED_SLUGS` in `src/features/venues/api.ts`, which refuses in French
+     * before this answers in English (`describeError` has no case for
+     * `23514`). Every new static child of `/admin/` goes into both, in the same
+     * commit. Importing this file into the bundle is not the way to share it.
+     */
+    check(
+      'venues_slug_not_reserved',
+      sql`${table.slug} not in ('corbeille', 'compte')`,
+    ),
+
+    /**
      * Lecture publique : les établissements actifs seulement.
      *
      * Le filtre est dans la policy et non dans les requêtes : la carte publique

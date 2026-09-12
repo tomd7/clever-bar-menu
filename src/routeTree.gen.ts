@@ -16,6 +16,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as MVenueSlugRouteImport } from './routes/m.$venueSlug'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
+import { Route as AuthenticatedAdminCompteRouteImport } from './routes/_authenticated/admin.compte'
 import { Route as AuthenticatedAdminCorbeilleRouteImport } from './routes/_authenticated/admin.corbeille'
 import { Route as AuthenticatedAdminVenueSlugIndexRouteImport } from './routes/_authenticated/admin.$venueSlug.index'
 import { Route as AuthenticatedAdminVenueSlugCommandesRouteImport } from './routes/_authenticated/admin.$venueSlug.commandes'
@@ -58,6 +59,12 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   path: '/admin/',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedAdminCompteRoute =
+  AuthenticatedAdminCompteRouteImport.update({
+    id: '/admin/compte',
+    path: '/admin/compte',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAdminCorbeilleRoute =
   AuthenticatedAdminCorbeilleRouteImport.update({
     id: '/admin/corbeille',
@@ -107,6 +114,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/m/$venueSlug': typeof MVenueSlugRoute
+  '/admin/compte': typeof AuthenticatedAdminCompteRoute
   '/admin/corbeille': typeof AuthenticatedAdminCorbeilleRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/admin/$venueSlug/commandes': typeof AuthenticatedAdminVenueSlugCommandesRoute
@@ -122,6 +130,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/m/$venueSlug': typeof MVenueSlugRoute
+  '/admin/compte': typeof AuthenticatedAdminCompteRoute
   '/admin/corbeille': typeof AuthenticatedAdminCorbeilleRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/admin/$venueSlug/commandes': typeof AuthenticatedAdminVenueSlugCommandesRoute
@@ -139,6 +148,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/m/$venueSlug': typeof MVenueSlugRoute
+  '/_authenticated/admin/compte': typeof AuthenticatedAdminCompteRoute
   '/_authenticated/admin/corbeille': typeof AuthenticatedAdminCorbeilleRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/admin/$venueSlug/commandes': typeof AuthenticatedAdminVenueSlugCommandesRoute
@@ -156,6 +166,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/m/$venueSlug'
+    | '/admin/compte'
     | '/admin/corbeille'
     | '/admin/'
     | '/admin/$venueSlug/commandes'
@@ -171,6 +182,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/m/$venueSlug'
+    | '/admin/compte'
     | '/admin/corbeille'
     | '/admin'
     | '/admin/$venueSlug/commandes'
@@ -187,6 +199,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/m/$venueSlug'
+    | '/_authenticated/admin/compte'
     | '/_authenticated/admin/corbeille'
     | '/_authenticated/admin/'
     | '/_authenticated/admin/$venueSlug/commandes'
@@ -257,6 +270,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/admin/compte': {
+      id: '/_authenticated/admin/compte'
+      path: '/admin/compte'
+      fullPath: '/admin/compte'
+      preLoaderRoute: typeof AuthenticatedAdminCompteRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/admin/corbeille': {
       id: '/_authenticated/admin/corbeille'
       path: '/admin/corbeille'
@@ -310,6 +330,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteChildren {
+  AuthenticatedAdminCompteRoute: typeof AuthenticatedAdminCompteRoute
   AuthenticatedAdminCorbeilleRoute: typeof AuthenticatedAdminCorbeilleRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
   AuthenticatedAdminVenueSlugCommandesRoute: typeof AuthenticatedAdminVenueSlugCommandesRoute
@@ -321,6 +342,7 @@ interface AuthenticatedRouteChildren {
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedAdminCompteRoute: AuthenticatedAdminCompteRoute,
   AuthenticatedAdminCorbeilleRoute: AuthenticatedAdminCorbeilleRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
   AuthenticatedAdminVenueSlugCommandesRoute:

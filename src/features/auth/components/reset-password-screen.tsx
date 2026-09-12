@@ -5,8 +5,9 @@ import { ActionButton } from '#/components/buttons/action-button'
 import { AuthIsland } from '#/features/auth/components/auth-island'
 import { ErrorNote } from '#/components/error-note'
 import { NavLink } from '#/components/nav-link'
-import { ResetPasswordForm } from '#/features/auth/components/reset-password-form'
+import { NewPasswordForm } from '#/features/auth/components/new-password-form'
 import { Skeleton, SkeletonLine, SkeletonScreen } from '#/components/skeleton'
+import { useResetPassword } from '#/features/auth/mutations'
 
 /**
  * Écran de choix d'un nouveau mot de passe, atteint depuis le lien reçu par
@@ -16,6 +17,10 @@ import { Skeleton, SkeletonLine, SkeletonScreen } from '#/components/skeleton'
  * single-use and expires, so arriving on a dead one is an ordinary outcome —
  * not an edge case — and it gets a screen of its own with the way out on it,
  * never a blank card.
+ *
+ * `onUpdated` is left to the caller, like `LoginForm`'s `onSignedIn`: where a
+ * manager goes next belongs to the route. The router invalidation, which
+ * belongs to the change itself, lives in `useResetPassword`.
  */
 export function ResetPasswordScreen({
   linkError,
@@ -25,33 +30,18 @@ export function ResetPasswordScreen({
   onUpdated: () => void
 }) {
   if (linkError) {
-    return (
-      <AuthIsland kicker="Espace gérant" title="Lien invalide">
-        <ErrorNote className="mt-4">{linkError}</ErrorNote>
-
-        <p className="mt-3 text-sm text-ink-soft">
-          Un lien de réinitialisation ne sert qu'une fois, et il expire. En
-          demander un nouveau prend quelques secondes.
-        </p>
-
-        {/*
-          The one action on a dead-end screen, so it is drawn as the primary
-          call to action even though it navigates — the `asChild` case
-          `src/components/CLAUDE.md` allows, not a licence to draw links as
-          buttons elsewhere.
-        */}
-        <ActionButton asChild surface="page" className="mt-5 w-full">
-          <Link to="/forgot-password">Demander un nouveau lien</Link>
-        </ActionButton>
-
-        <p className="mt-3 border-t border-line pt-2 text-center">
-          <NavLink to="/login" icon={ArrowLeft}>
-            Retour à la connexion
-          </NavLink>
-        </p>
-      </AuthIsland>
-    )
+    return <DeadLinkScreen linkError={linkError} />
   }
+
+  return <NewPasswordScreen onUpdated={onUpdated} />
+}
+
+/**
+ * The form half. Split from the dead-link half so `useResetPassword` is not
+ * called behind an early return.
+ */
+function NewPasswordScreen({ onUpdated }: { onUpdated: () => void }) {
+  const resetPassword = useResetPassword()
 
   return (
     <AuthIsland kicker="Espace gérant" title="Nouveau mot de passe">
@@ -60,7 +50,52 @@ export function ResetPasswordScreen({
         enregistrement.
       </p>
 
-      <ResetPasswordForm onUpdated={onUpdated} />
+      {/*
+        No current password: a recovery session is exempt from Supabase's
+        check, and the manager is here precisely because they forgot it.
+      */}
+      <NewPasswordForm
+        surface="page"
+        submitLabel="Enregistrer le mot de passe"
+        autoFocus
+        pending={resetPassword.isPending}
+        error={resetPassword.error?.message}
+        onSubmit={(passwords) =>
+          resetPassword.mutate(passwords, { onSuccess: onUpdated })
+        }
+        className="mt-6"
+        submitClassName="w-full"
+      />
+    </AuthIsland>
+  )
+}
+
+/** The recovery link did not open a session: say why, and offer a new one. */
+function DeadLinkScreen({ linkError }: { linkError: string }) {
+  return (
+    <AuthIsland kicker="Espace gérant" title="Lien invalide">
+      <ErrorNote className="mt-4">{linkError}</ErrorNote>
+
+      <p className="mt-3 text-sm text-ink-soft">
+        Un lien de réinitialisation ne sert qu'une fois, et il expire. En
+        demander un nouveau prend quelques secondes.
+      </p>
+
+      {/*
+        The one action on a dead-end screen, so it is drawn as the primary
+        call to action even though it navigates — the `asChild` case
+        `src/components/CLAUDE.md` allows, not a licence to draw links as
+        buttons elsewhere.
+      */}
+      <ActionButton asChild surface="page" className="mt-5 w-full">
+        <Link to="/forgot-password">Demander un nouveau lien</Link>
+      </ActionButton>
+
+      <p className="mt-3 border-t border-line pt-2 text-center">
+        <NavLink to="/login" icon={ArrowLeft}>
+          Retour à la connexion
+        </NavLink>
+      </p>
     </AuthIsland>
   )
 }

@@ -28,17 +28,25 @@ import type { ReactNode } from 'react'
  * que ces deux zones sont séparées par toute la hauteur de la colonne, et
  * qu'un seul `nav` étiré jusqu'en bas rendrait la coquille responsable de
  * l'écart entre ses éléments.
+ *
+ * `account` is the way into the manager's own account, and unlike `nav` and
+ * `navFooter` it renders **at every width**: in the phone's top bar next to
+ * « Déconnexion », under the address in the column from `lg`. A slot for the
+ * same reason as the other two — the link points at a route, and which one is
+ * the route's business, not this shell's.
  */
 export function BackOfficeShell({
   email,
   nav,
   navFooter,
+  account,
   onSignOut,
   children,
 }: {
   email: string | undefined
   nav?: ReactNode
   navFooter?: ReactNode
+  account?: ReactNode
   onSignOut: () => void
   children: ReactNode
 }) {
@@ -84,6 +92,7 @@ export function BackOfficeShell({
             <p className="hidden truncate text-xs text-ink-soft lg:block">
               {email}
             </p>
+            {account}
             <ActionButton
               icon={LogOut}
               variant="ghost"

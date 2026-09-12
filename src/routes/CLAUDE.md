@@ -60,6 +60,14 @@ A pathless layout route that both guards `/admin` and provides the shell.
   Sign-out still does it by hand here, which also navigates.
 - **The in-page back links are `lg:hidden`, not deleted.** The sidebar only exists from
   `lg`; below it, « ← Établissements » and « ← Retour à la carte » are the only way out.
+- **It also fills the shell's `account` slot** with `AccountLink` — the one entry that
+  renders at every width, since `/admin/compte` has no place in the venue column.
+- **A static child of `/admin` reserves a slug.** `admin.corbeille.tsx` and
+  `admin.compte.tsx` are matched before `admin.$venueSlug.*`, so a venue with that slug
+  would be created and then unreachable. Every new static segment under `/admin/` goes into
+  `RESERVED_SLUGS` (`features/venues/api.ts`) **and** the `venues_slug_not_reserved` check
+  (`src/db/schema.ts`, plus its migration) in the same commit. A static child of
+  `$venueSlug` (`reglages`, `qr`…) reserves nothing.
 
 ## `login.tsx`
 
