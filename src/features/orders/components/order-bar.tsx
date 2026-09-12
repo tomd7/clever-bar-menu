@@ -1,21 +1,25 @@
 import { ChevronUp, ShoppingBag } from 'lucide-react'
-import { useQueries } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useQueries, useQuery } from '@tanstack/react-query'
+import { useEffect, useRef, useState } from 'react'
 
 import { CartSheet } from '#/features/orders/components/cart-sheet'
 import {
-  GUEST_STATUS_LABEL,
+  guestStatusLabel,
   isOpenOrder,
   mostUrgentStatus,
 } from '#/features/orders/status'
 import { OrderTracker } from '#/features/orders/components/order-tracker'
 import { cartItemCount, cartTotal, useCart } from '#/features/orders/cart'
+import { chooseTable } from '#/features/orders/table'
 import { formatPrice } from '#/lib/money'
-import { guestOrderQueryOptions } from '#/features/orders/public-api'
+import {
+  guestOrderQueryOptions,
+  publicTablesQueryOptions,
+} from '#/features/orders/public-api'
 import { useTickets } from '#/features/orders/ticket'
 
-import type { OrderStatus } from '#/features/orders/status'
 import type { CartProduct } from '#/features/orders/cart'
+import type { OrderSettings } from '#/lib/order-settings'
 import type { ReactNode } from 'react'
 
 /**
@@ -49,16 +53,52 @@ import type { ReactNode } from 'react'
  */
 export function OrderBar({
   venueSlug,
+  venueId,
   products,
   currency,
+  orderSettings,
+  urlTableId,
 }: {
   venueSlug: string
+  venueId: string
   /** La carte affichée, pour retrouver le nom et le prix d'une ligne. */
   products: Array<CartProduct>
   currency: string
+  /** How the venue identifies and serves orders, parsed by the route. */
+  orderSettings: OrderSettings
+  /** The `?table=` of the scanned code, already shape-checked by the route. */
+  urlTableId: string | undefined
 }) {
   const tickets = useTickets(venueSlug)
   const cart = useCart(venueSlug)
+
+  const byTable = orderSettings.reference === 'table'
+
+  /*
+    The venue's tables, read once the customer has something to send — or a
+    table in the address to check. Most visitors read the menu and leave; they
+    do not need the list, and the SSR'd payload stays the menu alone.
+  */
+  const tablesQuery = useQuery({
+    ...publicTablesQueryOptions(venueId),
+    enabled: byTable && (cart.length > 0 || urlTableId !== undefined),
+  })
+
+  /*
+    The scanned code's table is adopted **only if it resolves** — a deleted
+    table's id must not overwrite a table the customer already picked — and
+    once per address, so a later « Changer » is not undone when the list
+    refetches.
+  */
+  const adoptedTableId = useRef<string | undefined>(undefined)
+  useEffect(() => {
+    if (!urlTableId || adoptedTableId.current === urlTableId) return
+    if (!tablesQuery.data) return
+    adoptedTableId.current = urlTableId
+    if (tablesQuery.data.some((table) => table.public_id === urlTableId)) {
+      chooseTable(venueSlug, urlTableId)
+    }
+  }, [venueSlug, urlTableId, tablesQuery.data])
 
   /*
     Les requêtes vivent ici, et non dans la feuille de suivi qui reste fermée la
@@ -93,6 +133,18 @@ export function OrderBar({
     openOrders.length > 0
       ? mostUrgentStatus(openOrders.map((order) => order.status))
       : orders.at(-1)?.status
+
+  /*
+    The order that speaks, for its wording: « Prête — venez la chercher » or
+    « Prête — on vous l'apporte » depends on how **that** order is served.
+  */
+  const lead =
+    openOrders.length > 0
+      ? openOrders.find((order) => order.status === status)
+      : orders.at(-1)
+  const statusLabel = lead
+    ? guestStatusLabel(lead.status, lead.serviceMode)
+    : undefined
 
   const eyebrow =
     openOrders.length > 1
@@ -130,7 +182,7 @@ export function OrderBar({
       <BarShell>
         {tickets.length > 0 ? (
           <StatusRow
-            status={status}
+            label={statusLabel}
             eyebrow={eyebrow}
             filled={orderIsUrgent}
             onOpen={() => setPanel('order')}
@@ -154,6 +206,9 @@ export function OrderBar({
         venueSlug={venueSlug}
         products={products}
         currency={currency}
+        orderSettings={orderSettings}
+        tables={tablesQuery.data}
+        tablesError={tablesQuery.error}
       />
 
       {tickets.length > 0 ? (
@@ -171,12 +226,13 @@ export function OrderBar({
 
 /** Les commandes en cours, et où en est la plus avancée. */
 function StatusRow({
-  status,
+  label,
   eyebrow,
   filled,
   onOpen,
 }: {
-  status: OrderStatus | undefined
+  /** The leading order's status, in the words of its service; `undefined` while loading. */
+  label: string | undefined
   /** Composé par `OrderBar` : le compte ne porte que sur ce qui est en cours. */
   eyebrow: string
   filled: boolean
@@ -192,9 +248,7 @@ function StatusRow({
             bar passe la commande en « Prête », et c'est exactement le moment
             où il faut le prévenir.
           */}
-          <span aria-live="polite">
-            {status ? GUEST_STATUS_LABEL[status] : 'Envoyée'}
-          </span>
+          <span aria-live="polite">{label ?? 'Envoyée'}</span>
         </span>
       </span>
       <ChevronUp className="size-5 shrink-0" aria-hidden="true" />

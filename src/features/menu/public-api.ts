@@ -36,6 +36,9 @@ export type PublicVenue = Pick<
   | 'font_category'
   | 'font_product'
   | 'font_description'
+  | 'order_reference'
+  | 'service_mode'
+  | 'first_name_mode'
 >
 
 export type PublicProduct = Pick<
@@ -74,8 +77,13 @@ export type PublicMenuData = {
   `fetchPublicMenu` folds them into `sold_out` before building the payload, so
   the stock level is not dehydrated into the page's HTML.
 */
+/*
+  `order_reference`, `service_mode` and `first_name_mode` travel with the venue:
+  the route hands them to the order bar, which decides what the cart sheet asks.
+  Three short strings, and they spare the sheet a second venue read.
+*/
 const VENUE_COLUMNS =
-  'id,slug,name,description,currency,orders_enabled,theme,logo_path,logo_plate,font_title,font_category,font_product,font_description'
+  'id,slug,name,description,currency,orders_enabled,theme,logo_path,logo_plate,font_title,font_category,font_product,font_description,order_reference,service_mode,first_name_mode'
 const CATEGORY_COLUMNS = 'id,name,description'
 const PRODUCT_COLUMNS =
   'id,category_id,name,description,size,price_cents,image_path,is_available,stock_quantity'

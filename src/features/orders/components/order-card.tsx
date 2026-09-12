@@ -2,10 +2,11 @@ import { Ban, Check } from 'lucide-react'
 
 import { ActionButton } from '#/components/buttons/action-button'
 import {
-  ADVANCE_LABEL,
-  BAR_STATUS_LABEL,
+  advanceLabel,
+  barStatusLabel,
   nextOrderStatus,
 } from '#/features/orders/status'
+import { orderReference, orderReferenceText } from '#/features/orders/reference'
 import { DeleteButton } from '#/components/buttons/delete-button'
 import { ErrorNote } from '#/components/error-note'
 import { ProductSize } from '#/components/product-size'
@@ -37,6 +38,18 @@ export function OrderCard({
   const next = nextOrderStatus(order.status)
   const isNew = order.status === 'received'
 
+  /*
+    The copies on the row, never the table as it is now: a table renumbered
+    since must not rename an order already in the queue.
+  */
+  const referenceFields = {
+    customerName: order.customer_name,
+    tableNumber: order.table_number,
+    tableLabel: order.table_label,
+  }
+  const reference = orderReference(referenceFields)
+  const byTable = typeof order.table_number === 'number'
+
   return (
     <li
       /*
@@ -48,15 +61,31 @@ export function OrderCard({
     >
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
         <div className="min-w-0">
+          {/*
+            The table heads a table order, the first name following it in the
+            body face when one was given — the staff look for the table first.
+          */}
           <p className="display-title text-lg leading-tight">
-            {order.customer_name}
+            {reference.title}
+            {reference.name ? (
+              <span className="text-base font-normal text-ink-soft">
+                {' '}
+                — {reference.name}
+              </span>
+            ) : null}
           </p>
           <p className="mt-0.5 text-xs text-ink-soft">
             <StatusChip
               status={order.status}
               cancelledBy={order.cancelled_by}
+              service={order.service_mode}
             />{' '}
             · {formatTime(order.created_at)}
+            {/*
+              Said on the card, because a queue can mix both: orders keep the
+              service they were placed with when the venue switches mid-service.
+            */}
+            {order.service_mode === 'table' ? ' · à apporter en salle' : null}
           </p>
         </div>
 
@@ -119,7 +148,7 @@ export function OrderCard({
               }
               disabled={isPending}
             >
-              {ADVANCE_LABEL[order.status]}
+              {advanceLabel(order.status, order.service_mode)}
             </ActionButton>
           ) : null}
 
@@ -135,7 +164,11 @@ export function OrderCard({
             icon={Ban}
             label="Annuler"
             confirmLabel="Annuler la commande"
-            question={`Annuler la commande de ${order.customer_name} ? Le stock déjà décompté n’est pas remis.`}
+            question={
+              byTable
+                ? `Annuler la commande « ${orderReferenceText(referenceFields)} » ? Le stock déjà décompté n’est pas remis.`
+                : `Annuler la commande de ${reference.title} ? Le stock déjà décompté n’est pas remis.`
+            }
             pending={isPending}
             onConfirm={() =>
               advance.mutate({ orderId: order.id, status: 'cancelled' })
@@ -160,9 +193,11 @@ export function OrderCard({
 function StatusChip({
   status,
   cancelledBy,
+  service,
 }: {
   status: OrderWithItems['status']
   cancelledBy: OrderWithItems['cancelled_by']
+  service: OrderWithItems['service_mode']
 }) {
   return (
     <span
@@ -172,7 +207,7 @@ function StatusChip({
           : 'text-ink-soft'
       }
     >
-      {BAR_STATUS_LABEL[status]}
+      {barStatusLabel(status, service)}
       {/*
         Qui a annulé, et seulement quand la question se pose. Une ligne qui
         disparaît de la file sans explication fait supposer une fausse manœuvre

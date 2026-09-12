@@ -6,14 +6,20 @@ import { BottomSheet } from '#/features/orders/components/bottom-sheet'
 import { ErrorNote } from '#/components/error-note'
 import { IconButton } from '#/components/buttons/icon-button'
 import { ProductSize, productLabel } from '#/components/product-size'
+import { Skeleton } from '#/components/skeleton'
+import { TablePicker } from '#/features/orders/components/table-picker'
 import { TextAreaField } from '#/components/form/textarea-field'
 import { TextField } from '#/components/form/text-field'
 import { cartTotal, setCartQuantity, useCart } from '#/features/orders/cart'
+import { chooseTable, useChosenTable } from '#/features/orders/table'
 import { formatPrice } from '#/lib/money'
+import { tableName } from '#/lib/order-settings'
 import { usePlaceOrder } from '#/features/orders/mutations'
 
 import type { FormEvent } from 'react'
 import type { CartProduct } from '#/features/orders/cart'
+import type { OrderSettings } from '#/lib/order-settings'
+import type { PublicTable } from '#/features/orders/public-api'
 
 /**
  * Le panier, et le formulaire qui l'envoie.
@@ -25,6 +31,12 @@ import type { CartProduct } from '#/features/orders/cart'
  * Une seule feuille pour le panier **et** le formulaire, sans étape
  * intermédiaire. Ce qu'on commande dans un bar tient en trois lignes ; couper
  * ça en deux écrans ferait deux fois plus de gestes pour une pinte.
+ *
+ * **What the form asks depends on the venue.** By name — the default — a
+ * required first name, exactly as before tables existed. By table, the table
+ * instead (« Table 12 », with « Changer »), or the picker when it is not known,
+ * plus an optional first name if the venue asks for one. Hiding the name field
+ * closes nothing: `place_order` re-checks every rule of both modes.
  */
 export function CartSheet({
   open,
@@ -32,6 +44,9 @@ export function CartSheet({
   venueSlug,
   products,
   currency,
+  orderSettings,
+  tables,
+  tablesError,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -39,12 +54,38 @@ export function CartSheet({
   /** La carte affichée, pour retrouver le nom et le prix d'une ligne. */
   products: Array<CartProduct>
   currency: string
+  orderSettings: OrderSettings
+  /** The venue's tables, in table mode; `undefined` while they load. */
+  tables: Array<PublicTable> | undefined
+  tablesError: Error | null
 }) {
   const cart = useCart(venueSlug)
   const place = usePlaceOrder(venueSlug)
+  const chosenTable = useChosenTable(venueSlug)
 
   const [guestName, setGuestName] = useState('')
   const [guestNote, setGuestNote] = useState('')
+
+  /*
+    Whether the picker stays open. It opens by itself while no table is known;
+    once one is chosen it stays open until the sheet closes, because arrow keys
+    choose as they move and a picker collapsing under them would lose the
+    keyboard. « Changer » opens it on purpose.
+  */
+  const [pickingTable, setPickingTable] = useState(false)
+
+  const byTable = orderSettings.reference === 'table'
+  const asksName = !byTable || orderSettings.firstName === 'optional'
+
+  /*
+    The table is only known if its id is one of this venue's tables: an id from
+    a deleted table's code, or from another venue's tab, resolves to nothing and
+    the picker shows — never an error page.
+  */
+  const table =
+    byTable && chosenTable
+      ? (tables?.find((entry) => entry.public_id === chosenTable) ?? null)
+      : null
 
   const byId = new Map(products.map((product) => [product.id, product]))
 
@@ -78,8 +119,9 @@ export function CartSheet({
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
     place.mutate({
-      guestName,
+      guestName: asksName ? guestName.trim() || null : null,
       guestNote: guestNote.trim() || null,
+      guestTable: table?.public_id ?? null,
       items: cart.map((line) => ({
         productId: line.productId,
         quantity: line.quantity,
@@ -87,12 +129,25 @@ export function CartSheet({
     })
   }
 
+  const canSend =
+    !place.isPending &&
+    lines.length > 0 &&
+    (byTable ? table !== null : guestName.trim() !== '')
+
   return (
     <BottomSheet
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={(next) => {
+        /* A reopened sheet shows the chosen table, not the picker left open. */
+        if (!next) setPickingTable(false)
+        onOpenChange(next)
+      }}
       title="Votre commande"
-      description="Elle se règle au comptoir, en venant la chercher."
+      description={
+        orderSettings.service === 'table'
+          ? 'On vous l’apporte à votre table.'
+          : 'Elle se règle au comptoir, en venant la chercher.'
+      }
     >
       <ul className="divide-y divide-line-soft border-y border-line-soft">
         {lines.map(({ line, product }) => (
@@ -169,17 +224,94 @@ export function CartSheet({
       ) : null}
 
       <form onSubmit={handleSubmit} className="mt-5">
-        <TextField
-          label="Votre prénom"
-          required
-          maxLength={60}
-          autoComplete="given-name"
-          placeholder="Camille"
-          surface="page"
-          value={guestName}
-          onChange={(event) => setGuestName(event.target.value)}
-          hint="C’est le nom qu’on appellera au comptoir."
-        />
+        {byTable ? (
+          <div className="mb-4">
+            {tables === undefined ? (
+              tablesError ? (
+                <ErrorNote className="mt-0">{tablesError.message}</ErrorNote>
+              ) : (
+                /* The chips' own height, so nothing below jumps when they land. */
+                <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+                  {[0, 1, 2, 3].map((index) => (
+                    <Skeleton
+                      key={index}
+                      className="h-11 w-full"
+                      delay={index * 40}
+                    />
+                  ))}
+                </div>
+              )
+            ) : tables.length === 0 ? (
+              <p
+                role="status"
+                className="rounded-lg bg-surface-raised px-3 py-2 text-sm"
+              >
+                Cet établissement n’a pas encore enregistré ses tables :
+                demandez au comptoir.
+              </p>
+            ) : table && !pickingTable ? (
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-line bg-surface-raised py-1 pr-1 pl-3">
+                <div className="min-w-0">
+                  <p className="text-xs text-ink-soft">Votre table</p>
+                  <p className="display-title truncate text-lg leading-tight">
+                    {tableName(table.number, table.label)}
+                  </p>
+                </div>
+                <ActionButton
+                  variant="ghost"
+                  surface="page"
+                  onClick={() => setPickingTable(true)}
+                  aria-label={`Changer de table (actuellement ${tableName(table.number, table.label)})`}
+                >
+                  Changer
+                </ActionButton>
+              </div>
+            ) : (
+              <TablePicker
+                tables={tables}
+                value={table?.public_id ?? null}
+                onChoose={(publicId) => {
+                  chooseTable(venueSlug, publicId)
+                  setPickingTable(true)
+                }}
+              />
+            )}
+          </div>
+        ) : null}
+
+        {!byTable ? (
+          <TextField
+            label="Votre prénom"
+            required
+            maxLength={60}
+            autoComplete="given-name"
+            placeholder="Camille"
+            surface="page"
+            value={guestName}
+            onChange={(event) => setGuestName(event.target.value)}
+            hint="C’est le nom qu’on appellera au comptoir."
+          />
+        ) : asksName ? (
+          <TextField
+            label={
+              <>
+                Votre prénom{' '}
+                <span className="font-normal text-ink-soft">(facultatif)</span>
+              </>
+            }
+            maxLength={60}
+            autoComplete="given-name"
+            placeholder="Camille"
+            surface="page"
+            value={guestName}
+            onChange={(event) => setGuestName(event.target.value)}
+            hint={
+              orderSettings.service === 'table'
+                ? 'Pour qu’on vous reconnaisse à la table.'
+                : 'Pour qu’on vous reconnaisse au comptoir.'
+            }
+          />
+        ) : null}
 
         <TextAreaField
           label={
@@ -188,7 +320,7 @@ export function CartSheet({
               <span className="font-normal text-ink-soft">(facultatif)</span>
             </>
           }
-          className="mt-3"
+          className={asksName ? 'mt-3' : undefined}
           rows={2}
           maxLength={300}
           placeholder="Sans glace, à emporter…"
@@ -203,7 +335,7 @@ export function CartSheet({
           icon={Send}
           surface="page"
           className="mt-4 w-full"
-          disabled={place.isPending || !guestName.trim() || lines.length === 0}
+          disabled={!canSend}
         >
           {place.isPending ? 'Envoi…' : 'Envoyer au bar'}
         </ActionButton>
