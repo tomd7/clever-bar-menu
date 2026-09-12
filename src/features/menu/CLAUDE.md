@@ -110,15 +110,15 @@ here. What stays in this file is what a photo asks for: a 1200px side and a JPEG
 the `adjust_product_stock` function.
 
 - **`null` means "not tracked", and it is the default.** Most lines of a bar's menu have
-  no finite stock over a service. `0` means _sold out_ and hides the product, so the two
-  must never be collapsed: `parseOptionalStock` returns `null` for a blank field, exactly
+  no finite stock over a service. `0` means _sold out_ — listed, no longer orderable — so
+  the two must never be collapsed: `parseOptionalStock` returns `null` for a blank field, exactly
   like `parseOptionalEurosToCents`.
 - **Sold-out is derived, never written.** `is_available` stays the manager's manual
-  gesture; a zero stock hides the product through a query filter, and a restock brings it
-  back with no further action. The rule is stated twice — `isHiddenFromCustomers` here and
-  `.or('stock_quantity.is.null,stock_quantity.gt.0')` in `fetchPublicMenu` — because it
-  applies on both sides of the wire. **They change together**, and the `is null` half is
-  not optional: a naive `gt.0` empties the menu of every untracked product.
+  gesture; a zero stock marks the product sold out, and a restock puts it back on sale with
+  no further action. The rule is stated twice — `isSoldOut` here, which `fetchPublicMenu`
+  reads to fill `sold_out`, and the `orderable` CTE of `place_order` (migration `0023`) —
+  because it applies on both sides of the wire. **They change together**, and the `is null`
+  half is not optional: a naive `> 0` makes every untracked product unorderable.
 - **The decrement goes through the RPC, the level set through a plain `update`.** `−1` is
   _relative_: read-then-write from the browser loses one tap in two the day the manager's
   phone and the counter's tablet serve at once. Typing a level is _absolute_ — last one
@@ -133,7 +133,7 @@ the `adjust_product_stock` function.
   zero** (`isWatched`). The quantity says there is something to count down; the threshold
   is how a manager designates the lines they want to be warned about — without one, a row
   could never say anything on a page read to find out what to re-order. **Sold out is the
-  exception**, threshold or not: at zero the product has left the customer menu, and this
+  exception**, threshold or not: at zero the product can no longer be ordered, and this
   is the screen that repairs that. Hiding a rupture because nobody asked to be warned
   about it is the one thing this page must not do. Restocking such a product drops it back
   out of the list — it becomes again a line nobody asked for news of, and its level is set
@@ -227,20 +227,48 @@ list.
   desktop, the machine with no usable camera and, on Windows or Linux, no `BarcodeDetector`
   at all.
 
+## Visibility — `products.is_visible`
+
+Hidden and sold out are **two columns, and two different things for a customer**. Hidden
+(`is_visible = false`) takes the row off the public menu entirely. Sold out (`isSoldOut`:
+`is_available = false`, or a stock at zero) keeps the row, writes « épuisé » where the price
+was, and offers no `+`. One switch used to do both — sold out meant gone — and migration
+`0023` hid the products that switch had turned off, so no customer's menu lost or gained a
+hand-pulled line on deploy.
+
+- **The flags are independent.** Hiding a product leaves its sale state alone, so putting
+  it back shows it exactly as it was left. Nothing derives one from the other, which is why
+  visibility has no helper next to `isSoldOut`: it is a column read.
+- **Filtered in the query, checked again in SQL.** `fetchPublicMenu` asks for
+  `is_visible = true`, so a hidden product never reaches the browser; `place_order` refuses
+  it too, because the menu on a customer's screen can predate the gesture.
+- **In the editor, the strike-through means hidden and nothing else**, with a « Masqué »
+  pill beside it. It always meant "off the customer's menu" — the menu changed, not the
+  mark. A manual shortage is said by the switch, and below `sm` its word shows **only when
+  it says « Rupture »**: « En vente » on every row is what would make that one go unread.
+- **The eye sits before the switch** — visibility is the broader of the two — and the row's
+  controls are two groups (state, then gestures), so a narrow phone wraps between them.
+- **Both toggles are optimistic** (`useOptimisticProductMutation`). The availability
+  switch was not: it waited for the write _and_ the refetch before moving, and a toggle that
+  doesn't move under the finger gets tapped again, which undoes the first tap.
+
 ## Customer menu — `public-api.ts`, `components/public-menu.tsx`
 
 `/m/$venueSlug` is the only SSR'd route with data (see `src/routes/CLAUDE.md`).
 
-- **`fetchPublicMenu` is deliberately not `fetchMenu`**: it filters `is_available` **and**
-  an exhausted `stock_quantity` **in the query** — a hidden product must never reach the
-  browser — and drops categories left empty. It lives in this feature because a separate
+- **`fetchPublicMenu` is deliberately not `fetchMenu`**: it filters `is_visible` **in the
+  query** — a hidden product must never reach the browser —, folds `is_available` and
+  `stock_quantity` into a `sold_out` boolean, and drops categories left with no listed
+  product. A section whose products are all sold out stays. It lives in this feature because a separate
   one would have to import `VenueNotFoundError` and `CategoryWithProducts` from it.
 - **It names its columns; it does not `select('*')`.** This payload is server-rendered
   _and_ dehydrated into the page, so every extra column travels twice to a phone on mobile
   data — and it is read as `anon`, which is the real argument: `owner_id` has no business
   in a public page and `barcode` names the item on the shelf, which is counter information,
-  not menu information. `is_available`, `stock_quantity` and `position` are absent from the
-  columns even though the query uses them: they filter and order **server-side**. The
+  not menu information. `is_visible` and `position` are absent from the columns even though
+  the query uses them: they filter and order **server-side**. `is_available` and
+  `stock_quantity` are selected but never returned — `sold_out` replaces them before the
+  payload is built, so no stock level is dehydrated into the page. The
   payload types are `Pick`s on the shared rows (`PublicVenue`, `PublicProduct`,
   `PublicCategory`), so a renamed column breaks here instead of drifting.
 - **`features/orders` declares its own `CartProduct`** — a `Pick` on the shared row, in
@@ -308,6 +336,17 @@ list.
   one file allowed to import both features, exactly as `_authenticated.tsx` passes
   `<VenueNav>` to `BackOfficeShell`. `undefined` is the normal case, and the layout is then
   unchanged.
+- **A sold-out row says « épuisé » where the price would be** (`MenuItemEnd`), after the
+  leader — the column a customer reads down. The price goes; the name softens but is **not
+  struck through** (a strike reads « gone for good », and the customer may want to ask when
+  it is back); the photo dims and loses its colour. Lower case and soft ink, like the
+  « épuisé » of `NotFound`.
+- **`productAction` is not called for a sold-out product**, and the action column is a
+  fixed `2.75rem` rather than `auto`. Each row is its own grid: an `auto` track left empty
+  collapses, and that row's « épuisé » would slide out of line with the prices around it.
+- **The route hands `OrderBar` only the orderable products.** The cart sheet drops a line
+  whose product it cannot resolve; passing sold-out products would draw one that ran out
+  while in the cart as orderable, until `place_order` refused the send.
 - **With an action, a photo-less product in a section that reserves a photo column renders an
   explicit empty `<div>`.** `null` produces no element, and grid auto-placement would slide
   the action into the image column — the prices on photo-less rows would stop lining up,

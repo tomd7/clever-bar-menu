@@ -78,7 +78,10 @@ type ProductRow = {
   barcode: string | null
   price_cents: number | null
   image_path: string | null
+  /** `false`: out of stock by hand — still on the menu, no longer orderable. */
   is_available: boolean
+  /** `false`: off the public menu entirely, whatever the stock says. */
+  is_visible: boolean
   /** Niveau restant, ou `null` si le produit n'est pas suivi en stock. */
   stock_quantity: number | null
   /** Seuil d'alerte, ou `null` : le produit n'alerte alors qu'une fois épuisé. */
@@ -220,6 +223,7 @@ export type Database = {
           | Nullable
           | 'position'
           | 'is_available'
+          | 'is_visible'
           | 'image_path'
           | 'size'
           | 'barcode'

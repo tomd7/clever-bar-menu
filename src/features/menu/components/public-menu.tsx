@@ -7,6 +7,7 @@ import { parseMenuTheme } from '#/lib/menu-theme'
 import { menuFace, parseMenuFonts } from '#/lib/menu-fonts'
 import { productPhotoUrl } from '#/features/menu/photo'
 import { VenueLogo } from '#/components/venue-logo'
+import { cn } from '#/lib/utils.ts'
 import { venueImageUrl } from '#/lib/venue-images'
 
 import type {
@@ -27,6 +28,11 @@ import type { ReactNode } from 'react'
  *
  * `undefined` est le cas normal : une carte dont l'établissement n'a pas ouvert
  * la commande n'affiche rien de plus qu'avant.
+ *
+ * It is **not called for a sold-out product**: there is nothing left to act on,
+ * and the menu is the side that knows it. The cell stays, empty and at its
+ * width, so that row's « épuisé » lines up with its neighbours' prices (see
+ * `itemLayout`).
  */
 export type ProductAction = (product: PublicProduct) => ReactNode
 
@@ -347,8 +353,9 @@ function MenuSection({
             product={product}
             currency={currency}
             withPhotoColumn={hasPhotos}
+            withActionColumn={productAction !== undefined}
             fonts={fonts}
-            action={productAction?.(product)}
+            action={product.sold_out ? undefined : productAction?.(product)}
           />
         ))}
       </ul>
@@ -360,12 +367,18 @@ function MenuItem({
   product,
   currency,
   withPhotoColumn,
+  withActionColumn,
   fonts,
   action,
 }: {
   product: PublicProduct
   currency: string
   withPhotoColumn: boolean
+  /**
+   * Whether the menu carries an action at all — not whether this row has one.
+   * A sold-out row renders none, and must still keep the column.
+   */
+  withActionColumn: boolean
   fonts: MenuFonts
   action?: ReactNode
 }) {
@@ -383,7 +396,7 @@ function MenuItem({
         l'œil ne comprend pas la cause. Centré, le nom fait face à sa photo, et
         un produit qui gagne trois lignes de description reste centré lui aussi.
       */
-      className={itemLayout(withPhotoColumn, action !== undefined)}
+      className={itemLayout(withPhotoColumn, withActionColumn)}
     >
       <div className="min-w-0">
         <p
@@ -395,27 +408,22 @@ function MenuItem({
             50cl ······ 5,50 € », comme sur une carte imprimée. Posé en frère
             du nom, il aurait été un troisième objet à aligner sur une ligne
             qui en compte déjà trois, et la conduite serait partie avant lui.
+
+            A sold-out name softens but is not struck through: the customer
+            may want to ask when it is back, and a strike is read as « gone
+            for good » before it is read as a word.
           */}
-          <span className="min-w-0 font-semibold">
+          <span
+            className={cn(
+              'min-w-0 font-semibold',
+              product.sold_out && 'text-ink-soft',
+            )}
+          >
             {product.name}
             <ProductSize size={product.size} />
           </span>
 
-          {/*
-            Un produit sans prix n'affiche rien du tout — ni prix, ni filet —
-            là où le back-office écrivait « Prix non renseigné ». C'est ce que
-            fait une vraie carte pour un plat du jour : le client demande.
-            Annoncer l'absence au client exposerait un oubli du gérant plutôt
-            qu'une information.
-          */}
-          {product.price_cents === null ? null : (
-            <>
-              <span className="menu-leader" aria-hidden="true" />
-              <span className="shrink-0 font-semibold tabular-nums">
-                {formatPrice(product.price_cents, currency)}
-              </span>
-            </>
-          )}
+          <MenuItemEnd product={product} currency={currency} />
         </p>
 
         {product.description ? (
@@ -458,11 +466,66 @@ function MenuItem({
             détourage blanc redeviendrait invisible.
           */
           loading="lazy"
-          className="size-16 rounded-xl border border-line bg-surface-raised object-cover sm:size-20"
+          /*
+            A sold-out photo is dimmed and drained of colour, the way the name
+            softens: the row still reads, it just no longer calls to be
+            ordered.
+          */
+          className={cn(
+            'size-16 rounded-xl border border-line bg-surface-raised object-cover sm:size-20',
+            product.sold_out && 'opacity-60 grayscale',
+          )}
         />
       ) : null}
       {action ? <div className="justify-self-end">{action}</div> : null}
     </li>
+  )
+}
+
+/**
+ * What closes a product's line: the leader and the price, the leader and
+ * « épuisé », or nothing.
+ *
+ * **Sold out is written where the price would be.** That is the column a
+ * customer reads down, and a word there — not a colour, not a strike — is what
+ * a bar chalks on its board. The price goes: a price for something that cannot
+ * be had is noise. A priceless sold-out product gets the leader too, since
+ * there is now something to lead to.
+ *
+ * Lower case and in soft ink, like the « épuisé » of `NotFound`, which draws
+ * the same line on the same board.
+ */
+function MenuItemEnd({
+  product,
+  currency,
+}: {
+  product: PublicProduct
+  currency: string
+}) {
+  if (product.sold_out) {
+    return (
+      <>
+        <span className="menu-leader" aria-hidden="true" />
+        <span className="shrink-0 font-medium text-ink-soft">épuisé</span>
+      </>
+    )
+  }
+
+  /*
+    Un produit sans prix n'affiche rien du tout — ni prix, ni filet — là où le
+    back-office écrivait « Prix non renseigné ». C'est ce que fait une vraie
+    carte pour un plat du jour : le client demande. Annoncer l'absence au
+    client exposerait un oubli du gérant plutôt qu'une information.
+  */
+  if (product.price_cents === null) return null
+
+  return (
+    <>
+      <span className="menu-leader" aria-hidden="true" />
+      <span className="shrink-0 font-semibold tabular-nums">
+        {formatPrice(product.price_cents, currency)}
+      </span>
+    </>
   )
 }
 
@@ -473,8 +536,13 @@ function MenuItem({
  * de mise en page de cette carte qui dépende de deux conditions, et l'écrire à
  * plat rend visible qu'aucune n'est oubliée. Les largeurs de la colonne
  * d'image sont celles de `size-16` / `sm:size-20`, en face desquelles la
- * vignette est posée ; celle de l'action est `auto`, un bouton rond de 44px
- * n'ayant pas de raison d'être déclaré deux fois.
+ * vignette est posée.
+ *
+ * The action column is declared at `2.75rem` — the project's 44px touch target
+ * — and no longer `auto`. Every row is its own grid, and an `auto` track with
+ * nothing in it collapses to zero: a sold-out row, which renders no action,
+ * would widen its text column by a button and push its « épuisé » out of line
+ * with the prices above and below.
  *
  * L'action est **toujours en dernière colonne**, au bord droit : c'est le
  * pouce qui la vise, et la déplacer selon la présence d'une photo obligerait la
@@ -484,13 +552,13 @@ function itemLayout(withPhotoColumn: boolean, withAction: boolean): string {
   const base = 'items-center gap-4 py-4 sm:gap-5'
 
   if (withPhotoColumn && withAction) {
-    return `grid grid-cols-[minmax(0,1fr)_4rem_auto] sm:grid-cols-[minmax(0,1fr)_5rem_auto] ${base}`
+    return `grid grid-cols-[minmax(0,1fr)_4rem_2.75rem] sm:grid-cols-[minmax(0,1fr)_5rem_2.75rem] ${base}`
   }
   if (withPhotoColumn) {
     return `grid grid-cols-[minmax(0,1fr)_4rem] sm:grid-cols-[minmax(0,1fr)_5rem] ${base}`
   }
   if (withAction) {
-    return `grid grid-cols-[minmax(0,1fr)_auto] ${base}`
+    return `grid grid-cols-[minmax(0,1fr)_2.75rem] ${base}`
   }
   return 'py-4'
 }

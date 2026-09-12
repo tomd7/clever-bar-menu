@@ -93,8 +93,15 @@ function PublicMenuRoute() {
     identifiant. Elle est aplatie ici plutôt que dans le panier : c'est la
     route qui tient la carte, et la commande n'a pas à connaître la notion de
     catégorie.
+
+    Sold-out products are left out, although the menu lists them. The cart
+    sheet drops a line whose product it cannot find, and that is the behaviour
+    to keep: a product that ran out while sitting in the cart must not be shown
+    there as orderable, only to be refused by `place_order` on send.
   */
-  const products = categories.flatMap((category) => category.products)
+  const products = categories
+    .flatMap((category) => category.products)
+    .filter((product) => !product.sold_out)
 
   return (
     <>
