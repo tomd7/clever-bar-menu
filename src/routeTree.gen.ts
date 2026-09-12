@@ -22,6 +22,7 @@ import { Route as AuthenticatedAdminVenueSlugIndexRouteImport } from './routes/_
 import { Route as AuthenticatedAdminVenueSlugCommandesRouteImport } from './routes/_authenticated/admin.$venueSlug.commandes'
 import { Route as AuthenticatedAdminVenueSlugQrRouteImport } from './routes/_authenticated/admin.$venueSlug.qr'
 import { Route as AuthenticatedAdminVenueSlugReglagesRouteImport } from './routes/_authenticated/admin.$venueSlug.reglages'
+import { Route as AuthenticatedAdminVenueSlugTablesRouteImport } from './routes/_authenticated/admin.$venueSlug.tables'
 import { Route as AuthenticatedAdminVenueSlugStockIndexRouteImport } from './routes/_authenticated/admin.$venueSlug.stock.index'
 import { Route as AuthenticatedAdminVenueSlugStockScanRouteImport } from './routes/_authenticated/admin.$venueSlug.stock.scan'
 
@@ -95,6 +96,12 @@ const AuthenticatedAdminVenueSlugReglagesRoute =
     path: '/admin/$venueSlug/reglages',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedAdminVenueSlugTablesRoute =
+  AuthenticatedAdminVenueSlugTablesRouteImport.update({
+    id: '/admin/$venueSlug/tables',
+    path: '/admin/$venueSlug/tables',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAdminVenueSlugStockIndexRoute =
   AuthenticatedAdminVenueSlugStockIndexRouteImport.update({
     id: '/admin/$venueSlug/stock/',
@@ -120,6 +127,7 @@ export interface FileRoutesByFullPath {
   '/admin/$venueSlug/commandes': typeof AuthenticatedAdminVenueSlugCommandesRoute
   '/admin/$venueSlug/qr': typeof AuthenticatedAdminVenueSlugQrRoute
   '/admin/$venueSlug/reglages': typeof AuthenticatedAdminVenueSlugReglagesRoute
+  '/admin/$venueSlug/tables': typeof AuthenticatedAdminVenueSlugTablesRoute
   '/admin/$venueSlug/': typeof AuthenticatedAdminVenueSlugIndexRoute
   '/admin/$venueSlug/stock/scan': typeof AuthenticatedAdminVenueSlugStockScanRoute
   '/admin/$venueSlug/stock/': typeof AuthenticatedAdminVenueSlugStockIndexRoute
@@ -136,6 +144,7 @@ export interface FileRoutesByTo {
   '/admin/$venueSlug/commandes': typeof AuthenticatedAdminVenueSlugCommandesRoute
   '/admin/$venueSlug/qr': typeof AuthenticatedAdminVenueSlugQrRoute
   '/admin/$venueSlug/reglages': typeof AuthenticatedAdminVenueSlugReglagesRoute
+  '/admin/$venueSlug/tables': typeof AuthenticatedAdminVenueSlugTablesRoute
   '/admin/$venueSlug': typeof AuthenticatedAdminVenueSlugIndexRoute
   '/admin/$venueSlug/stock/scan': typeof AuthenticatedAdminVenueSlugStockScanRoute
   '/admin/$venueSlug/stock': typeof AuthenticatedAdminVenueSlugStockIndexRoute
@@ -154,6 +163,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/$venueSlug/commandes': typeof AuthenticatedAdminVenueSlugCommandesRoute
   '/_authenticated/admin/$venueSlug/qr': typeof AuthenticatedAdminVenueSlugQrRoute
   '/_authenticated/admin/$venueSlug/reglages': typeof AuthenticatedAdminVenueSlugReglagesRoute
+  '/_authenticated/admin/$venueSlug/tables': typeof AuthenticatedAdminVenueSlugTablesRoute
   '/_authenticated/admin/$venueSlug/': typeof AuthenticatedAdminVenueSlugIndexRoute
   '/_authenticated/admin/$venueSlug/stock/scan': typeof AuthenticatedAdminVenueSlugStockScanRoute
   '/_authenticated/admin/$venueSlug/stock/': typeof AuthenticatedAdminVenueSlugStockIndexRoute
@@ -172,6 +182,7 @@ export interface FileRouteTypes {
     | '/admin/$venueSlug/commandes'
     | '/admin/$venueSlug/qr'
     | '/admin/$venueSlug/reglages'
+    | '/admin/$venueSlug/tables'
     | '/admin/$venueSlug/'
     | '/admin/$venueSlug/stock/scan'
     | '/admin/$venueSlug/stock/'
@@ -188,6 +199,7 @@ export interface FileRouteTypes {
     | '/admin/$venueSlug/commandes'
     | '/admin/$venueSlug/qr'
     | '/admin/$venueSlug/reglages'
+    | '/admin/$venueSlug/tables'
     | '/admin/$venueSlug'
     | '/admin/$venueSlug/stock/scan'
     | '/admin/$venueSlug/stock'
@@ -205,6 +217,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/$venueSlug/commandes'
     | '/_authenticated/admin/$venueSlug/qr'
     | '/_authenticated/admin/$venueSlug/reglages'
+    | '/_authenticated/admin/$venueSlug/tables'
     | '/_authenticated/admin/$venueSlug/'
     | '/_authenticated/admin/$venueSlug/stock/scan'
     | '/_authenticated/admin/$venueSlug/stock/'
@@ -312,6 +325,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminVenueSlugReglagesRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/admin/$venueSlug/tables': {
+      id: '/_authenticated/admin/$venueSlug/tables'
+      path: '/admin/$venueSlug/tables'
+      fullPath: '/admin/$venueSlug/tables'
+      preLoaderRoute: typeof AuthenticatedAdminVenueSlugTablesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/admin/$venueSlug/stock/': {
       id: '/_authenticated/admin/$venueSlug/stock/'
       path: '/admin/$venueSlug/stock'
@@ -336,6 +356,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAdminVenueSlugCommandesRoute: typeof AuthenticatedAdminVenueSlugCommandesRoute
   AuthenticatedAdminVenueSlugQrRoute: typeof AuthenticatedAdminVenueSlugQrRoute
   AuthenticatedAdminVenueSlugReglagesRoute: typeof AuthenticatedAdminVenueSlugReglagesRoute
+  AuthenticatedAdminVenueSlugTablesRoute: typeof AuthenticatedAdminVenueSlugTablesRoute
   AuthenticatedAdminVenueSlugIndexRoute: typeof AuthenticatedAdminVenueSlugIndexRoute
   AuthenticatedAdminVenueSlugStockScanRoute: typeof AuthenticatedAdminVenueSlugStockScanRoute
   AuthenticatedAdminVenueSlugStockIndexRoute: typeof AuthenticatedAdminVenueSlugStockIndexRoute
@@ -350,6 +371,8 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminVenueSlugQrRoute: AuthenticatedAdminVenueSlugQrRoute,
   AuthenticatedAdminVenueSlugReglagesRoute:
     AuthenticatedAdminVenueSlugReglagesRoute,
+  AuthenticatedAdminVenueSlugTablesRoute:
+    AuthenticatedAdminVenueSlugTablesRoute,
   AuthenticatedAdminVenueSlugIndexRoute: AuthenticatedAdminVenueSlugIndexRoute,
   AuthenticatedAdminVenueSlugStockScanRoute:
     AuthenticatedAdminVenueSlugStockScanRoute,
@@ -372,12 +395,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

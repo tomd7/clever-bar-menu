@@ -9,6 +9,7 @@ import { MenuAddress } from '#/components/back-office/menu-address'
 import { MenuFontField } from '#/features/venues/components/menu-font-field'
 import { MenuThemeField } from '#/features/venues/components/menu-theme-field'
 import { NavLink } from '#/components/nav-link'
+import { OrderSettingsField } from '#/features/venues/components/order-settings-field'
 import { SaveButton } from '#/components/buttons/save-button'
 import { Switch } from '#/components/ui/switch'
 import { TextAreaField } from '#/components/form/textarea-field'
@@ -28,9 +29,11 @@ import { MENU_FONT_ROLES, menuFace, parseMenuFonts } from '#/lib/menu-fonts'
 import { useUpdateVenue } from '#/features/venues/mutations'
 import { venueBySlugQueryOptions } from '#/features/venues/api'
 import { venueImageUrl } from '#/lib/venue-images'
+import { venueTablesQueryOptions } from '#/features/venues/tables-api'
 
 import type { MenuFonts } from '#/lib/menu-fonts'
 import type { MenuTheme } from '#/lib/menu-theme'
+import type { OrderSettings, ServiceMode } from '#/lib/order-settings'
 import type { Venue } from '#/lib/supabase'
 
 /**
@@ -59,12 +62,17 @@ const SETTINGS_GRID =
   'grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,18rem)] lg:gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]'
 
 /*
-  The preview's cell: the right column, over the three control panels. It
+  The preview's cell: the right column, over the four control panels. It
   spans their rows and sits at the top of them (`self-start`) — stretched to
   the rows' height, a sticky box has nowhere to stick.
 */
 const PREVIEW_CELL =
-  'lg:sticky lg:top-10 lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:self-start'
+  'lg:sticky lg:top-10 lg:col-start-2 lg:row-span-4 lg:row-start-1 lg:self-start'
+
+/** Where an order actually goes: a name-mode venue always serves at the counter. */
+function effectiveService(settings: OrderSettings): ServiceMode {
+  return settings.reference === 'table' ? settings.service : 'counter'
+}
 
 /**
  * Réglages d'un établissement : son nom, sa description, son logo, le thème et
@@ -78,7 +86,18 @@ const PREVIEW_CELL =
  * fichier de route ne porte que du routage. C'est d'ailleurs la même requête
  * que celle du QR code, donc passer de l'un à l'autre ne coûte rien.
  */
-export function VenueSettings({ venueSlug }: { venueSlug: string }) {
+export function VenueSettings({
+  venueSlug,
+  openOrdersCount,
+}: {
+  venueSlug: string
+  /**
+   * The venue's open orders, counted by `features/orders` and passed down by
+   * the route — this feature may not import that one. `undefined` while the
+   * queue loads.
+   */
+  openOrdersCount?: number
+}) {
   const venueQuery = useQuery(venueBySlugQueryOptions(venueSlug))
 
   if (venueQuery.isPending) {
@@ -96,7 +115,13 @@ export function VenueSettings({ venueSlug }: { venueSlug: string }) {
     celui-ci. La clé le remonte à neuf, avec ses états initialisés du bon
     établissement.
   */
-  return <VenueSettingsForm key={venueQuery.data.id} venue={venueQuery.data} />
+  return (
+    <VenueSettingsForm
+      key={venueQuery.data.id}
+      venue={venueQuery.data}
+      openOrdersCount={openOrdersCount}
+    />
+  )
 }
 
 /**
@@ -106,7 +131,13 @@ export function VenueSettings({ venueSlug }: { venueSlug: string }) {
  * anticipés de chargement et d'erreur — le même découpage que `VenueQr` et
  * `QrSheet`.
  */
-function VenueSettingsForm({ venue }: { venue: Venue }) {
+function VenueSettingsForm({
+  venue,
+  openOrdersCount,
+}: {
+  venue: Venue
+  openOrdersCount: number | undefined
+}) {
   const update = useUpdateVenue()
 
   const [name, setName] = useState(venue.name)
@@ -116,6 +147,51 @@ function VenueSettingsForm({ venue }: { venue: Venue }) {
   /* The row's faces, parsed: what the draft starts from and is compared to. */
   const savedFonts = parseMenuFonts(venue)
   const [fonts, setFonts] = useState<MenuFonts>(savedFonts)
+
+  /*
+    The order settings as **stored**, not through `parseOrderSettings`, whose
+    effective reading forces the service to `counter` in name mode: compared
+    against that, an untouched form of a name-mode venue with a stored
+    `service_mode = 'table'` would look dirty.
+  */
+  const savedOrderSettings: OrderSettings = {
+    reference: venue.order_reference === 'table' ? 'table' : 'name',
+    service: venue.service_mode === 'table' ? 'table' : 'counter',
+    firstName: venue.first_name_mode === 'optional' ? 'optional' : 'none',
+  }
+  const [orderSettings, setOrderSettings] =
+    useState<OrderSettings>(savedOrderSettings)
+
+  /*
+    Switching how orders are identified, or how they are served, while orders
+    are still open leaves a mixed queue — each order keeps what it was placed
+    with. The first « Enregistrer » therefore asks, and names the count; the
+    second one saves. Any change to the order settings withdraws the question,
+    since it was asked about another draft.
+  */
+  const [confirmingMode, setConfirmingMode] = useState(false)
+  const keepEditingRef = useRef<HTMLButtonElement>(null)
+
+  const modeChanged =
+    orderSettings.reference !== savedOrderSettings.reference ||
+    effectiveService(orderSettings) !== effectiveService(savedOrderSettings)
+  const needsModeConfirmation = modeChanged && (openOrdersCount ?? 0) > 0
+  const showModeConfirmation = confirmingMode && needsModeConfirmation
+
+  /* Same focus rule as `DeleteButton`: a reflex Enter must land on « Revenir ». */
+  useEffect(() => {
+    if (showModeConfirmation) keepEditingRef.current?.focus()
+  }, [showModeConfirmation])
+
+  const tablesCount = useQuery({
+    ...venueTablesQueryOptions(venue.id),
+    select: (tables) => tables.length,
+  }).data
+
+  function changeOrderSettings(next: OrderSettings) {
+    setOrderSettings(next)
+    setConfirmingMode(false)
+  }
 
   /*
     The logo takes three pieces of state, where a product's photo takes two:
@@ -145,7 +221,10 @@ function VenueSettingsForm({ venue }: { venue: Venue }) {
     MENU_FONT_ROLES.some((role) => fonts[role.id] !== savedFonts[role.id]) ||
     logoFile !== null ||
     logoPath !== venue.logo_path ||
-    (hasLogo && logoPlate !== venue.logo_plate)
+    (hasLogo && logoPlate !== venue.logo_plate) ||
+    orderSettings.reference !== savedOrderSettings.reference ||
+    orderSettings.service !== savedOrderSettings.service ||
+    orderSettings.firstName !== savedOrderSettings.firstName
 
   /*
     The confirmation answers for what is in the database, so it only stands
@@ -187,6 +266,8 @@ function VenueSettingsForm({ venue }: { venue: Venue }) {
     setLogoFile(null)
     setLogoPath(venue.logo_path)
     setLogoPlate(venue.logo_plate)
+    setOrderSettings(savedOrderSettings)
+    setConfirmingMode(false)
     update.reset()
   }
 
@@ -222,6 +303,13 @@ function VenueSettingsForm({ venue }: { venue: Venue }) {
       <form
         onSubmit={(event) => {
           event.preventDefault()
+
+          if (needsModeConfirmation && !confirmingMode) {
+            setConfirmingMode(true)
+            return
+          }
+
+          setConfirmingMode(false)
           update.mutate(
             {
               venueId: venue.id,
@@ -233,6 +321,9 @@ function VenueSettingsForm({ venue }: { venue: Venue }) {
               logoPath,
               logoPlate,
               previousLogoPath: venue.logo_path,
+              orderReference: orderSettings.reference,
+              serviceMode: orderSettings.service,
+              firstNameMode: orderSettings.firstName,
             },
             {
               /*
@@ -395,6 +486,20 @@ function VenueSettingsForm({ venue }: { venue: Venue }) {
         </section>
 
         {/*
+          Last of the left column: the carte's look is what a manager comes
+          back to; how orders work is decided once. The preview holds nothing
+          of it, and the confirmation it may need lives in the save bar below.
+        */}
+        <section className="panel rounded-2xl p-4 sm:p-6 lg:col-start-1 lg:row-start-4">
+          <OrderSettingsField
+            value={orderSettings}
+            onChange={changeOrderSettings}
+            venueSlug={venue.slug}
+            tablesCount={tablesCount}
+          />
+        </section>
+
+        {/*
           The save bar. One « Enregistrer » writes all five panels, so it belongs
           to none of them: filed under « Identité » it looked like that panel's
           button, and a manager picking a typeface had to scroll back up — or,
@@ -413,13 +518,37 @@ function VenueSettingsForm({ venue }: { venue: Venue }) {
         */}
         <div
           data-visible={isDirty || showSaved}
-          className="sticky bottom-[max(1rem,env(safe-area-inset-bottom))] z-10 rounded-2xl border border-line bg-surface p-3 shadow-[var(--shadow-2)] transition-[opacity,translate,visibility] duration-200 ease-out data-[visible=false]:invisible data-[visible=false]:translate-y-2 data-[visible=false]:opacity-0 data-[visible=false]:duration-150 sm:px-4 lg:col-span-2 lg:row-start-4"
+          className="sticky bottom-[max(1rem,env(safe-area-inset-bottom))] z-10 rounded-2xl border border-line bg-surface p-3 shadow-[var(--shadow-2)] transition-[opacity,translate,visibility] duration-200 ease-out data-[visible=false]:invisible data-[visible=false]:translate-y-2 data-[visible=false]:opacity-0 data-[visible=false]:duration-150 sm:px-4 lg:col-span-2 lg:row-start-5"
         >
           {update.isError ? (
             <ErrorNote className="mt-0 mb-3">{update.error.message}</ErrorNote>
           ) : null}
 
-          <div className="flex items-center justify-end gap-2">
+          {/*
+            The question about open orders. In the bar and not in a popover:
+            it answers « Enregistrer », which is here, and on the phone it stays
+            under the thumb that pressed it. `role="alert"` because it appears
+            as the result of a press the manager expected to save.
+          */}
+          {showModeConfirmation ? (
+            <p
+              role="alert"
+              className="mb-3 text-sm duration-150 ease-out animate-in fade-in-0"
+            >
+              <span className="font-medium">
+                {openOrdersCount === 1
+                  ? '1 commande est encore en cours.'
+                  : `${openOrdersCount} commandes sont encore en cours.`}
+              </span>{' '}
+              <span className="text-ink-soft">
+                Elles gardent la référence et le service avec lesquels elles ont
+                été passées : la file mêlera les deux modes le temps de les
+                servir.
+              </span>
+            </p>
+          ) : null}
+
+          <div className="flex flex-wrap items-center justify-end gap-2">
             {/*
               Always rendered, so the live region exists before its text
               changes — a `role="status"` inserted with its message is often
@@ -439,11 +568,28 @@ function VenueSettingsForm({ venue }: { venue: Venue }) {
               ) : null}
             </p>
 
-            {isDirty ? (
-              <CancelButton onClick={reset} disabled={update.isPending} />
-            ) : null}
-            {/* Kept while the confirmation shows, so the bar keeps its height. */}
-            <SaveButton pending={update.isPending} disabled={!isDirty} />
+            {showModeConfirmation ? (
+              <>
+                {/* Goes back to the form without touching the draft. */}
+                <CancelButton
+                  ref={keepEditingRef}
+                  onClick={() => setConfirmingMode(false)}
+                >
+                  Revenir
+                </CancelButton>
+                <SaveButton pending={update.isPending}>
+                  Enregistrer quand même
+                </SaveButton>
+              </>
+            ) : (
+              <>
+                {isDirty ? (
+                  <CancelButton onClick={reset} disabled={update.isPending} />
+                ) : null}
+                {/* Kept while the confirmation shows, so the bar keeps its height. */}
+                <SaveButton pending={update.isPending} disabled={!isDirty} />
+              </>
+            )}
           </div>
         </div>
       </form>
@@ -615,6 +761,14 @@ function VenueSettingsSkeleton() {
           <Skeleton className="mt-2 h-11 w-full" delay={420} />
           <Skeleton className="mt-4 h-3 w-40 rounded-full" delay={440} />
           <Skeleton className="mt-2 h-11 w-full" delay={460} />
+        </div>
+
+        <div className="panel rounded-2xl p-4 sm:p-6 lg:col-start-1 lg:row-start-4">
+          <Skeleton className="h-4 w-28 rounded-full" delay={480} />
+          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <Skeleton className="h-14 w-full" delay={500} />
+            <Skeleton className="h-14 w-full" delay={520} />
+          </div>
         </div>
       </div>
     </SkeletonScreen>

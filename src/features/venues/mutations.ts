@@ -11,6 +11,13 @@ import {
   updateVenue,
 } from '#/features/venues/api'
 
+import {
+  VENUE_TABLES_QUERY_KEY,
+  createVenueTable,
+  deleteVenueTable,
+  updateVenueTable,
+} from '#/features/venues/tables-api'
+
 import type { VenueSettings } from '#/features/venues/api'
 
 /**
@@ -139,5 +146,42 @@ export function useUpdateVenue() {
       await queryClient.invalidateQueries({ queryKey: VENUES_QUERY_KEY })
       await queryClient.invalidateQueries({ queryKey: MENU_QUERY_KEY })
     },
+  })
+}
+
+/**
+ * A venue's tables: add, edit, remove.
+ *
+ * All three invalidate the `['venue-tables']` prefix — the tables screen, the
+ * QR sheet and the settings panel's count read that one query, and none of the
+ * buttons needs to know the venue id to refresh it.
+ */
+export function useCreateVenueTable() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: createVenueTable,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: VENUE_TABLES_QUERY_KEY }),
+  })
+}
+
+export function useUpdateVenueTable() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: updateVenueTable,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: VENUE_TABLES_QUERY_KEY }),
+  })
+}
+
+export function useDeleteVenueTable() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: deleteVenueTable,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: VENUE_TABLES_QUERY_KEY }),
   })
 }

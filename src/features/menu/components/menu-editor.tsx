@@ -1,5 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, Boxes, ConciergeBell, QrCode, Settings } from 'lucide-react'
+import {
+  Armchair,
+  ArrowLeft,
+  Boxes,
+  ConciergeBell,
+  QrCode,
+  Settings,
+} from 'lucide-react'
 
 import { AddCategoryForm } from '#/features/menu/components/add-category-form'
 import { CategorySection } from '#/features/menu/components/category-section'
@@ -14,6 +21,7 @@ import {
   SkeletonScreen,
 } from '#/components/skeleton'
 import { menuQueryOptions } from '#/features/menu/api'
+import { parseOrderSettings } from '#/lib/order-settings'
 import { useMoveItem } from '#/features/menu/mutations'
 
 /**
@@ -89,6 +97,17 @@ export function MenuEditor({ venueSlug }: { venueSlug: string }) {
           >
             Stock
           </NavLink>
+          {/* Same condition as the column: only a venue ordering by table. */}
+          {parseOrderSettings(venue).reference === 'table' ? (
+            <NavLink
+              to="/admin/$venueSlug/tables"
+              params={{ venueSlug: venue.slug }}
+              icon={Armchair}
+              className="mt-1 font-medium"
+            >
+              Tables
+            </NavLink>
+          ) : null}
           <NavLink
             to="/admin/$venueSlug/qr"
             params={{ venueSlug: venue.slug }}

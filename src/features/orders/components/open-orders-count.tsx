@@ -4,6 +4,23 @@ import { isOpenOrder } from '#/features/orders/status'
 import { ordersQueryOptions } from '#/features/orders/api'
 
 /**
+ * How many of a venue's orders are open, or `undefined` while the queue loads.
+ *
+ * The badge below reads it, and so does the settings screen, whose route
+ * passes it down: changing the order reference or the service mode while
+ * orders are open asks for confirmation. Same query, same `select`, one cache.
+ */
+export function useOpenOrdersCount(venueSlug: string): number | undefined {
+  const { data } = useQuery({
+    ...ordersQueryOptions(venueSlug),
+    select: (board) =>
+      board.orders.filter((order) => isOpenOrder(order.status)).length,
+  })
+
+  return data
+}
+
+/**
  * A venue's open-order count, as the back-office column carries it next to
  * « Commandes ».
  *
@@ -30,11 +47,7 @@ import { ordersQueryOptions } from '#/features/orders/api'
  * title, on the orders screen.
  */
 export function OpenOrdersCount({ venueSlug }: { venueSlug: string }) {
-  const { data: count } = useQuery({
-    ...ordersQueryOptions(venueSlug),
-    select: (board) =>
-      board.orders.filter((order) => isOpenOrder(order.status)).length,
-  })
+  const count = useOpenOrdersCount(venueSlug)
 
   /*
     Nothing at zero, and no grey pill in its place: an empty queue has nothing

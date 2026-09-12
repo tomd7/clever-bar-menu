@@ -3,12 +3,22 @@ import { queryOptions } from '@tanstack/react-query'
 import { VENUES_QUERY_KEY } from '#/lib/query-keys'
 import { MENU_FONT_ROLES, isMenuFontAllowed } from '#/lib/menu-fonts'
 import { MENU_THEMES } from '#/lib/menu-theme'
+import {
+  FIRST_NAME_MODES,
+  ORDER_REFERENCES,
+  SERVICE_MODES,
+} from '#/lib/order-settings'
 import { describeError } from '#/lib/postgrest-error'
 import { removeVenueImages } from '#/lib/venue-images'
 import { supabase } from '#/lib/supabase'
 
 import type { MenuFonts } from '#/lib/menu-fonts'
 import type { MenuTheme } from '#/lib/menu-theme'
+import type {
+  FirstNameMode,
+  OrderReference,
+  ServiceMode,
+} from '#/lib/order-settings'
 import type { Venue } from '#/lib/supabase'
 
 /**
@@ -219,6 +229,10 @@ export type VenueSettings = {
   logoPath: string | null
   logoPlate: boolean
   fonts: MenuFonts
+  /** How orders are identified and served — see `lib/order-settings.ts`. */
+  orderReference: OrderReference
+  serviceMode: ServiceMode
+  firstNameMode: FirstNameMode
 }
 
 /**
@@ -265,6 +279,15 @@ export async function updateVenue(
     throw new Error('Cette police n’est pas proposée pour cet usage.')
   }
 
+  /* Same reason again: `venues_order_reference_allowed` & co. answer in English. */
+  if (
+    !ORDER_REFERENCES.includes(settings.orderReference) ||
+    !SERVICE_MODES.includes(settings.serviceMode) ||
+    !FIRST_NAME_MODES.includes(settings.firstNameMode)
+  ) {
+    throw new Error('Ce mode de commande n’existe pas.')
+  }
+
   const { data, error } = await supabase
     .from('venues')
     .update({
@@ -286,6 +309,14 @@ export async function updateVenue(
       font_category: settings.fonts.category,
       font_product: settings.fonts.product,
       font_description: settings.fonts.description,
+      /*
+        Written as chosen, even in name mode: `service_mode` and
+        `first_name_mode` then wait unused, and switching back to tables finds
+        the venue's previous answers. `place_order` ignores both in name mode.
+      */
+      order_reference: settings.orderReference,
+      service_mode: settings.serviceMode,
+      first_name_mode: settings.firstNameMode,
     })
     .eq('id', venueId)
     /*
