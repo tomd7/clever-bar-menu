@@ -153,6 +153,38 @@ export const VENUE_FONTS = [
 export type VenueFont = (typeof VENUE_FONTS)[number]
 
 /**
+ * How a venue's orders are identified: by the customer's first name (the
+ * default, and the only mode before tables existed), or by the table the order
+ * was sent from.
+ *
+ * Constrained text, for the reason `VENUE_THEMES` gives. The three whitelists
+ * below live in three places that move together: here with the checks on
+ * `venues` (and `orders_service_mode_valid`), `src/lib/order-settings.ts` (the
+ * browser's copy), and the `place_order` function, which branches on them.
+ */
+export const ORDER_REFERENCES = ['name', 'table'] as const
+
+export type OrderReference = (typeof ORDER_REFERENCES)[number]
+
+/**
+ * How an order reaches the customer: collected at the counter, or brought to
+ * the table. Only meaningful in table mode — a name-mode venue always serves at
+ * the counter, whatever this column holds.
+ */
+export const SERVICE_MODES = ['counter', 'table'] as const
+
+export type ServiceMode = (typeof SERVICE_MODES)[number]
+
+/**
+ * Whether a table-mode venue still asks for a first name: not at all, or as an
+ * optional field. Name mode ignores it — the name is the reference there, so it
+ * is always required.
+ */
+export const FIRST_NAME_MODES = ['none', 'optional'] as const
+
+export type FirstNameMode = (typeof FIRST_NAME_MODES)[number]
+
+/**
  * Établissement — un bar ou un café. Racine de tout le cloisonnement
  * multi-établissements : catégories et produits n'existent qu'à travers lui.
  */
@@ -242,6 +274,22 @@ export const venues = pgTable(
     fontCategory: text('font_category').notNull().default('archivo'),
     fontProduct: text('font_product').notNull().default('archivo'),
     fontDescription: text('font_description').notNull().default('archivo'),
+
+    /**
+     * How orders are identified — see `ORDER_REFERENCES`.
+     *
+     * `not null default 'name'`, for the reason `orders_enabled` defaults to
+     * `false`: nothing may change under a live bar the minute the migration
+     * runs. Switching to tables is a manager's decision, taken from the
+     * settings screen.
+     */
+    orderReference: text('order_reference').notNull().default('name'),
+
+    /** How a table order is served — see `SERVICE_MODES`. */
+    serviceMode: text('service_mode').notNull().default('counter'),
+
+    /** Whether table mode still asks for a first name — see `FIRST_NAME_MODES`. */
+    firstNameMode: text('first_name_mode').notNull().default('none'),
 
     /**
      * Archivage — suppression logique.
@@ -352,6 +400,25 @@ export const venues = pgTable(
     check(
       'venues_font_description_allowed',
       sql`${table.fontDescription} in ('archivo', 'playfair-display', 'newsreader', 'fredoka', 'courier-prime')`,
+    ),
+
+    /*
+      The order settings belong to their whitelists. Same relationship to
+      `updateVenue` as the theme check: the application refuses in French
+      first, these catch a row written from outside it — and `place_order`
+      branches on these values, so a stray one must not exist.
+    */
+    check(
+      'venues_order_reference_allowed',
+      sql`${table.orderReference} in ('name', 'table')`,
+    ),
+    check(
+      'venues_service_mode_allowed',
+      sql`${table.serviceMode} in ('counter', 'table')`,
+    ),
+    check(
+      'venues_first_name_mode_allowed',
+      sql`${table.firstNameMode} in ('none', 'optional')`,
     ),
 
     ...ownerWrite('venues', sql`${authUid} = ${table.ownerId}`),
@@ -595,6 +662,96 @@ export const products = pgTable(
 )
 
 /**
+ * A table of a venue, for venues whose orders are identified by table.
+ *
+ * Defined by a number (unique per venue) and an optional label — « Terrasse »,
+ * « Mezzanine » — and displayed as « Table 12 » or « Terrasse · 12 »
+ * (`tableName` in `src/lib/order-settings.ts`).
+ *
+ * **Readable by anyone**, like `categories`. The customer menu is `anon`, and a
+ * customer who scanned the venue-wide code picks their table from this list.
+ * Nothing here is a secret: see `publicId`.
+ */
+export const venueTables = pgTable(
+  'venue_tables',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+
+    venueId: uuid('venue_id')
+      .notNull()
+      .references(() => venues.id, { onDelete: 'cascade' }),
+
+    /** What the staff and the customer call the table. Unique per venue. */
+    number: integer('number').notNull(),
+
+    /** An optional area or name — « Terrasse ». `null`: « Table 12 ». */
+    label: text('label'),
+
+    /**
+     * The opaque id a table's QR code carries: `/m/<slug>?table=<publicId>`.
+     *
+     * Random, never derived from the number, so renumbering or relabelling a
+     * table keeps its printed code valid, and editing a digit in the URL does
+     * not land on the neighbouring table. **It is not a security boundary**:
+     * the table list is public (the picker needs it), and `place_order` only
+     * guarantees the table exists and belongs to the venue. Sending an order
+     * to the wrong table is the same class of mistake as giving a wrong name.
+     *
+     * Eight URL-safe characters, about 46 random bits — short on purpose: the
+     * address is what the QR code encodes, and a longer address makes a denser
+     * code (see the tolerance measured in `features/venues/qr.ts`). The bits
+     * are the first six bytes of a v4 uuid, which are all random, so no
+     * extension is needed; base64 turns them into eight characters.
+     *
+     * **No digits**, and that is not cosmetic: TanStack Router parses search
+     * params JSON-first, so `?table=12345678` would arrive as a number and
+     * `?table=1e123456` as `Infinity`. `translate` maps the digits onto
+     * letters, which costs about two bits and makes every id a string no
+     * JSON parser accepts. A collision is caught by
+     * `venue_tables_public_id_unique`, and `createVenueTable` retries once.
+     */
+    publicId: text('public_id')
+      .notNull()
+      .default(
+        sql`substr(translate(encode(decode(replace(gen_random_uuid()::text, '-', ''), 'hex'), 'base64'), '+/0123456789', '-_abcdefghij'), 1, 8)`,
+      ),
+
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex('venue_tables_venue_id_number_unique').on(
+      table.venueId,
+      table.number,
+    ),
+    uniqueIndex('venue_tables_public_id_unique').on(table.publicId),
+
+    check('venue_tables_number_range', sql`${table.number} between 1 and 9999`),
+    check(
+      'venue_tables_label_length',
+      sql`${table.label} is null or char_length(${table.label}) between 1 and 40`,
+    ),
+    /*
+      The shape the default produces: safe in a URL, and never readable as a
+      number by the router's search parsing (see `publicId`).
+    */
+    check(
+      'venue_tables_public_id_format',
+      sql`${table.publicId} ~ '^[A-Za-z_-]{8}$'`,
+    ),
+
+    publicRead('venue_tables_public_read'),
+    ...ownerWrite(
+      'venue_tables',
+      sql`exists (
+        select 1 from ${venues}
+        where ${venues.id} = ${table.venueId}
+          and ${venues.ownerId} = ${authUid}
+      )`,
+    ),
+  ],
+)
+
+/**
  * Les états d'une commande, dans l'ordre où elle les traverse.
  *
  * Du texte contraint plutôt qu'un `pgEnum` : ajouter un état à une énumération
@@ -641,8 +798,36 @@ export const orders = pgTable(
      * Le prénom donné au comptoir. C'est la référence de la commande : un
      * numéro d'ordre demanderait un compteur par établissement, et un prénom
      * s'appelle à voix haute, ce qu'un numéro fait mal.
+     *
+     * Nullable since table ordering: a table-mode venue may not ask for one.
+     * `orders_reference_present` still requires a name or a table.
      */
-    customerName: text('customer_name').notNull(),
+    customerName: text('customer_name'),
+
+    /**
+     * The table the order was sent from, if it still exists. `set null`: a
+     * table removed from the venue must not take its orders' history with it.
+     * The number and label below are what gets displayed.
+     */
+    tableId: uuid('table_id').references(() => venueTables.id, {
+      onDelete: 'set null',
+    }),
+
+    /**
+     * The table's number and label **at the time of the order**, copied like
+     * `order_items.name`: a line is a trace, and a table will be renumbered,
+     * relabelled or removed. `null` on an order identified by name.
+     */
+    tableNumber: integer('table_number'),
+    tableLabel: text('table_label'),
+
+    /**
+     * How this order is served, copied from the venue when it was placed —
+     * `counter` for every name-mode order. Copied for the same reason as the
+     * table: a venue switching service mode mid-evening leaves the orders
+     * already placed served the way the customer was told.
+     */
+    serviceMode: text('service_mode').notNull().default('counter'),
 
     /** Mot du client : « sans glace », « à emporter ». Facultatif. */
     note: text('note'),
@@ -702,6 +887,19 @@ export const orders = pgTable(
     check(
       'orders_cancelled_by_valid',
       sql`${table.cancelledBy} is null or ${table.cancelledBy} in ('guest', 'venue')`,
+    ),
+    /*
+      An order is called by something: a first name, a table, or both. Since
+      `customer_name` became nullable, this is what keeps an order from being
+      nobody's. `place_order` enforces the per-mode rules in French first.
+    */
+    check(
+      'orders_reference_present',
+      sql`${table.customerName} is not null or ${table.tableNumber} is not null`,
+    ),
+    check(
+      'orders_service_mode_valid',
+      sql`${table.serviceMode} in ('counter', 'table')`,
     ),
 
     /*
@@ -816,12 +1014,24 @@ export const orderItems = pgTable(
 export const venuesRelations = relations(venues, ({ many }) => ({
   categories: many(categories),
   orders: many(orders),
+  tables: many(venueTables),
+}))
+
+export const venueTablesRelations = relations(venueTables, ({ one }) => ({
+  venue: one(venues, {
+    fields: [venueTables.venueId],
+    references: [venues.id],
+  }),
 }))
 
 export const ordersRelations = relations(orders, ({ one, many }) => ({
   venue: one(venues, {
     fields: [orders.venueId],
     references: [venues.id],
+  }),
+  table: one(venueTables, {
+    fields: [orders.tableId],
+    references: [venueTables.id],
   }),
   items: many(orderItems),
 }))
@@ -858,6 +1068,8 @@ export type Category = typeof categories.$inferSelect
 export type NewCategory = typeof categories.$inferInsert
 export type Product = typeof products.$inferSelect
 export type NewProduct = typeof products.$inferInsert
+export type VenueTable = typeof venueTables.$inferSelect
+export type NewVenueTable = typeof venueTables.$inferInsert
 export type Order = typeof orders.$inferSelect
 export type NewOrder = typeof orders.$inferInsert
 export type OrderItem = typeof orderItems.$inferSelect
