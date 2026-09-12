@@ -47,6 +47,11 @@ SSR'd route with data, which has two consequences:
 An unknown slug throws `notFound()` so the response is a real **404**: these URLs are
 printed on QR codes.
 
+**`validateSearch` reads `?table=`**, a table's opaque public id (`lib/public-menu-url.ts`
+writes it). It checks the shape only; resolving it is the order bar's job, and an unknown id
+shows the table picker, never a 404. The loader ignores it, so it refetches nothing and the
+SSR payload does not change.
+
 ## `_authenticated.tsx`
 
 A pathless layout route that both guards `/admin` and provides the shell.

@@ -23,7 +23,7 @@ src/
     back-office/
       rail-link.css  .rail-link  (every item of the column, whichever feature draws it)
   features/venues/components/
-    venue-qr.css     .print-sheet
+    venue-qr.css     .print-sheet, .qr-grid, .qr-card (the per-table sheet)
   features/menu/components/
     menu-nav.css     .scrollbar-none, .rail-fade (stock-page reuses the pair)
     public-menu.css  .menu-leader

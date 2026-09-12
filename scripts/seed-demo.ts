@@ -5,8 +5,8 @@
  * announced in the README as resettable without notice. This script is what
  * performs that reset: it wipes the demo venue's menu and orders, then writes a
  * complete fictional café back — a menu with prices, sizes and descriptions,
- * tracked stock with low levels and one shortage, real-shaped barcodes, and a
- * queue of orders sitting in front of an older history.
+ * tracked stock with low levels and one shortage, real-shaped barcodes, the
+ * venue's tables, and a queue of orders sitting in front of an older history.
  *
  * Run with `npm run db:seed:demo`.
  *
@@ -19,7 +19,7 @@
  * `resolveDemoVenue`).
  */
 
-import { eq, sql } from 'drizzle-orm'
+import { and, eq, notInArray, sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
 
@@ -337,8 +337,40 @@ type OrderLineSeed = {
   quantity: number
 }
 
+type TableSeed = {
+  number: number
+  /** The area, when the table has one. */
+  label?: string
+}
+
+/**
+ * The tables of Chez Lambert: six in the room, three on the terrace.
+ *
+ * The demo orders **by table, served at the table, first name optional** — the
+ * mode that shows the most: the picker behind the venue-wide code, the table on
+ * the bar's card, « Prête — on vous l'apporte » on the tracker.
+ *
+ * Tables are **upserted by number, never deleted and recreated**: their public
+ * ids are what the printed demo codes carry, and a reset must not turn every
+ * code on a demo table into the picker.
+ */
+const TABLES: Array<TableSeed> = [
+  { number: 1 },
+  { number: 2 },
+  { number: 3 },
+  { number: 4 },
+  { number: 5 },
+  { number: 6 },
+  { number: 10, label: 'Terrasse' },
+  { number: 11, label: 'Terrasse' },
+  { number: 12, label: 'Terrasse' },
+]
+
 type OrderSeed = {
-  customerName: string
+  /** Optional on a table order, as the demo venue asks for it. */
+  customerName?: string
+  /** The table's number, for an order placed from a table. */
+  table?: number
   status: OrderStatus
   note?: string
   cancelledBy?: 'guest' | 'venue'
@@ -359,10 +391,17 @@ type OrderSeed = {
  *
  * Nadia's order carries the daily special, which has no price: her total counts
  * the mojito alone, exactly as `place_order` computes it.
+ *
+ * The orders of the last few hours come from tables, some with a first name and
+ * some without, and are served at the table; the older ones, days back, are
+ * name orders collected at the counter — the café before it switched. A mixed
+ * history is exactly what a real switch leaves, since every order keeps the
+ * reference and the service it was placed with.
  */
 const ORDERS: Array<OrderSeed> = [
   {
     customerName: 'Camille',
+    table: 3,
     status: 'received',
     minutesAgo: 4,
     lines: [
@@ -371,7 +410,7 @@ const ORDERS: Array<OrderSeed> = [
     ],
   },
   {
-    customerName: 'Youssef',
+    table: 11,
     status: 'received',
     note: 'Sans glace, merci.',
     minutesAgo: 9,
@@ -379,6 +418,7 @@ const ORDERS: Array<OrderSeed> = [
   },
   {
     customerName: 'Lise',
+    table: 5,
     status: 'preparing',
     minutesAgo: 17,
     lines: [
@@ -388,7 +428,7 @@ const ORDERS: Array<OrderSeed> = [
     ],
   },
   {
-    customerName: 'Marek',
+    table: 10,
     status: 'ready',
     minutesAgo: 26,
     lines: [
@@ -398,13 +438,14 @@ const ORDERS: Array<OrderSeed> = [
   },
   {
     customerName: 'Manon',
+    table: 2,
     status: 'cancelled',
     cancelledBy: 'guest',
     minutesAgo: 55,
     lines: [{ product: 'Moscow mule', quantity: 1 }],
   },
   {
-    customerName: 'Fatima',
+    table: 1,
     status: 'collected',
     minutesAgo: 95,
     lines: [
@@ -414,12 +455,14 @@ const ORDERS: Array<OrderSeed> = [
   },
   {
     customerName: 'Jonas',
+    table: 12,
     status: 'collected',
     minutesAgo: 140,
     lines: [{ product: 'Jupiler', size: '50cl', quantity: 3 }],
   },
   {
     customerName: 'Aïcha',
+    table: 4,
     status: 'collected',
     minutesAgo: 190,
     lines: [
@@ -615,9 +658,48 @@ async function seed(db: Db, venueId: string) {
       .set({
         description: VENUE_DESCRIPTION,
         ordersEnabled: true,
+        orderReference: 'table',
+        serviceMode: 'table',
+        firstNameMode: 'optional',
         deletedAt: null,
       })
       .where(eq(schema.venues.id, venueId))
+
+    // Upserted by (venue, number): an existing table keeps its public id, so
+    // the demo's printed codes survive a reset. The orders referencing them
+    // were deleted above, so the tables no longer listed can go.
+    const upsertedTables = await tx
+      .insert(schema.venueTables)
+      .values(
+        TABLES.map((table) => ({
+          venueId,
+          number: table.number,
+          label: table.label ?? null,
+        })),
+      )
+      .onConflictDoUpdate({
+        target: [schema.venueTables.venueId, schema.venueTables.number],
+        set: { label: sql`excluded.label` },
+      })
+      .returning({
+        id: schema.venueTables.id,
+        number: schema.venueTables.number,
+        label: schema.venueTables.label,
+      })
+
+    await tx.delete(schema.venueTables).where(
+      and(
+        eq(schema.venueTables.venueId, venueId),
+        notInArray(
+          schema.venueTables.number,
+          TABLES.map((table) => table.number),
+        ),
+      ),
+    )
+
+    const tableByNumber = new Map(
+      upsertedTables.map((table) => [table.number, table]),
+    )
 
     const insertedCategories = await tx
       .insert(schema.categories)
@@ -671,12 +753,29 @@ async function seed(db: Db, venueId: string) {
         createdAt.getTime() + MINUTES_TO_SETTLE[order.status] * 60_000,
       )
 
+      const who = order.customerName ?? `la table ${order.table}`
+
+      // The table's number and label are copied onto the order, as
+      // `place_order` does: the order is a trace of where it went that evening.
+      const table =
+        order.table === undefined ? undefined : tableByNumber.get(order.table)
+
+      if (order.table !== undefined && !table) {
+        throw new Error(`Commande de ${who} : la table n’existe pas.`)
+      }
+
+      if (!order.customerName && !table) {
+        throw new Error(
+          'Une commande sans prénom doit venir d’une table (orders_reference_present).',
+        )
+      }
+
       const lines = order.lines.map((line) => {
         try {
           return { line, product: findProduct(insertedProducts, line) }
         } catch (error) {
           throw new Error(
-            `Commande de ${order.customerName} : ${error instanceof Error ? error.message : String(error)}`,
+            `Commande de ${who} : ${error instanceof Error ? error.message : String(error)}`,
           )
         }
       })
@@ -693,7 +792,12 @@ async function seed(db: Db, venueId: string) {
         .insert(schema.orders)
         .values({
           venueId,
-          customerName: order.customerName,
+          customerName: order.customerName ?? null,
+          tableId: table?.id ?? null,
+          tableNumber: table?.number ?? null,
+          tableLabel: table?.label ?? null,
+          // A table order is served where the demo venue serves: at the table.
+          serviceMode: table ? 'table' : 'counter',
           note: order.note ?? null,
           status: order.status,
           cancelledBy: order.cancelledBy ?? null,
@@ -724,6 +828,7 @@ async function seed(db: Db, venueId: string) {
     return {
       categories: insertedCategories.length,
       products: insertedProducts.length,
+      tables: upsertedTables.length,
       orders: ORDERS.length,
       lines: insertedLines,
     }
@@ -740,7 +845,7 @@ try {
     `Compte de démonstration rempli — ${venue.name} (/m/${venue.slug})`,
   )
   console.log(
-    `  ${counts.categories} catégories, ${counts.products} produits, ${counts.orders} commandes (${counts.lines} lignes)`,
+    `  ${counts.categories} catégories, ${counts.products} produits, ${counts.tables} tables, ${counts.orders} commandes (${counts.lines} lignes)`,
   )
 } catch (error) {
   console.error(

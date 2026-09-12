@@ -2,7 +2,8 @@
 
 `components/` (venues-page, venue-list, venue-card, venue-trash, venue-nav, venue-qr,
 venue-settings, menu-theme-field, menu-font-field, add-venue-form), `api.ts`, `mutations.ts`, `qr.ts`,
-`logo.ts`.
+`logo.ts`. Tables: `tables.ts`, `tables-api.ts`, `components/venue-tables.tsx` and
+`components/order-settings-field.tsx`.
 
 Same feature rules as `features/menu`: a component never calls `supabase` directly (go
 through `api.ts`, which maps `camelCase` to the API's `snake_case`), mutations live in
@@ -17,8 +18,8 @@ the layout route has no `$venueSlug` of its own, and "where are we" is a routing
 it as a `nav` prop because `src/components/` must not import from `#/features/`.
 
 **The tree never repeats a destination**: the open venue becomes a group label and its
-sections (Carte, Commandes, Stock, QR code, Réglages) carry the links, while the other
-venues stay plain links. « Réglages » comes last — a venue is configured once and its menu
+sections (Carte, Commandes, Stock, QR code, Réglages — plus « Tables » after Stock for a
+venue ordering by table) carry the links, while the other venues stay plain links. « Réglages » comes last — a venue is configured once and its menu
 edited daily.
 
 **`ordersBadge` is a slot, not a number.** Counting open orders belongs to
@@ -137,7 +138,8 @@ column, where a fold has to be found and unfolded on every visit.
 
 The screen that was missing: nothing could rename a venue or edit the description shown
 under the title of its public menu — that description was only ever reachable through the
-seed script. It edits five things: name, description, logo, theme, typefaces.
+seed script. It edits name, description, logo, theme, typefaces, and how orders are
+identified and served.
 
 - **The slug is never written, and `updateVenue`'s JSDoc says so where the temptation is.**
   The public address is what a printed QR code on a table encodes, and `m.$venueSlug.tsx`
@@ -170,8 +172,8 @@ categories }` and `MenuEditor` renders `venue.name` in its header, so without th
 
 ### Layout — the preview stays, the save bar floats
 
-Four panels and a bar on one grid (`SETTINGS_GRID`, shared with the skeleton): Identité,
-Thème, Aperçu, Polices. The previous layout filed « Enregistrer » under Identité and put the
+Five panels and a bar on one grid (`SETTINGS_GRID`, shared with the skeleton): Identité,
+Thème, Aperçu, Polices, Commandes. The previous layout filed « Enregistrer » under Identité and put the
 preview at the foot of a 24rem column — a manager clicked a swatch 400px from the top and
 its preview started at 1058px.
 
@@ -179,8 +181,9 @@ its preview started at 1058px.
   implicit `auto` track, sized to max-content: the font rails' nowrap chips widened the
   whole phone layout past the screen (each preview board 426px in a 390px viewport).
   `grid-cols-1` is `minmax(0, 1fr)`. Any grid holding a scrolling rail needs it.
-- **The DOM order is the phone's reading order** (identity, theme, preview, fonts, bar);
-  from `lg` the grid lifts the preview into the right column over the three control rows.
+- **The DOM order is the phone's reading order** (identity, theme, preview, fonts, orders,
+  bar); from `lg` the grid lifts the preview into the right column over the four control
+  rows.
   Reordering is safe only because the preview holds no control — the tab order follows the
   DOM. Put a button in the preview and that stops being true.
 - **The preview is `sticky` from `lg`, and `self-start` is what lets it stick**: a grid item
@@ -280,6 +283,28 @@ checks would in English.
 - The preview renders all four roles with the carte's own classes, `.menu-text` included, so
   the size correction is previewed too.
 
+### The « Commandes » panel — `order-settings-field.tsx`
+
+`order_reference`, and by table `service_mode` and `first_name_mode`, drawn with
+`ChoiceField` (`src/components/form/`). The last panel of the left column: a carte's look is
+revisited, the way a bar works is decided once — and the open/closed switch stays on the
+orders screen, since closing is a nightly gesture.
+
+- **The draft compares against the stored columns**, not `parseOrderSettings`, which forces
+  `counter` in name mode: against that, a name-mode venue with a stored `service_mode =
+'table'` would open dirty.
+- **Switching the reference or the effective service while orders are open asks first**, in
+  the save bar: the first « Enregistrer » shows the count, « Revenir » and « Enregistrer
+  quand même », focus on « Revenir » (the `DeleteButton` rule). Any change to the order
+  settings withdraws the question. The count is `useOpenOrdersCount` from `features/orders`,
+  which this feature may not import: `admin.$venueSlug.reglages.tsx` calls it and passes a
+  number down — the `ordersBadge` assembly. It is the queue's polled cache, so up to ten
+  seconds old.
+- **« Gérer les tables » leaves the form**; the hint says unsaved changes are lost, and turns
+  into a warning when table mode is chosen with no table recorded.
+- `service_mode` and `first_name_mode` are written even in name mode, so switching back finds
+  the previous answers; `place_order` ignores them there.
+
 ## Venue card
 
 The whole surface is clickable through a stretched `after:absolute` pseudo-element on a
@@ -288,8 +313,16 @@ and nesting two anchors is invalid HTML the browser silently repairs by closing 
 
 ## QR code — `qr.ts`, `/admin/$venueSlug/qr`
 
-**One code per venue**, not per table: the menu is identical everywhere, and a table number
-would be inert until something reads it.
+**One code per venue, or one per table**, following `order_reference`. By name — the default
+— a single code for the whole venue. By table, `TableQrSheet` prints one code per table
+(`/m/<slug>?table=<public_id>`), the table's name under each, on a grid `venue-qr.css` fixes
+at three a row on paper, with dashed cut lines and `break-inside: avoid`. Each card repeats
+the venue's name: a cut-out code has lost its sheet. The venue-wide code stays downloadable
+in table mode — it opens the picker. Encoding runs once per list (`useMemo`).
+
+The table's id adds `?table=` and eight characters to the address, which is why it is a short
+token and not a uuid: a longer address makes a denser code, and the tolerance below was
+measured at the venue code's density — re-measure on a printed table code.
 
 `uqr` does the encoding (approved dependency: 0 transitive deps, 77 KB, MIT, runtime
 agnostic) and `qr.ts` is the only place that touches it — the choices of `Q` and SVG, and
@@ -303,3 +336,24 @@ from `src/lib/public-menu-url.ts`, the single place the `/m/<slug>` shape is wri
 - Printing is scoped by `.no-print` (shell, header block, buttons) in `src/styles/print.css`
   and `.print-sheet` in `venue-qr.css`. The sheet forces black-on-white: a QR reader relies
   on contrast.
+
+## Tables — `tables.ts`, `tables-api.ts`, `/admin/$venueSlug/tables`
+
+A venue's tables: a number and an optional area each. The customer side reads them through
+`features/orders`; see that feature's « Ordering by table ».
+
+- **A static child of `$venueSlug`**, so no `RESERVED_SLUGS` entry (same as `reglages`).
+- **Reachable in both modes**: tables are entered _before_ switching, so the first table
+  order never meets an empty picker. In name mode the screen says they are not used yet and
+  links to « Réglages ». « Tables » appears in the column and in `MenuEditor`'s phone links
+  only for a table-mode venue; the « Commandes » panel links to the screen either way.
+- **The add form proposes the next number and keeps the area**, so a terrace is a few
+  presses. `nextTableNumber` runs on the list plus the table just added.
+- **The public id is never written by an update** — that is what keeps a printed code valid
+  through a renumbering. It is shown from `lg`, to match a code on a table to its row.
+- **A duplicate number gets its own French message**, found by constraint name in
+  PostgREST's message (`venue_tables_venue_id_number_unique`): `describeError` cannot tell it
+  from a `public_id` collision, which is retried instead. Updates and deletes ask the row
+  back — the zero-row rule of the settings screen.
+- `VENUE_TABLES_QUERY_KEY` stays in `tables-api.ts`: only this feature invalidates it. The
+  customer's copy has its own key, in `features/orders/public-api.ts`.

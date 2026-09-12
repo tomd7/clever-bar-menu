@@ -295,6 +295,10 @@ hand-pulled line on deploy.
   which `styles/menu-fonts.css` uses to keep Archivo's x-height. All of it is in the SSR'd
   HTML, `m.$venueSlug.tsx` preloads the title face when it isn't Archivo, and
   `fetchPublicMenu` names the four `font_*` columns. See `src/styles/CLAUDE.md`.
+- **`fetchPublicMenu` also names the venue's three order settings** (`order_reference`,
+  `service_mode`, `first_name_mode`): the route parses them for the order bar. The table
+  list is **not** in this payload — `features/orders` reads it client-side, once there is a
+  cart, since most visitors never open one.
 - **The order bar, the cart sheet and the 404 stay on the house palette, on purpose.**
   `OrderBar` is a sibling of `<PublicMenu>` in the route, and `BottomSheet` portals to
   `document.body`, so no wrapper here could reach it anyway; the 404 has no venue and

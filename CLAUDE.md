@@ -264,12 +264,14 @@ The data layer, the back office, the customer-facing menu (`/m/$venueSlug`), the
 QR sheet (`/admin/$venueSlug/qr`), the stock screen (`/admin/$venueSlug/stock`), the venue
 settings screen (`/admin/$venueSlug/reglages` — name, description, per-venue menu theme)
 and counter ordering (`/admin/$venueSlug/commandes`, plus the order bar on the public menu)
-all exist, as does the account screen (`/admin/compte` — password change).
+all exist, as do the account screen (`/admin/compte` — password change) and ordering by
+table (`/admin/$venueSlug/tables`, a code per table, a per-venue setting in « Réglages »).
 The "ardoise" theme is in place across the home page, `/login`, the back office and the
 public menu.
 
 **Ordering is off by default** on every venue (`venues.orders_enabled`), and turning it on
-is the manager's decision, taken from the orders screen.
+is the manager's decision, taken from the orders screen. Orders are identified **by first
+name** until the manager switches the venue to tables in « Réglages ».
 
 The home page is a landing page, **not** the customer menu: `/` markets the product,
 `/m/$venueSlug` is what a QR code points at.

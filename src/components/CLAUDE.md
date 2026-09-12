@@ -71,6 +71,7 @@ the trash button, not inline (it pushed the surrounding row around) and not
 | `TextField`     | `useId()` wiring, `<Label>`, height from `surface`, optional `hint`, `hiddenLabel`                               |
 | `TextAreaField` | Same, minus `surface` — a textarea sizes by `rows`, it has no resting height to match                            |
 | `ImageField`    | A hidden file input driven by a button, a thumbnail, « Remplacer » / « Retirer » — and no image state of its own |
+| `ChoiceField`   | A short group of exclusive choices as cards: native radios in their `<label>`, `useId` for the group's `name`    |
 
 On both, `className` dresses the **block** (that's what you put in a grid or grow with
 `flex-1`); `inputClassName` / `textareaClassName` dress the control.

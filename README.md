@@ -52,6 +52,7 @@ encodes.
   - [Back office](#back-office)
     - [Stock tracking](#stock-tracking) — [barcode scanning](#barcode-scanning)
     - [Counter ordering](#counter-ordering)
+    - [Ordering by table](#ordering-by-table)
     - [Creating accounts](#creating-accounts)
     - [Deleting a venue](#deleting-a-venue)
   - [QR code](#qr-code)
@@ -73,6 +74,10 @@ encodes.
   refreshes itself. **No online payment**: settlement happens at the counter, and no
   banking data travels. Closed by default on every venue, to be opened from the orders
   screen.
+- **Ordering by table** — a venue can identify its orders by table rather than by first
+  name, from `/admin/<slug>/reglages`: one QR code per table, a table picker when the
+  venue-wide code is scanned, and a choice between collecting at the counter and service at
+  the table. Every venue starts by first name.
 - **Multi-venue** — a single deployment hosts several bars. A manager owns as many as they
   want, each with its own menu, public address and QR code. Isolation is carried by
   Postgres: a manager only sees and edits their own venues. A venue, on the other hand, has
@@ -262,6 +267,7 @@ and its first paint matters.
 | `/admin/$venueSlug/stock/scan` | Stock movements at the camera, by barcode                |
 | `/admin/$venueSlug/qr`         | Printable QR code sheet                                  |
 | `/admin/$venueSlug/commandes`  | Order queue and history                                  |
+| `/admin/$venueSlug/tables`     | A venue's tables, each with its own QR code              |
 | `/m/$venueSlug`                | **Public menu** — the page the QR code points at         |
 
 Prices are entered in euros and stored as **whole cents**
@@ -372,6 +378,27 @@ One known limit: **`place_order` is not rate-limited**. It is an unauthenticated
 point, open to the internet. The caps per line (20) and per order (40 lines) bound what one
 call can write; nothing bounds the number of calls.
 
+#### Ordering by table
+
+By default an order is called by its first name. From `/admin/$venueSlug/reglages`, a venue
+can switch to **tables**: it defines them at `/admin/$venueSlug/tables` (a number, and an
+optional area such as "Terrasse"), prints one QR code per table, and chooses whether orders
+are collected at the counter — the table is called — or brought to the table, and whether a
+first name is still asked, as an optional field.
+
+- **A table's QR code carries an opaque id, never its number.** Renumbering or relabelling a
+  table keeps its printed code valid; deleting it makes the code fall back to the table
+  picker.
+- **The venue-wide code keeps working**: in table mode, the cart asks the customer to pick
+  their table. An unknown id is treated like a missing one, not as an error page.
+- **The opaque id is not a security boundary.** The table list is public — the picker needs
+  it — and anyone can pick any table. `place_order` re-checks in SQL that the table belongs
+  to the venue and that the venue is in table mode; sending an order to the wrong table is
+  the same kind of mistake as giving a wrong first name.
+- **An order keeps a copy of its table and of how it is served**, as a line keeps its
+  product's name. Switching modes while orders are open asks for confirmation first, since
+  the queue will be mixed for a while.
+
 #### Creating accounts
 
 **There is no open sign-up.** Access is created by the platform administrator from
@@ -413,10 +440,11 @@ What Postgres guarantees, and not just the code:
 
 ### QR code
 
-`/admin/<slug>/qr` produces the code to print and put on the tables. It encodes the menu's
-public URL, and it is **one single code for the whole venue**: the menu is identical at
-every table, and telling tables apart would add nothing as long as no feature reads that
-number.
+`/admin/<slug>/qr` produces the codes to print and put on the tables. For a venue ordering by
+first name — the default — it is **one single code for the whole venue**: the menu is
+identical at every table. For a venue ordering by table it prints **one code per table**,
+with the table's number and area under each, on a grid made to be cut out; the venue-wide
+code stays downloadable, and opens the table picker.
 
 - **SVG output**, not PNG: the code ends up printed at a size the manager chooses, from a
   coaster to a poster. A vector stays sharp everywhere.
@@ -462,7 +490,7 @@ Three behaviours to know:
 - [x] Venue CRUD
 - [x] Menu CRUD (categories, products, prices, photos)
 - [x] Public menu
-- [x] QR code generation (one per venue)
+- [x] QR code generation (one per venue, or one per table)
 - [x] Product size: served format (25cl, 50cl, on tap…), on the menu as well as on order
       tickets
 - [x] Theme: day and night variants following the system
@@ -476,6 +504,9 @@ Three behaviours to know:
       tracked by the customer, queue and history in the back office, stock decremented on
       acceptance. **No online payment** — settlement happens at the counter, the order
       carries no banking data
+- [x] Ordering by table, as a per-venue setting: tables defined in the back office, one QR
+      code per table carrying an opaque id, a table picker behind the venue-wide code,
+      counter or table service, an optional first name
 - [x] Barcode scanning for stock movements: ins and outs entered in front of the camera
       from `/admin/<slug>/stock/scan`, with the code paired on first scan. Works on every
       browser, iOS included: native `BarcodeDetector` where it exists, otherwise a ZXing

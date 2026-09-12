@@ -51,6 +51,7 @@ posé sur les tables.
   - [Back-office](#back-office)
     - [Suivi de stock](#suivi-de-stock) — [scan des codes-barres](#scan-des-codes-barres)
     - [Commande au comptoir](#commande-au-comptoir)
+    - [Commande par table](#commande-par-table)
     - [Création des comptes](#création-des-comptes)
     - [Supprimer un établissement](#supprimer-un-établissement)
   - [QR code](#qr-code)
@@ -73,6 +74,10 @@ posé sur les tables.
   une file qui se rafraîchit toute seule. **Sans paiement en ligne** : le règlement se fait
   au comptoir, et aucune donnée bancaire ne transite. Fermé par défaut sur chaque
   établissement, à ouvrir depuis l'écran des commandes.
+- **Commande par table** — un établissement peut désigner ses commandes par table plutôt
+  que par prénom, depuis `/admin/<slug>/reglages` : un QR code par table, un choix de table
+  quand le code général est scanné, et le choix entre retrait au comptoir et service à
+  table. Tout établissement démarre au prénom.
 - **Multi-établissements** — un même déploiement héberge plusieurs bars. Un gérant en
   possède autant qu'il veut, chacun avec sa carte, son adresse publique et son QR code.
   L'isolation est portée par Postgres : un gérant ne voit et ne modifie que ses
@@ -261,6 +266,7 @@ premier affichage compte.
 | `/admin/$venueSlug/stock/scan` | Mouvements de stock à la caméra, code-barres               |
 | `/admin/$venueSlug/qr`         | Feuille de QR code à imprimer                              |
 | `/admin/$venueSlug/commandes`  | File des commandes et historique                           |
+| `/admin/$venueSlug/tables`     | Tables de l'établissement, chacune avec son QR code        |
 | `/m/$venueSlug`                | **Carte publique** — la page que vise le QR code           |
 
 Les prix sont saisis en euros et stockés en **centimes entiers**
@@ -375,6 +381,29 @@ Une limite connue : **`place_order` n'est pas limitée en débit**. C'est un poi
 d'écriture non authentifié, ouvert sur Internet. Les plafonds par ligne (20) et par
 commande (40 lignes) bornent ce qu'un appel peut écrire, rien ne borne le nombre d'appels.
 
+#### Commande par table
+
+Par défaut, une commande s'appelle par son prénom. Depuis `/admin/$venueSlug/reglages`, un
+établissement peut passer **par table** : il définit ses tables sur
+`/admin/$venueSlug/tables` (un numéro, et une zone facultative comme « Terrasse »), imprime
+un QR code par table, et choisit si la commande se retire au comptoir — on appelle la table
+— ou est apportée à table, et si le prénom est encore demandé, de façon facultative.
+
+- **Le QR code d'une table porte un identifiant opaque, jamais son numéro.** Renuméroter ou
+  renommer une table garde son code imprimé valide ; la supprimer fait retomber le code sur
+  le choix de la table.
+- **Le code général continue de fonctionner** : en mode table, le panier demande au client
+  de choisir sa table. Un identifiant inconnu est traité comme un identifiant absent, pas
+  comme une page d'erreur.
+- **L'identifiant opaque n'est pas une frontière de sécurité.** La liste des tables est
+  publique — le choix de la table en a besoin — et n'importe qui peut choisir n'importe
+  quelle table. `place_order` revérifie en SQL que la table appartient à l'établissement et
+  que celui-ci est en mode table ; envoyer une commande à la mauvaise table est le même genre
+  d'erreur que donner un faux prénom.
+- **Une commande garde une copie de sa table et de son mode de service**, comme une ligne
+  garde le nom de son produit. Changer de mode pendant que des commandes sont en cours
+  demande d'abord confirmation, puisque la file sera mélangée un moment.
+
 #### Création des comptes
 
 **Il n'y a pas d'inscription libre.** Les accès sont créés par l'administrateur de la
@@ -420,10 +449,12 @@ Ce que garantit Postgres, et pas seulement le code :
 
 ### QR code
 
-`/admin/<slug>/qr` produit le code à imprimer et à poser sur les tables. Il encode l'URL
-publique de la carte, et c'est **un seul code pour tout l'établissement** : la carte est
-identique à chaque table, distinguer les tables n'apporterait rien tant qu'aucune
-fonctionnalité ne lit ce numéro.
+`/admin/<slug>/qr` produit les codes à imprimer et à poser sur les tables. Pour un
+établissement qui commande au prénom — le réglage par défaut — c'est **un seul code pour tout
+l'établissement** : la carte est identique à chaque table. Pour un établissement qui commande
+par table, il imprime **un code par table**, avec le numéro et la zone de la table sous
+chacun, sur une grille faite pour être découpée ; le code général reste téléchargeable et
+ouvre le choix de la table.
 
 - **Sortie SVG**, pas PNG : le code finit imprimé à une taille choisie par le gérant, d'un
   sous-bock à une affiche. Un vecteur reste net partout.
@@ -470,7 +501,7 @@ Trois comportements à connaître :
 - [x] CRUD des établissements
 - [x] CRUD de la carte (catégories, produits, prix, photos)
 - [x] Carte publique
-- [x] Génération du QR code (un par établissement)
+- [x] Génération du QR code (un par établissement, ou un par table)
 - [x] Taille du produit : format servi (25cl, 50cl, au fût…), sur la carte comme sur les
       tickets de commande
 - [x] Thème : variantes jour et nuit suivant le système
@@ -484,6 +515,9 @@ Trois comportements à connaître :
       suivi de l'état par le client, file et historique dans le back-office, décompte du
       stock à l'acceptation. **Sans paiement en ligne** — le règlement se fait au comptoir,
       la commande ne transporte aucune donnée bancaire
+- [x] Commande par table, réglable par établissement : tables définies dans le back-office,
+      un QR code par table portant un identifiant opaque, un choix de table derrière le code
+      général, service au comptoir ou à table, prénom facultatif
 - [x] Scan du code-barres pour les mouvements de stock : entrées et sorties saisies devant
       la caméra depuis `/admin/<slug>/stock/scan`, avec appairage du code au premier scan.
       Fonctionne sur tous les navigateurs, iOS compris : `BarcodeDetector` natif quand il
