@@ -1,6 +1,6 @@
 import { ChevronUp, ShoppingBag } from 'lucide-react'
 import { useQueries, useQuery } from '@tanstack/react-query'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { CartSheet } from '#/features/orders/components/cart-sheet'
 import {
@@ -85,16 +85,14 @@ export function OrderBar({
   })
 
   /*
-    The scanned code's table is adopted **only if it resolves** — a deleted
-    table's id must not overwrite a table the customer already picked — and
-    once per address, so a later « Changer » is not undone when the list
-    refetches.
+    The scanned code's table is kept for the visit **only if it resolves** — a
+    deleted table's id must not overwrite a table the customer already picked.
+    While the address carries it, the cart sheet shows that table with nothing
+    to change it (see `CartSheet`), so a refetch re-adopting it undoes no
+    choice: there is none to undo.
   */
-  const adoptedTableId = useRef<string | undefined>(undefined)
   useEffect(() => {
-    if (!urlTableId || adoptedTableId.current === urlTableId) return
-    if (!tablesQuery.data) return
-    adoptedTableId.current = urlTableId
+    if (!urlTableId || !tablesQuery.data) return
     if (tablesQuery.data.some((table) => table.public_id === urlTableId)) {
       chooseTable(venueSlug, urlTableId)
     }
@@ -209,6 +207,7 @@ export function OrderBar({
         orderSettings={orderSettings}
         tables={tablesQuery.data}
         tablesError={tablesQuery.error}
+        urlTableId={urlTableId}
       />
 
       {tickets.length > 0 ? (

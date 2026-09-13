@@ -391,6 +391,8 @@ first name is still asked, as an optional field.
   picker.
 - **The venue-wide code keeps working**: in table mode, the cart asks the customer to pick
   their table. An unknown id is treated like a missing one, not as an error page.
+- **A table's code fixes the table.** Scanned from a table, the cart shows that table and
+  offers no way to change it: the code is on the table the customer is sitting at.
 - **The opaque id is not a security boundary.** The table list is public — the picker needs
   it — and anyone can pick any table. `place_order` re-checks in SQL that the table belongs
   to the venue and that the venue is in table mode; sending an order to the wrong table is

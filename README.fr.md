@@ -395,6 +395,8 @@ un QR code par table, et choisit si la commande se retire au comptoir — on app
 - **Le code général continue de fonctionner** : en mode table, le panier demande au client
   de choisir sa table. Un identifiant inconnu est traité comme un identifiant absent, pas
   comme une page d'erreur.
+- **Le code d'une table fixe la table.** Scanné depuis une table, le panier affiche cette
+  table sans moyen d'en changer : le code est posé sur la table où le client est assis.
 - **L'identifiant opaque n'est pas une frontière de sécurité.** La liste des tables est
   publique — le choix de la table en a besoin — et n'importe qui peut choisir n'importe
   quelle table. `place_order` revérifie en SQL que la table appartient à l'établissement et
