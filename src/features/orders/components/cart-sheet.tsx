@@ -34,9 +34,14 @@ import type { PublicTable } from '#/features/orders/public-api'
  *
  * **What the form asks depends on the venue.** By name — the default — a
  * required first name, exactly as before tables existed. By table, the table
- * instead (« Table 12 », with « Changer »), or the picker when it is not known,
- * plus an optional first name if the venue asks for one. Hiding the name field
- * closes nothing: `place_order` re-checks every rule of both modes.
+ * instead (« Table 12 »), or the picker when it is not known, plus an optional
+ * first name if the venue asks for one. Hiding the name field closes nothing:
+ * `place_order` re-checks every rule of both modes.
+ *
+ * **A table named by the scanned code is fixed.** The sheet shows it with no
+ * « Changer »: the code is stuck on the table the customer is sitting at, and a
+ * picker one tap away is how an order ends up across the room. « Changer » only
+ * exists for a table picked by hand.
  */
 export function CartSheet({
   open,
@@ -47,6 +52,7 @@ export function CartSheet({
   orderSettings,
   tables,
   tablesError,
+  urlTableId,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -58,6 +64,8 @@ export function CartSheet({
   /** The venue's tables, in table mode; `undefined` while they load. */
   tables: Array<PublicTable> | undefined
   tablesError: Error | null
+  /** The `?table=` of the scanned code, already shape-checked by the route. */
+  urlTableId: string | undefined
 }) {
   const cart = useCart(venueSlug)
   const place = usePlaceOrder(venueSlug)
@@ -70,7 +78,7 @@ export function CartSheet({
     Whether the picker stays open. It opens by itself while no table is known;
     once one is chosen it stays open until the sheet closes, because arrow keys
     choose as they move and a picker collapsing under them would lose the
-    keyboard. « Changer » opens it on purpose.
+    keyboard. « Changer » opens it on purpose — for a table picked by hand only.
   */
   const [pickingTable, setPickingTable] = useState(false)
 
@@ -78,14 +86,21 @@ export function CartSheet({
   const asksName = !byTable || orderSettings.firstName === 'optional'
 
   /*
-    The table is only known if its id is one of this venue's tables: an id from
+    A table is only known if its id is one of this venue's tables: an id from
     a deleted table's code, or from another venue's tab, resolves to nothing and
     the picker shows — never an error page.
+
+    The code's table wins over the one kept for the visit, and is resolved here
+    rather than read from the store: `OrderBar` writes it there only once the
+    list has loaded, and the sheet must not offer « Changer » in between.
   */
-  const table =
-    byTable && chosenTable
-      ? (tables?.find((entry) => entry.public_id === chosenTable) ?? null)
+  const resolveTable = (publicId: string | null | undefined) =>
+    byTable && publicId
+      ? (tables?.find((entry) => entry.public_id === publicId) ?? null)
       : null
+  const codeTable = resolveTable(urlTableId)
+  const table = codeTable ?? resolveTable(chosenTable)
+  const tableFixed = codeTable !== null
 
   const byId = new Map(products.map((product) => [product.id, product]))
 
@@ -249,22 +264,30 @@ export function CartSheet({
                 Cet établissement n’a pas encore enregistré ses tables :
                 demandez au comptoir.
               </p>
-            ) : table && !pickingTable ? (
-              <div className="flex items-center justify-between gap-3 rounded-lg border border-line bg-surface-raised py-1 pr-1 pl-3">
+            ) : table && (tableFixed || !pickingTable) ? (
+              /*
+                `min-h-13` is the row's height with its « Changer »: a fixed
+                table reads as the same card, not a shorter one.
+              */
+              <div
+                className={`flex min-h-13 items-center justify-between gap-3 rounded-lg border border-line bg-surface-raised py-1 pl-3 ${tableFixed ? 'pr-3' : 'pr-1'}`}
+              >
                 <div className="min-w-0">
                   <p className="text-xs text-ink-soft">Votre table</p>
                   <p className="display-title truncate text-lg leading-tight">
                     {tableName(table.number, table.label)}
                   </p>
                 </div>
-                <ActionButton
-                  variant="ghost"
-                  surface="page"
-                  onClick={() => setPickingTable(true)}
-                  aria-label={`Changer de table (actuellement ${tableName(table.number, table.label)})`}
-                >
-                  Changer
-                </ActionButton>
+                {tableFixed ? null : (
+                  <ActionButton
+                    variant="ghost"
+                    surface="page"
+                    onClick={() => setPickingTable(true)}
+                    aria-label={`Changer de table (actuellement ${tableName(table.number, table.label)})`}
+                  >
+                    Changer
+                  </ActionButton>
+                )}
               </div>
             ) : (
               <TablePicker

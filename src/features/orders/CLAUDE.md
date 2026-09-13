@@ -299,9 +299,16 @@ existed.
 - **The table comes from the QR code, or from the picker.** A table's code carries
   `?table=<public id>`; `m.$venueSlug.tsx` shape-checks it, `OrderBar` fetches the venue's
   tables (`publicTablesQueryOptions` — only once there is a cart or an id to check, never in
-  the SSR'd payload) and adopts the id **only if it resolves**, once per address, so a later
-  « Changer » is not undone by a refetch. `table.ts` keeps the choice for the visit in
-  `sessionStorage`, not `localStorage`: next week the same phone sits at another table.
+  the SSR'd payload) and adopts the id **only if it resolves**. `table.ts` keeps the choice
+  for the visit in `sessionStorage`, not `localStorage`: next week the same phone sits at
+  another table.
+- **A table named by the code is fixed.** When `?table=` resolves, the cart sheet shows that
+  table with **no « Changer »** and never the picker: the code is stuck on the table the
+  customer sits at, and a picker one tap away is how an order ends up across the room. The
+  sheet resolves the URL's id itself rather than waiting for `OrderBar` to write the store,
+  so « Changer » never flashes in between. « Changer » survives only for a table picked by
+  hand. An id that stops resolving (its table deleted mid-visit, the list refetched after a
+  refusal) releases the lock and the picker comes back.
 - **An unknown id is a missing id.** The venue-wide code, a deleted table's code, a
   hand-edited URL: the cart sheet shows `TablePicker`. Never an error page — a printed code
   must not become a dead end.
