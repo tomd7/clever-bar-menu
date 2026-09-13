@@ -129,6 +129,9 @@ different sources:
   Everything declared here ships in the browser bundle, so **public values only**. Holds
   `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (the publishable key,
   `sb_publishable_…`). The Supabase **secret** key must never take a `VITE_` prefix.
+  `VITE_APP_BETA` is the one optional flag (default `false`): a required display flag left
+  unset would fail validation at import and take the whole app down, customer menu
+  included.
 - `src/env.server.ts` — server, `runtimeEnv: process.env`, server-only, evaluated lazily
   via `serverEnv()`.
 
