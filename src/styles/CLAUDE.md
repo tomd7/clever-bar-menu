@@ -20,8 +20,9 @@ src/
     not-found.css    .slate, .chalk-line  (the 404 slate)
     site-footer.css  .site-footer
     skeleton.css     .skeleton, .skeleton-screen  (l'ossature de chargement)
+    back-office/
+      rail-link.css  .rail-link  (every item of the column, whichever feature draws it)
   features/venues/components/
-    venue-nav.css    .rail-link
     venue-qr.css     .print-sheet
   features/menu/components/
     menu-nav.css     .scrollbar-none, .rail-fade (stock-page reuses the pair)

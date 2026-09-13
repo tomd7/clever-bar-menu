@@ -229,6 +229,14 @@ A third slot, **`account`**, is the way into the manager's own account (`Account
 next to « Déconnexion », under the address in the column from `lg`. Before it, the phone
 bar held nothing but the sign-out — a screen reachable only from `lg` is unfinished.
 
+**Every item of the column is a `.rail-link`** (`back-office/rail-link.css`), whichever
+slot and feature it comes from — `VenueNav`, `VenueTrashRailLink`, `AccountLink`. The class
+lives with the shell rather than next to `venue-nav.tsx` because three features' items
+must look alike, and a feature may not lean on another's stylesheet. An item drawn with
+`NavLink` instead is the one that marks its page with an underline and a heavier weight
+while its neighbours use the raised fill and the left bar: that is how « Compte » first
+shipped.
+
 `MenuAddress` (`back-office/menu-address.tsx`) draws `/m/<slug>` as a **control, not a
 caption**: a link opening the customer menu in a **new tab** — the manager checks the
 result and comes back to the form they left — next to a `CopyButton` that copies the

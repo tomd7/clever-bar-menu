@@ -128,7 +128,8 @@ session skips it, it opens a second session, and it burns the sign-in rate limit
   with a new `key`) is the signal it reads as « the change went through ».
 - **The entry point is reachable at every width**: `AccountLink`, passed by
   `_authenticated.tsx` into `BackOfficeShell`'s `account` slot — in the phone's top bar and
-  in the column from `lg`.
+  in the column from `lg`. It is a `.rail-link` like every other item of the column, not a
+  `NavLink`.
 - **`compte` is a reserved slug.** `/admin/compte` is a static child of `/admin`; see
   `src/features/venues/CLAUDE.md`.
 - **The _Reauthentication_ mail template ships in English**, like _Reset Password_.

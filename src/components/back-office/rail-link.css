@@ -1,5 +1,8 @@
 /*
-  Un élément de la colonne du back-office (`venue-nav.tsx`).
+  Un élément de la colonne du back-office, quelle que soit la feature qui le
+  pose : `VenueNav` et `VenueTrashRailLink` (venues), `AccountLink` (auth).
+  D'où sa place dans la coquille et non à côté de `venue-nav.tsx` : une
+  feature n'a pas à dépendre du CSS d'une autre pour ressembler à ses voisins.
 
   Ce n'est délibérément pas un `.nav-link`. Un lien de texte se signale par un
   trait qui pousse sous son libellé : posé dans une liste verticale, ce trait

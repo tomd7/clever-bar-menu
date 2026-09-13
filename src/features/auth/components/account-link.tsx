@@ -1,6 +1,5 @@
+import { Link } from '@tanstack/react-router'
 import { UserRound } from 'lucide-react'
-
-import { NavLink } from '#/components/nav-link'
 
 /**
  * The way into `/admin/compte`, placed in `BackOfficeShell`'s `account` slot.
@@ -11,19 +10,22 @@ import { NavLink } from '#/components/nav-link'
  * targets; labelled from `sm`. The label stays in the accessibility tree at
  * every width, so the link is never an unnamed icon.
  *
- * A link, not a button — it goes somewhere. `min-w-11` is the width half of
- * the 44px target when the label is out of the flow; `.nav-link` already
- * gives the height.
+ * **A `.rail-link`, not a `NavLink`**, like every other item of the column
+ * (`VenueNav`, `VenueTrashRailLink`): the same padding, the same hover wash,
+ * and on its own page the same raised fill and left bar. As a `NavLink` it
+ * was the one item marking the current page with a heavier weight and an
+ * underline. `min-w-11` is the width half of the 44px target while the label
+ * is out of the flow; `.rail-link` already gives the height.
  */
 export function AccountLink() {
   return (
-    <NavLink
+    <Link
       to="/admin/compte"
-      icon={UserRound}
-      activeProps={{ className: 'font-semibold' }}
-      className="min-w-11 justify-center lg:justify-start lg:px-3"
+      activeProps={{ className: 'is-active' }}
+      className="rail-link min-w-11 justify-center lg:justify-start"
     >
+      <UserRound className="size-4 shrink-0" />
       <span className="sr-only sm:not-sr-only">Compte</span>
-    </NavLink>
+    </Link>
   )
 }
