@@ -38,9 +38,9 @@ Invariants that hold the design up:
   function is reachable by anyone holding the publishable key — that is, by everyone.
 - **`venues.orders_enabled` is checked in SQL too**, not only to hide a button. A menu left
   open in a tab must not keep sending after the bar closes.
-- **Availability is re-checked at insert time** — `is_available`, and a non-zero
-  `stock_quantity` — with the same condition `fetchPublicMenu` uses. The displayed menu may
-  be ten minutes old.
+- **Availability is re-checked at insert time** — `is_visible` (the menu's filter), then
+  `is_available` and a non-zero `stock_quantity` (`isSoldOut`, the menu's « épuisé »), as
+  of migration `0023`. The displayed menu may be ten minutes old.
 - **A dropped line fails the whole order.** If a requested product is no longer orderable,
   `place_order` raises rather than inserting a shortened order. Serving an amputated order
   would make the customer discover the gap at the counter, which is the worst possible
@@ -168,6 +168,11 @@ saving eight lines.
   route fills it with `AddToCartButton`, and `src/routes/m.$venueSlug.tsx` is the one file
   allowed to know both features. Same assembly as `_authenticated.tsx` passing `<VenueNav>`
   to `BackOfficeShell`.
+- **A sold-out product is on the menu but not in the cart's catalogue.** `PublicMenu` does
+  not call `productAction` for it, and `m.$venueSlug.tsx` leaves it out of the `products`
+  handed to `OrderBar`. The cart sheet drops a line it cannot resolve — which is what a
+  product that ran out while in the cart should do, rather than stay drawn as orderable
+  until `place_order` refuses the send.
 - **When a section reserves a photo column, a product without a photo renders an explicit
   empty `<div>`.** Not cosmetic: `null` produces no element, and grid auto-placement would
   slide the action into the image column — prices would stop lining up on photo-less rows,

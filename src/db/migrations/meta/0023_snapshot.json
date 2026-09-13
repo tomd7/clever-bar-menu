@@ -1,0 +1,857 @@
+{
+  "id": "c0bbb017-bb00-4125-bd50-ebce96884498",
+  "prevId": "671987a8-5473-4071-a156-be5d600e1173",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.categories": {
+      "name": "categories",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "venue_id": {
+          "name": "venue_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "position": {
+          "name": "position",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "categories_venue_id_position_idx": {
+          "name": "categories_venue_id_position_idx",
+          "columns": [
+            {
+              "expression": "venue_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "position",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "categories_venue_id_venues_id_fk": {
+          "name": "categories_venue_id_venues_id_fk",
+          "tableFrom": "categories",
+          "columnsFrom": [
+            "venue_id"
+          ],
+          "tableTo": "venues",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "categories_public_read": {
+          "name": "categories_public_read",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "anon",
+            "authenticated"
+          ],
+          "using": "true"
+        },
+        "categories_owner_insert": {
+          "name": "categories_owner_insert",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ],
+          "withCheck": "exists (\n        select 1 from \"venues\"\n        where \"venues\".\"id\" = \"categories\".\"venue_id\"\n          and \"venues\".\"owner_id\" = (select auth.uid())\n      )"
+        },
+        "categories_owner_update": {
+          "name": "categories_owner_update",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "exists (\n        select 1 from \"venues\"\n        where \"venues\".\"id\" = \"categories\".\"venue_id\"\n          and \"venues\".\"owner_id\" = (select auth.uid())\n      )",
+          "withCheck": "exists (\n        select 1 from \"venues\"\n        where \"venues\".\"id\" = \"categories\".\"venue_id\"\n          and \"venues\".\"owner_id\" = (select auth.uid())\n      )"
+        },
+        "categories_owner_delete": {
+          "name": "categories_owner_delete",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "exists (\n        select 1 from \"venues\"\n        where \"venues\".\"id\" = \"categories\".\"venue_id\"\n          and \"venues\".\"owner_id\" = (select auth.uid())\n      )"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.order_items": {
+      "name": "order_items",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "order_id": {
+          "name": "order_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "product_id": {
+          "name": "product_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "size": {
+          "name": "size",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "unit_price_cents": {
+          "name": "unit_price_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "quantity": {
+          "name": "quantity",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "order_items_order_id_idx": {
+          "name": "order_items_order_id_idx",
+          "columns": [
+            {
+              "expression": "order_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "order_items_order_id_orders_id_fk": {
+          "name": "order_items_order_id_orders_id_fk",
+          "tableFrom": "order_items",
+          "columnsFrom": [
+            "order_id"
+          ],
+          "tableTo": "orders",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "order_items_product_id_products_id_fk": {
+          "name": "order_items_product_id_products_id_fk",
+          "tableFrom": "order_items",
+          "columnsFrom": [
+            "product_id"
+          ],
+          "tableTo": "products",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "order_items_owner_read": {
+          "name": "order_items_owner_read",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "exists (\n        select 1 from \"orders\"\n        join \"venues\" on \"venues\".\"id\" = \"orders\".\"venue_id\"\n        where \"orders\".\"id\" = \"order_items\".\"order_id\"\n          and \"venues\".\"owner_id\" = (select auth.uid())\n      )"
+        }
+      },
+      "checkConstraints": {
+        "order_items_quantity_positive": {
+          "name": "order_items_quantity_positive",
+          "value": "\"order_items\".\"quantity\" > 0"
+        },
+        "order_items_unit_price_cents_non_negative": {
+          "name": "order_items_unit_price_cents_non_negative",
+          "value": "\"order_items\".\"unit_price_cents\" is null or \"order_items\".\"unit_price_cents\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.orders": {
+      "name": "orders",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "venue_id": {
+          "name": "venue_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "customer_name": {
+          "name": "customer_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'received'"
+        },
+        "cancelled_by": {
+          "name": "cancelled_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "total_cents": {
+          "name": "total_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "access_token": {
+          "name": "access_token",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "orders_venue_id_created_at_idx": {
+          "name": "orders_venue_id_created_at_idx",
+          "columns": [
+            {
+              "expression": "venue_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "orders_venue_id_venues_id_fk": {
+          "name": "orders_venue_id_venues_id_fk",
+          "tableFrom": "orders",
+          "columnsFrom": [
+            "venue_id"
+          ],
+          "tableTo": "venues",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "orders_owner_read": {
+          "name": "orders_owner_read",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "exists (\n        select 1 from \"venues\"\n        where \"venues\".\"id\" = \"orders\".\"venue_id\"\n          and \"venues\".\"owner_id\" = (select auth.uid())\n      )"
+        },
+        "orders_owner_update": {
+          "name": "orders_owner_update",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "exists (\n        select 1 from \"venues\"\n        where \"venues\".\"id\" = \"orders\".\"venue_id\"\n          and \"venues\".\"owner_id\" = (select auth.uid())\n      )",
+          "withCheck": "exists (\n        select 1 from \"venues\"\n        where \"venues\".\"id\" = \"orders\".\"venue_id\"\n          and \"venues\".\"owner_id\" = (select auth.uid())\n      )"
+        }
+      },
+      "checkConstraints": {
+        "orders_status_valid": {
+          "name": "orders_status_valid",
+          "value": "\"orders\".\"status\" in ('received', 'preparing', 'ready', 'collected', 'cancelled')"
+        },
+        "orders_total_cents_non_negative": {
+          "name": "orders_total_cents_non_negative",
+          "value": "\"orders\".\"total_cents\" >= 0"
+        },
+        "orders_cancelled_by_valid": {
+          "name": "orders_cancelled_by_valid",
+          "value": "\"orders\".\"cancelled_by\" is null or \"orders\".\"cancelled_by\" in ('guest', 'venue')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.products": {
+      "name": "products",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "category_id": {
+          "name": "category_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "size": {
+          "name": "size",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "barcode": {
+          "name": "barcode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "price_cents": {
+          "name": "price_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "image_path": {
+          "name": "image_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_available": {
+          "name": "is_available",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "is_visible": {
+          "name": "is_visible",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "stock_quantity": {
+          "name": "stock_quantity",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "low_stock_threshold": {
+          "name": "low_stock_threshold",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "position": {
+          "name": "position",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "products_category_id_position_idx": {
+          "name": "products_category_id_position_idx",
+          "columns": [
+            {
+              "expression": "category_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "position",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "products_category_id_categories_id_fk": {
+          "name": "products_category_id_categories_id_fk",
+          "tableFrom": "products",
+          "columnsFrom": [
+            "category_id"
+          ],
+          "tableTo": "categories",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "products_public_read": {
+          "name": "products_public_read",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "anon",
+            "authenticated"
+          ],
+          "using": "true"
+        },
+        "products_owner_insert": {
+          "name": "products_owner_insert",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ],
+          "withCheck": "exists (\n        select 1 from \"categories\"\n        join \"venues\" on \"venues\".\"id\" = \"categories\".\"venue_id\"\n        where \"categories\".\"id\" = \"products\".\"category_id\"\n          and \"venues\".\"owner_id\" = (select auth.uid())\n      )"
+        },
+        "products_owner_update": {
+          "name": "products_owner_update",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "exists (\n        select 1 from \"categories\"\n        join \"venues\" on \"venues\".\"id\" = \"categories\".\"venue_id\"\n        where \"categories\".\"id\" = \"products\".\"category_id\"\n          and \"venues\".\"owner_id\" = (select auth.uid())\n      )",
+          "withCheck": "exists (\n        select 1 from \"categories\"\n        join \"venues\" on \"venues\".\"id\" = \"categories\".\"venue_id\"\n        where \"categories\".\"id\" = \"products\".\"category_id\"\n          and \"venues\".\"owner_id\" = (select auth.uid())\n      )"
+        },
+        "products_owner_delete": {
+          "name": "products_owner_delete",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "exists (\n        select 1 from \"categories\"\n        join \"venues\" on \"venues\".\"id\" = \"categories\".\"venue_id\"\n        where \"categories\".\"id\" = \"products\".\"category_id\"\n          and \"venues\".\"owner_id\" = (select auth.uid())\n      )"
+        }
+      },
+      "checkConstraints": {
+        "products_stock_quantity_non_negative": {
+          "name": "products_stock_quantity_non_negative",
+          "value": "\"products\".\"stock_quantity\" is null or \"products\".\"stock_quantity\" >= 0"
+        },
+        "products_low_stock_threshold_non_negative": {
+          "name": "products_low_stock_threshold_non_negative",
+          "value": "\"products\".\"low_stock_threshold\" is null or \"products\".\"low_stock_threshold\" >= 0"
+        },
+        "products_barcode_format": {
+          "name": "products_barcode_format",
+          "value": "\"products\".\"barcode\" is null or \"products\".\"barcode\" ~ '^[0-9]{14}$'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.venues": {
+      "name": "venues",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "slug": {
+          "name": "slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "auth.uid()"
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'EUR'"
+        },
+        "orders_enabled": {
+          "name": "orders_enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "theme": {
+          "name": "theme",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'ardoise'"
+        },
+        "logo_path": {
+          "name": "logo_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "logo_plate": {
+          "name": "logo_plate",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "font_title": {
+          "name": "font_title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'archivo'"
+        },
+        "font_category": {
+          "name": "font_category",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'archivo'"
+        },
+        "font_product": {
+          "name": "font_product",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'archivo'"
+        },
+        "font_description": {
+          "name": "font_description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'archivo'"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "venues_slug_unique": {
+          "name": "venues_slug_unique",
+          "columns": [
+            {
+              "expression": "slug",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "venues_owner_id_idx": {
+          "name": "venues_owner_id_idx",
+          "columns": [
+            {
+              "expression": "owner_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "venues_public_read": {
+          "name": "venues_public_read",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "anon",
+            "authenticated"
+          ],
+          "using": "\"venues\".\"deleted_at\" is null"
+        },
+        "venues_owner_read": {
+          "name": "venues_owner_read",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "(select auth.uid()) = \"venues\".\"owner_id\""
+        },
+        "venues_owner_insert": {
+          "name": "venues_owner_insert",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ],
+          "withCheck": "(select auth.uid()) = \"venues\".\"owner_id\""
+        },
+        "venues_owner_update": {
+          "name": "venues_owner_update",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "(select auth.uid()) = \"venues\".\"owner_id\"",
+          "withCheck": "(select auth.uid()) = \"venues\".\"owner_id\""
+        },
+        "venues_owner_delete": {
+          "name": "venues_owner_delete",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "(select auth.uid()) = \"venues\".\"owner_id\""
+        }
+      },
+      "checkConstraints": {
+        "venues_theme_allowed": {
+          "name": "venues_theme_allowed",
+          "value": "\"venues\".\"theme\" in ('ardoise', 'pelouse', 'rubis', 'prune', 'indigo')"
+        },
+        "venues_font_title_allowed": {
+          "name": "venues_font_title_allowed",
+          "value": "\"venues\".\"font_title\" in ('archivo', 'playfair-display', 'newsreader', 'fredoka', 'courier-prime', 'oswald', 'caveat', 'cormorant-garamond', 'big-shoulders-display')"
+        },
+        "venues_font_category_allowed": {
+          "name": "venues_font_category_allowed",
+          "value": "\"venues\".\"font_category\" in ('archivo', 'playfair-display', 'newsreader', 'fredoka', 'courier-prime', 'oswald', 'caveat', 'cormorant-garamond', 'big-shoulders-display')"
+        },
+        "venues_font_product_allowed": {
+          "name": "venues_font_product_allowed",
+          "value": "\"venues\".\"font_product\" in ('archivo', 'playfair-display', 'newsreader', 'fredoka', 'courier-prime', 'oswald', 'caveat')"
+        },
+        "venues_font_description_allowed": {
+          "name": "venues_font_description_allowed",
+          "value": "\"venues\".\"font_description\" in ('archivo', 'playfair-display', 'newsreader', 'fredoka', 'courier-prime')"
+        }
+      },
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "views": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

@@ -56,6 +56,8 @@ type ProductSeed = {
   lowStockThreshold?: number
   /** A shortage decided by hand, independent of any counter. */
   unavailable?: boolean
+  /** Off the customer's menu entirely — still in the editor. */
+  hidden?: boolean
 }
 
 type CategorySeed = {
@@ -71,9 +73,10 @@ type CategorySeed = {
  * (a size that distinguishes two lines of the same name), the daily special and
  * the sommelier's suggestion (`priceCents` absent — a priceless line the menu
  * renders and `place_order` accepts), the pierced Kriek keg (`unavailable`
- * without any stock), the Rochefort at zero (a shortage the counter reads off
- * the stock screen) and the Orval, Lupulus Triple and iced tea below their
- * threshold.
+ * without any stock — listed, marked sold out), the mulled wine (`hidden`, out
+ * of season — in the editor, absent from the menu), the Rochefort at zero (a
+ * shortage the counter reads off the stock screen) and the Orval, Lupulus
+ * Triple and iced tea below their threshold.
  */
 const MENU: Array<CategorySeed> = [
   {
@@ -257,6 +260,12 @@ const MENU: Array<CategorySeed> = [
         description: 'Menthe fraîche, earl grey ou verveine.',
       },
       { name: 'Chocolat chaud', priceCents: 380 },
+      {
+        name: 'Vin chaud',
+        priceCents: 450,
+        description: 'Épices et orange — de retour avec le froid.',
+        hidden: true,
+      },
       {
         name: 'Irish coffee',
         priceCents: 850,
@@ -641,6 +650,7 @@ async function seed(db: Db, venueId: string) {
             stockQuantity: product.stock ?? null,
             lowStockThreshold: product.lowStockThreshold ?? null,
             isAvailable: !product.unavailable,
+            isVisible: !product.hidden,
             position: index * POSITION_STEP,
           })),
         ),

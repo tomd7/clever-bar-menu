@@ -143,6 +143,14 @@ invoker` matters here more than usual: `products_public_read` is `using true`, s
   not stop the triggers from firing — Postgres checks that privilege when a trigger is
   created, not when it runs; both were verified against the live database.
 
+- `0023_product_visibility_rules.sql` — what `0022`'s `alter table` cannot say, in two
+  parts. A **backfill**: every product unavailable by hand becomes hidden, because until
+  then the « Rupture » switch was the only way off a menu, and a deploy must not put those
+  products back in front of customers. Products at zero stock are left visible on purpose —
+  hiding them would outlast the next delivery; they now show as « épuisé ». Then
+  **`place_order`** once more, replaced whole to add `and p.is_visible`. Same signature, so
+  the grants of `0009` stand, exactly as in `0013`.
+
 **`revoke execute ... from public` closes nothing on Supabase.** The project's default
 privileges (`pg_default_acl`, set by `postgres` and `supabase_admin`) grant `execute` on
 every new function in `public` to `anon`, `authenticated` and `service_role` by name, and
@@ -251,6 +259,19 @@ all nine faces, products seven, descriptions five (`venues_font_*_allowed`). The
 role lists of `src/lib/menu-fonts.ts`, which `updateVenue` enforces in French first. Three
 places move together: `VENUE_FONTS` with those checks, the catalogue, and
 `src/styles/fonts.css` with `src/styles/menu-fonts.css`.
+
+## `products.is_visible`
+
+`boolean not null default true` — whether the product is listed on the public menu at all.
+Migration `0022` is drizzle-kit's plain `alter table`, and no policy changed, for the reason
+given for `venues.theme`. The default is the only safe one: a new column must not take
+anything off a menu the minute it runs.
+
+It is **not** `is_available` under a new name. `is_available = false` now means out of stock
+by hand — still listed, marked sold out, not orderable. The two are independent, and
+`products_public_read` still filters neither: the back office reads through the same
+publishable key, and a hidden product must stay editable. The filter is in
+`fetchPublicMenu`, and `place_order` checks it (`0023`).
 
 ## Known weak point
 
