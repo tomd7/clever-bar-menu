@@ -26,6 +26,20 @@ export const env = createEnv({
      */
     VITE_APP_TITLE: z.string().min(1),
 
+    /**
+     * Affiche une pastille « Bêta » à côté du nom du produit, dans l'en-tête du
+     * back-office. `true` pour l'afficher ; absente ou `false`, rien.
+     *
+     * Optionnelle, contrairement à `VITE_APP_TITLE` : ce schéma est validé dès
+     * l'import, dans le navigateur aussi, et une variable requise mais oubliée
+     * ferait tomber toute l'application — carte client comprise — pour un
+     * simple drapeau d'affichage.
+     *
+     * Vite l'inline au build : la changer sur l'hébergeur demande un
+     * redéploiement, pas un commit.
+     */
+    VITE_APP_BETA: z.stringbool().default(false),
+
     /** URL du projet Supabase hébergé (`https://<ref>.supabase.co`). */
     VITE_SUPABASE_URL: z.url(),
 

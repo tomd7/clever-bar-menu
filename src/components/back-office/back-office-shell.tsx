@@ -63,9 +63,23 @@ export function BackOfficeShell({
         <div className="flex items-center justify-between gap-3 px-4 py-3 lg:min-h-full lg:flex-col lg:items-stretch lg:px-4 lg:py-6">
           <div className="lg:flex-1">
             <p className="island-kicker">Back-office</p>
-            <p className="display-title text-lg leading-tight">
-              {env.VITE_APP_TITLE}
-            </p>
+            {/*
+              The beta pill sits beside the title, not inside it: inside, it
+              would inherit `.display-title`'s wide stretch and negative
+              tracking, made for headings, not an 11px label. A filled pill on
+              `--bottle`, never a bordered one — on this app the bordered pill
+              is `StockBadge`, and it means something is wrong.
+            */}
+            <div className="flex items-center gap-2">
+              <p className="display-title text-lg leading-tight">
+                {env.VITE_APP_TITLE}
+              </p>
+              {env.VITE_APP_BETA ? (
+                <span className="rounded-full bg-bottle px-2 py-0.5 text-[0.6875rem] leading-none font-semibold text-on-bottle">
+                  Bêta
+                </span>
+              ) : null}
+            </div>
 
             <div className="mt-6 hidden lg:block">{nav}</div>
           </div>

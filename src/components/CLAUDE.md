@@ -224,6 +224,12 @@ apart: one stretched `nav` would make the shell responsible for the gap between 
 items. Like `nav`, it only renders from `lg`, and it draws **no separator of its own** —
 that belongs to whatever is put in it, so an empty zone leaves no trace.
 
+**The « Bêta » pill** beside the product name is driven by `VITE_APP_BETA`, and shows in
+the back office only — not on the landing page, the auth screens or the customer menu. It
+is a **sibling** of the title, not a child: inside `.display-title` it would inherit the
+wide stretch and negative tracking. **Filled** (`bg-bottle` / `text-on-bottle`), never
+bordered — the bordered pill is `StockBadge`, and it means something is wrong.
+
 `MenuAddress` (`back-office/menu-address.tsx`) draws `/m/<slug>` as a **control, not a
 caption**: a link opening the customer menu in a **new tab** — the manager checks the
 result and comes back to the form they left — next to a `CopyButton` that copies the
