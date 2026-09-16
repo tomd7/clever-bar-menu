@@ -279,10 +279,19 @@ hand-pulled line on deploy.
   topped by a `--board` panel carrying the venue name in chalk. **`--board` is no longer
   always the house slate**: `PublicMenu`'s root element carries `data-menu-theme` from
   `venues.theme`, and `styles/menu-theme.css` repaints the board and the accents for
-  everything under it. The ground and the surfaces do not move, so this page keeps the
-  contrast it was designed with whatever a venue picks. Server-rendered from the loader's
+  everything under it. Under a _named_ theme the ground and the surfaces do not move, so the
+  page keeps the contrast it was designed with. Server-rendered from the loader's
   data, so the board is never seen in the house colour first — see `src/styles/CLAUDE.md`
   for the two token traps that make the override work.
+- **A venue with its own colours adds `data-menu-custom` and an inline `style`** on that same
+  element, from `menu.colors` (`menuPaletteStyle`, `src/lib/menu-colors.ts`). There the
+  ground _does_ move, and what keeps the carte readable is a 4.5:1 check in the settings
+  screen rather than the scope rule — the contract is in `src/styles/CLAUDE.md`. The theme
+  attribute stays beside it: a palette is an edited copy, and the theme is the fallback the
+  day the row goes. `fetchPublicMenu` reads the palette **in parallel with the categories**
+  and hands it back as `colors`, beside the venue rather than inside it, since it is not a
+  column of `venues`; a palette that fails to read leaves the carte on its named theme
+  instead of failing the page.
 - **The venue's logo heads the board**, on a row of its own above « La carte », through
   `VenueLogo` (`src/components/venue-logo.tsx`). Above the kicker rather than beside the
   name: a title set at 4xl keeps its width, and a long wordmark cannot push it onto a third

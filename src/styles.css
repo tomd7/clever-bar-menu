@@ -48,6 +48,7 @@
 @import './components/site-footer.css';
 @import './components/back-office/rail-link.css';
 @import './features/venues/components/menu-theme-field.css';
+@import './features/venues/components/menu-colors-field.css';
 @import './features/menu/components/menu-nav.css';
 @import './features/menu/components/public-menu.css';
 @import './features/orders/components/open-orders-count.css';

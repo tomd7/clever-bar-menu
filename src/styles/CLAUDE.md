@@ -9,7 +9,7 @@ src/
   styles/
     fonts.css        self-hosted @font-face + measured fallback twins
     theme.css        palette, shadcn contract, @theme inline
-    menu-theme.css   per-venue themes: [data-menu-theme] token overrides
+    menu-theme.css   per-venue themes: [data-menu-theme] + [data-menu-custom] overrides
     base.css         bare elements (html, body, a, code, pre) + @layer base *
     vocabulary.css   .page-wrap .display-title .island-shell .panel .feature-card .island-kicker
     menu-fonts.css   per-venue typefaces: [data-menu-face] rules, x-height correction
@@ -24,6 +24,8 @@ src/
       rail-link.css  .rail-link  (every item of the column, whichever feature draws it)
   features/venues/components/
     venue-qr.css     .print-sheet, .qr-grid, .qr-card (the per-table sheet)
+    menu-theme-field.css  .theme-swatch, .theme-option (the theme picker)
+    menu-colors-field.css .color-swatch (the native colour input, restyled)
   features/menu/components/
     menu-nav.css     .scrollbar-none, .rail-fade (stock-page reuses the pair)
     public-menu.css  .menu-leader
@@ -116,6 +118,10 @@ subtree. Scope is **the board and the accents, never the ground**: `--ground`, `
 `--line`, `--ink` and `--primary-fill` stay the house palette, so a menu keeps the contrast
 it was designed with and `--primary` stays ink.
 
+That scope holds for the **named** palettes. A venue that paints its own colours adds
+`data-menu-custom` and an inline style on the same element, and there the ground does move —
+see « Custom colours » below, and why a contrast check replaces the rule.
+
 Two substitution facts make or break the approach, and neither is visible from the markup:
 
 - **`--ring` has to be restated on the theme element.** It is derived on `:root, .dark` as
@@ -158,6 +164,72 @@ Adding a theme is three edits that travel together: `VENUE_THEMES` + the
 `venues_theme_allowed` check (`src/db/schema.ts`), the catalogue in `src/lib/menu-theme.ts`,
 and a block here. Miss the last one and the menu renders an attribute no rule matches —
 silent, and it reads as a design choice.
+
+## Custom colours — the `[data-menu-custom]` contract
+
+A venue can repaint six roles on top of its named theme (`venue_themes`, one row or none).
+The element then carries **both** attributes and an inline `style`:
+
+```html
+<div
+  data-menu-theme="indigo"
+  data-menu-custom
+  style="--theme-ground-day:#f4ecdc;…"
+></div>
+```
+
+**The theme stays, because a custom palette is an edited copy of it.** It is what the
+picker starts from, what the carte falls back to the day the row is deleted, and what the
+accent machinery above still runs on. The second attribute only says « and these values on
+top ».
+
+- **The values are inlined, never written in this stylesheet.** They are per venue and the
+  carte is server rendered: a `<style>` per request would cost the single-sheet guarantee
+  `styles.css` argues for, and a stylesheet cannot hold a per-venue value at all. The style
+  attribute and the attributes are in the same byte of HTML, so nothing repaints after the
+  first read. `menuPaletteStyle` (`src/lib/menu-colors.ts`) is the only writer.
+- **The names are `--theme-*-day` / `--theme-*-night`**, the convention the named themes
+  already use, and the three generic rules at the top of `menu-theme.css` still pick the
+  reading. That is why **the accent needs no rule of its own**: it overrides
+  `--theme-bottle-*` and `--theme-bottle-deep-*`, which are already wired — `--ring`
+  included, since it derives from `--bottle-deep` on the same element.
+- **The ground moves here, and only here.** « The board and the accents, never the ground »
+  still governs the named palettes; it is lifted for `[data-menu-custom]` because a manager
+  picking a background colour is picking the ground, and a « Fond » field that repainted
+  everything except the fond would be a lie. **What replaces the rule is measurement**:
+  `paletteContrast` checks every text role against the surface it sits on, in both
+  readings, `venue-settings.tsx` greys « Enregistrer » out below 4.5:1 and `updateVenue`
+  refuses the same palette behind it. `--primary-fill` stays out of both — the primary
+  action is ink.
+- **« Fond » paints `--surface` _and_ `--ground`.** On the phone the carte is full-bleed, so
+  the sheet _is_ what the customer sees; keeping the house stone behind it would only show
+  on a wide screen, as a frame the manager never asked about. The sheet still detaches
+  there through its border and `--shadow-2`.
+- **Four tokens are `color-mix()`ed in the stylesheet**, not asked of the manager and not
+  computed in TypeScript: `--surface-raised`, `--line`, `--line-soft` and `--on-board-soft`
+  (plus `--skeleton`). Each is a hairline or a tinted surface — nothing carries text, so
+  nothing has a contrast condition a mix could get wrong. They need no day/night pair
+  either: they mix tokens that already have one, on the element that declares them.
+- **Three tokens _are_ computed in `menu-colors.ts`**, because each has a condition CSS
+  cannot express: `--bottle-chalk` (the accent as it appears on the board, repaired to
+  4.5:1 against it), `--on-bottle` (whichever of the venue's own ground or ink holds up on
+  an accent fill, then repaired), and the whole night reading (`deriveNightColors`).
+- **The ground and the ink are applied in `@layer base`**, and the layer is load-bearing.
+  `base.css` sets `color` and `background-color` on `body`, so both come down the tree
+  already resolved against the house palette — redeclaring `--ink` on a subtree changes
+  nothing that inherits. The rule that reapplies them must stay **inside** a layer: written
+  outside one it would beat `text-ink-soft` and `bg-board`, flattening every description to
+  the main ink and painting the board panel with the page ground. Same family of trap as
+  the unlayered `a { color }` above.
+- **Source order decides against the named blocks.** `[data-menu-custom]` and
+  `[data-menu-theme='rubis']` have the same specificity, as do `.dark [data-menu-custom]`
+  and `.dark [data-menu-theme]`. The custom section must stay **last** in the file.
+
+Adding a **role** is three edits that travel together, the same shape as adding a theme:
+the columns of `venue_themes` and `venue_themes_colors_format` (`src/db/schema.ts`),
+`MENU_COLOR_ROLES` with `menuPaletteStyle` (`src/lib/menu-colors.ts`), and the three
+`[data-menu-custom]` blocks here. Miss the last and the carte inlines a custom property no
+rule reads — silent, and it looks like a design choice.
 
 ## Dark mode
 

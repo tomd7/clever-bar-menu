@@ -3,6 +3,7 @@ import { ArrowUp } from 'lucide-react'
 import { MenuNav, sectionId } from '#/features/menu/components/menu-nav'
 import { ProductSize } from '#/components/product-size'
 import { formatPrice } from '#/lib/money'
+import { menuPaletteStyle } from '#/lib/menu-colors'
 import { parseMenuTheme } from '#/lib/menu-theme'
 import { menuFace, parseMenuFonts } from '#/lib/menu-fonts'
 import { productPhotoUrl } from '#/features/menu/photo'
@@ -80,7 +81,7 @@ export function PublicMenu({
   menu: PublicMenuData
   productAction?: ProductAction
 }) {
-  const { venue, categories } = menu
+  const { venue, colors, categories } = menu
   const hasNav = categories.length >= NAV_MIN_CATEGORIES
 
   /*
@@ -121,6 +122,21 @@ export function PublicMenu({
         wrapper here could reach it anyway.
       */
       data-menu-theme={parseMenuTheme(venue.theme)}
+      /*
+        And its own colours over that theme, when it has some.
+
+        The attribute is what `styles/menu-theme.css` selects for, the `style`
+        is where the twelve values live — a `<style>` tag per request would
+        cost the single-sheet guarantee, and a stylesheet cannot hold a value
+        that changes per venue. Both are rendered on the server, in the same
+        byte of HTML as the attribute above, so nothing repaints after the
+        first read.
+
+        `data-menu-theme` stays even here: a custom palette is an edited copy,
+        and the theme is what the carte falls back to the day the row goes.
+      */
+      data-menu-custom={colors ? '' : undefined}
+      style={colors ? menuPaletteStyle(colors) : undefined}
       className={
         productAction
           ? 'flex min-h-dvh flex-col pb-36'

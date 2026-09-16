@@ -752,6 +752,126 @@ export const venueTables = pgTable(
 )
 
 /**
+ * The custom colours of a venue's carte — one row per venue, or none.
+ *
+ * **A row is an edited copy of the venue's named theme, not a replacement for
+ * it.** `venues.theme` stays, and keeps meaning something: it is what the
+ * palette was copied from, what the picker shows as the starting point, and
+ * what the carte falls back to the moment this row is deleted — which is how
+ * « revenir à un thème » is one gesture and not twelve fields to clear.
+ *
+ * **A table rather than columns on `venues`.** Twelve nullable colour columns
+ * would sit on the row every screen of the back office and every customer menu
+ * already reads, to serve the one venue in ten that paints its own carte; and
+ * « pas de couleurs personnalisées » would be twelve nulls that nothing stops
+ * from being written six at a time. Here the invariant is the row's existence,
+ * and `venue_id` is the primary key, so « one palette per venue » is structural
+ * rather than something the application remembers to enforce.
+ *
+ * The cost is its own policies — a table has no RLS until someone writes it —
+ * and they are below: public `select` like `venue_tables`, since the anonymous
+ * carte reads this to paint itself, and the owner triple through `venues`.
+ *
+ * Six roles, two readings, twelve columns. The role list lives in three places
+ * that move together: here with `venue_themes_colors_format`,
+ * `src/lib/menu-colors.ts` (the browser's copy, and the maths), and the
+ * `[data-menu-custom]` blocks of `src/styles/menu-theme.css`.
+ */
+export const venueThemes = pgTable(
+  'venue_themes',
+  {
+    /**
+     * The venue, and the primary key: a venue has one palette or none.
+     *
+     * `on delete cascade` like every other child of `venues` — a purged venue
+     * takes its colours with it, and the bin's `deleted_at` keeps the row
+     * standing meanwhile, so restoring gives the carte its colours back.
+     */
+    venueId: uuid('venue_id')
+      .primaryKey()
+      .references(() => venues.id, { onDelete: 'cascade' }),
+
+    /**
+     * Each role, in its two readings.
+     *
+     * **Both are `not null`, and that is the whole point of the pair.** A
+     * night value left blank would mean picking one colour and silently
+     * getting two, which is the trap `CLOCLO-25` named when it refused a
+     * colour picker. The browser derives the night reading from the day one
+     * (`deriveNightColors`) and shows it in the preview, so the manager either
+     * accepts what they can see or edits it — never leaves it to chance.
+     */
+    groundDay: text('ground_day').notNull(),
+    groundNight: text('ground_night').notNull(),
+    boardDay: text('board_day').notNull(),
+    boardNight: text('board_night').notNull(),
+    onBoardDay: text('on_board_day').notNull(),
+    onBoardNight: text('on_board_night').notNull(),
+    inkDay: text('ink_day').notNull(),
+    inkNight: text('ink_night').notNull(),
+    inkSoftDay: text('ink_soft_day').notNull(),
+    inkSoftNight: text('ink_soft_night').notNull(),
+    accentDay: text('accent_day').notNull(),
+    accentNight: text('accent_night').notNull(),
+
+    ...timestamps,
+  },
+  (table) => [
+    /**
+     * Twelve columns, one constraint.
+     *
+     * Same relationship to the client that `venues_theme_allowed` has: it
+     * restates the shape `parseHexColor` already guarantees, and what it
+     * catches is the row written from outside the application. One named check
+     * rather than twelve, because a manager never meets it — `updateVenue`
+     * answers in French first — so the only reader of the constraint name is
+     * whoever is debugging a `curl`.
+     *
+     * Lowercase `#rrggbb` only: no shorthand, no `rgb()`, no colour keyword.
+     * The carte inlines these values into a `style` attribute, and the picker
+     * measures contrast on them — both want one spelling, not six.
+     *
+     * **It cannot check contrast**, which is the interesting half: a regular
+     * expression has nothing to say about whether `#f0f0f0` on `#ffffff` can
+     * be read. That check lives in `src/lib/menu-colors.ts` and is enforced by
+     * the settings screen, which refuses to save below 4.5:1. A row written
+     * around the application can therefore be unreadable — the same class of
+     * trust this schema already extends to `products.name`.
+     */
+    check(
+      'venue_themes_colors_format',
+      sql`${table.groundDay} ~ '^#[0-9a-f]{6}$'
+        and ${table.groundNight} ~ '^#[0-9a-f]{6}$'
+        and ${table.boardDay} ~ '^#[0-9a-f]{6}$'
+        and ${table.boardNight} ~ '^#[0-9a-f]{6}$'
+        and ${table.onBoardDay} ~ '^#[0-9a-f]{6}$'
+        and ${table.onBoardNight} ~ '^#[0-9a-f]{6}$'
+        and ${table.inkDay} ~ '^#[0-9a-f]{6}$'
+        and ${table.inkNight} ~ '^#[0-9a-f]{6}$'
+        and ${table.inkSoftDay} ~ '^#[0-9a-f]{6}$'
+        and ${table.inkSoftNight} ~ '^#[0-9a-f]{6}$'
+        and ${table.accentDay} ~ '^#[0-9a-f]{6}$'
+        and ${table.accentNight} ~ '^#[0-9a-f]{6}$'`,
+    ),
+
+    /*
+      Read by anyone, like the carte it paints: the customer menu is served to
+      `anon`, and a palette it could not read would leave the carte in its
+      named theme for customers and in its own colours for the manager.
+    */
+    publicRead('venue_themes_public_read'),
+    ...ownerWrite(
+      'venue_themes',
+      sql`exists (
+        select 1 from ${venues}
+        where ${venues.id} = ${table.venueId}
+          and ${venues.ownerId} = ${authUid}
+      )`,
+    ),
+  ],
+)
+
+/**
  * Les états d'une commande, dans l'ordre où elle les traverse.
  *
  * Du texte contraint plutôt qu'un `pgEnum` : ajouter un état à une énumération
@@ -1011,10 +1131,19 @@ export const orderItems = pgTable(
   ],
 )
 
-export const venuesRelations = relations(venues, ({ many }) => ({
+export const venuesRelations = relations(venues, ({ many, one }) => ({
   categories: many(categories),
   orders: many(orders),
   tables: many(venueTables),
+  /* One or none — `venue_themes.venue_id` is that table's primary key. */
+  colors: one(venueThemes),
+}))
+
+export const venueThemesRelations = relations(venueThemes, ({ one }) => ({
+  venue: one(venues, {
+    fields: [venueThemes.venueId],
+    references: [venues.id],
+  }),
 }))
 
 export const venueTablesRelations = relations(venueTables, ({ one }) => ({
