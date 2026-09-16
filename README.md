@@ -91,6 +91,14 @@ encodes.
   `/admin/<slug>/reglages`. It repaints the header panel and the accents; the page ground
   and the surfaces stay the house palette, so prices and descriptions keep the contrast
   they were designed with. Every venue starts on « Ardoise », the house board.
+- **Custom colours** — a venue that wants more than a named board edits one, role by role:
+  background, header panel, header text, menu text, secondary text and accent. A custom
+  palette starts as a copy of the theme it extends, so it has a day _and_ a night reading
+  from the first second — the evening is calculated from the daytime colours and can then
+  be adjusted. Every text colour is measured against the surface it actually sits on, in
+  both readings, and a carte that falls under the WCAG 4.5:1 line cannot be saved: a menu
+  is read at a table, at night, on a phone at half brightness. Going back to the named
+  theme is one button.
 - **Venue logo** — uploaded from the same settings screen, it heads the public menu's
   board. The browser shrinks it before upload and guesses whether a dark logo needs a light
   plate to stay legible on the board; the manager can flip that, and sees the result in
@@ -525,7 +533,10 @@ Three behaviours to know:
       by the manager
 - [x] Per-venue typefaces: a face per role (title, categories, products, descriptions) from a
       curated list, self-hosted, previewed day and night
-- [ ] Custom colours and background image for the public menu
+- [x] Custom colours for the public menu: six roles edited from `/admin/<slug>/reglages`,
+      starting as a copy of the venue's named theme, with a calculated and adjustable night
+      reading and a WCAG 4.5:1 check that refuses the save
+- [ ] Background image for the public menu
 - [ ] Internationalization
 - [ ] Shared access: several accounts on one venue, roles, ownership transfer
 

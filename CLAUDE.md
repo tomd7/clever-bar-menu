@@ -265,9 +265,9 @@ is **not** ignored wholesale: `settings.json` and `hooks/` live there and are sh
 
 The data layer, the back office, the customer-facing menu (`/m/$venueSlug`), the printable
 QR sheet (`/admin/$venueSlug/qr`), the stock screen (`/admin/$venueSlug/stock`), the venue
-settings screen (`/admin/$venueSlug/reglages` — name, description, per-venue menu theme)
-and counter ordering (`/admin/$venueSlug/commandes`, plus the order bar on the public menu)
-all exist, as do the account screen (`/admin/compte` — password change) and ordering by
+settings screen (`/admin/$venueSlug/reglages` — name, description, per-venue menu theme and
+custom colours) and counter ordering (`/admin/$venueSlug/commandes`, plus the order bar on
+the public menu) all exist, as do the account screen (`/admin/compte` — password change) and ordering by
 table (`/admin/$venueSlug/tables`, a code per table, a per-venue setting in « Réglages »).
 The "ardoise" theme is in place across the home page, `/login`, the back office and the
 public menu.

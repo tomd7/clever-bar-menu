@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { env } from '#/env'
 
 import type { MenuFont } from '#/lib/menu-fonts'
+import type { MenuPaletteRow } from '#/lib/menu-colors'
 import type { MenuTheme } from '#/lib/menu-theme'
 import type {
   FirstNameMode,
@@ -62,6 +63,20 @@ type VenueRow = {
   first_name_mode: FirstNameMode
   /** Date d'archivage, ou `null` si l'établissement est actif. */
   deleted_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+/**
+ * The custom colours of a carte — one row per venue, or none.
+ *
+ * `MenuPaletteRow` is the shape of the twelve colour columns, and it lives in
+ * `#/lib/menu-colors` because that module is the one that reads, writes and
+ * measures them; this row is those columns plus what every table carries.
+ * Publicly readable: the anonymous carte paints itself with it.
+ */
+type VenueThemeRow = MenuPaletteRow & {
+  venue_id: string
   created_at: string
   updated_at: string
 }
@@ -215,6 +230,18 @@ export type Database = {
           | 'first_name_mode'
         >
         Update: Partial<VenueRow>
+        Relationships: []
+      }
+      venue_themes: {
+        Row: VenueThemeRow
+        /*
+          Every colour is required: a palette is written whole or not at all.
+          `venue_id` is the primary key, so an upsert on it is what « save »
+          means here — there is no second palette to collide with.
+        */
+        Insert: Insert<VenueThemeRow, 'created_at' | 'updated_at'>
+        /* The venue never moves; the twelve colours are all that change. */
+        Update: Partial<MenuPaletteRow>
         Relationships: []
       }
       venue_tables: {
@@ -393,6 +420,7 @@ export type Product = ProductRow
 export type Order = OrderRow
 export type OrderItem = OrderItemRow
 export type VenueTable = VenueTableRow
+export type VenueTheme = VenueThemeRow
 export type OrderStatus = OrderStatusValue
 
 /**
