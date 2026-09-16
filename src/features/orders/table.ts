@@ -2,10 +2,11 @@
  * The customer's table, for the visit.
  *
  * A table-mode venue needs to know where the order goes. The table comes from
- * the QR code (`?table=<public id>`, adopted by `OrderBar` once it resolves),
- * or from the picker in the cart sheet when the code was the venue-wide one or
- * points at a table that no longer exists. Either way it is kept here, so the
- * second round ordered from the same phone does not ask again.
+ * the QR code (`?table=<public id>`, adopted by `OrderBar` once it resolves,
+ * and then fixed: the cart sheet offers no « Changer » for it), or from the
+ * picker in the cart sheet when the code was the venue-wide one or points at a
+ * table that no longer exists. Either way it is kept here, so the second round
+ * ordered from the same phone does not ask again.
  *
  * **`sessionStorage`, not `localStorage`** — the cart's store. A cart left in
  * a tab is still what the customer meant to order; a table is only true for

@@ -9,8 +9,9 @@ import type { PublicTable } from '#/features/orders/public-api'
  *
  * Shown in the cart sheet of a table-mode venue whenever the table is not
  * known: the venue-wide code was scanned, the code's table has been deleted,
- * or the customer asked to change. **An unknown id is not an error page** — a
- * code stuck on a table must never become a dead end.
+ * or the customer asked to change a table they picked here. A table named by
+ * the scanned code never leads back to it. **An unknown id is not an error
+ * page** — a code stuck on a table must never become a dead end.
  *
  * One chip per table, the number in large type: it is what is written on the
  * table the customer is sitting at. Tables sharing an area are grouped under
