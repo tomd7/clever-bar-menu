@@ -197,6 +197,20 @@
       "when": 1789243871990,
       "tag": "0027_close_anon_function_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1789562412644,
+      "tag": "0028_venue_themes",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1789562412645,
+      "tag": "0029_venue_themes_trigger",
+      "breakpoints": true
     }
   ]
 }

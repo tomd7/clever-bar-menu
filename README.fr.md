@@ -93,6 +93,14 @@ posé sur les tables.
   les surfaces gardent la palette maison, si bien que les prix et les descriptions
   conservent le contraste pour lequel ils ont été dessinés. Tout établissement démarre sur
   « Ardoise », le thème de la maison.
+- **Couleurs personnalisées** — un établissement qui veut plus qu'un bandeau nommé en
+  retouche un, rôle par rôle : fond, bandeau, texte du bandeau, texte de la carte, texte
+  secondaire et accent. Une palette personnalisée démarre comme une copie du thème qu'elle
+  prolonge, elle a donc une lecture de jour _et_ de nuit dès la première seconde — le soir
+  est calculé d'après les couleurs du jour, puis ajustable. Chaque couleur de texte est
+  mesurée sur le fond où elle se lit réellement, dans les deux lectures, et une carte qui
+  passe sous les 4,5:1 du WCAG ne peut pas être enregistrée : une carte se lit à une table,
+  le soir, sur un téléphone en demi-luminosité. Revenir au thème nommé tient en un bouton.
 - **Logo de l'établissement** — déposé depuis le même écran de réglages, il coiffe le
   bandeau de la carte publique. Le navigateur le réduit avant l'envoi et devine si un logo
   foncé a besoin d'une pastille claire pour rester lisible sur le bandeau ; le gérant peut
@@ -538,7 +546,11 @@ Trois comportements à connaître :
 - [x] Polices par établissement : une police par usage (nom, catégories, produits,
       descriptions) parmi une liste choisie, hébergées par l'application, prévisualisées de
       jour comme de nuit
-- [ ] Couleurs et image de fond personnalisées pour la carte publique
+- [x] Couleurs personnalisées pour la carte publique : six rôles édités depuis
+      `/admin/<slug>/reglages`, démarrant en copie du thème nommé de l'établissement, avec
+      une lecture de nuit calculée puis ajustable et un contrôle WCAG à 4,5:1 qui refuse
+      l'enregistrement
+- [ ] Image de fond personnalisée pour la carte publique
 - [ ] Internationalisation
 - [ ] Accès partagés : plusieurs comptes sur un même établissement, rôles, transfert de
       propriété

@@ -1,8 +1,8 @@
 # Venues — `src/features/venues/`
 
 `components/` (venues-page, venue-list, venue-card, venue-trash, venue-nav, venue-qr,
-venue-settings, menu-theme-field, menu-font-field, add-venue-form), `api.ts`, `mutations.ts`, `qr.ts`,
-`logo.ts`. Tables: `tables.ts`, `tables-api.ts`, `components/venue-tables.tsx` and
+venue-settings, menu-theme-field, menu-colors-field, menu-font-field, add-venue-form),
+`api.ts`, `mutations.ts`, `qr.ts`, `logo.ts`. Tables: `tables.ts`, `tables-api.ts`, `components/venue-tables.tsx` and
 `components/order-settings-field.tsx`.
 
 Same feature rules as `features/menu`: a component never calls `supabase` directly (go
@@ -138,8 +138,8 @@ column, where a fold has to be found and unfolded on every visit.
 
 The screen that was missing: nothing could rename a venue or edit the description shown
 under the title of its public menu — that description was only ever reachable through the
-seed script. It edits name, description, logo, theme, typefaces, and how orders are
-identified and served.
+seed script. It edits name, description, logo, theme, **custom colours**, typefaces, and how
+orders are identified and served.
 
 - **The slug is never written, and `updateVenue`'s JSDoc says so where the temptation is.**
   The public address is what a printed QR code on a table encodes, and `m.$venueSlug.tsx`
@@ -172,8 +172,8 @@ categories }` and `MenuEditor` renders `venue.name` in its header, so without th
 
 ### Layout — the preview stays, the save bar floats
 
-Five panels and a bar on one grid (`SETTINGS_GRID`, shared with the skeleton): Identité,
-Thème, Aperçu, Polices, Commandes. The previous layout filed « Enregistrer » under Identité and put the
+Six panels and a bar on one grid (`SETTINGS_GRID`, shared with the skeleton): Identité,
+Thème, Couleurs, Aperçu, Polices, Commandes. The previous layout filed « Enregistrer » under Identité and put the
 preview at the foot of a 24rem column — a manager clicked a swatch 400px from the top and
 its preview started at 1058px.
 
@@ -181,9 +181,9 @@ its preview started at 1058px.
   implicit `auto` track, sized to max-content: the font rails' nowrap chips widened the
   whole phone layout past the screen (each preview board 426px in a 390px viewport).
   `grid-cols-1` is `minmax(0, 1fr)`. Any grid holding a scrolling rail needs it.
-- **The DOM order is the phone's reading order** (identity, theme, preview, fonts, orders,
-  bar); from `lg` the grid lifts the preview into the right column over the four control
-  rows.
+- **The DOM order is the phone's reading order** (identity, theme, colours, preview, fonts,
+  orders, bar); from `lg` the grid lifts the preview into the right column over the five
+  control rows.
   Reordering is safe only because the preview holds no control — the tab order follows the
   DOM. Put a button in the preview and that stops being true.
 - **The preview is `sticky` from `lg`, and `self-start` is what lets it stick**: a grid item
@@ -256,7 +256,60 @@ whole house palette, so the ground behind the board is the _customer's_, not the
 a preview on the manager's own ground would lie about the one thing it promises.
 `ThemePreview` also renders a menu line under the board, because that is where the other
 half of the theme lives: the text accent flips between day and night while the board stays
-frozen.
+frozen. It carries the carte's own two attributes and inline style when the venue has custom
+colours, so what is judged here is what `styles/menu-theme.css` will paint on a phone — and
+each box names its own reading's contrast failures underneath, in the back office's
+`--destructive` rather than inside a palette just shown to be unreadable.
+
+### The colour picker — `menu-colors-field.tsx`
+
+Six roles — fond, bandeau, texte du bandeau, texte de la carte, texte secondaire, accent —
+each a native `<input type="color">` and a hex field, in a panel of its own right under the
+theme it extends. `venue_themes` holds the row; `src/lib/menu-colors.ts` holds the roles,
+the colour maths and the contract with `styles/menu-theme.css`, which documents the CSS
+side.
+
+- **It extends the theme picker, it does not replace it.** A custom palette is an edited
+  copy of a named one, which is what gives it a complete day _and_ night reading from the
+  first second, and what makes going back one gesture. Folded into the « Thème » panel it
+  would have doubled that panel's height for the nine venues in ten that never open it.
+- **The starting values are read off the DOM**, not from a table of hexes in TypeScript.
+  The field renders a hidden probe — an element wearing the venue's theme inside a `.light`
+  wrapper — and `readMenuColors` reads `--surface`, `--board`, `--on-board`, `--ink`,
+  `--ink-soft` and `--bottle-deep` off it. `styles/menu-theme.css` stays the one place a
+  named palette is written; a copy here would be a **fourth** list to keep in step, and it
+  would drift silently — the carte keeping its colours while the picker seeded last year's.
+  It is also why « no hex ever appears in this feature » still holds.
+- **« Fond » seeds from `--surface`, not `--ground`.** On the phone the carte is full-bleed,
+  so the sheet is the colour a customer actually sees; seeding from the page ground would
+  make « personnaliser » change the carte before the manager touched anything.
+- **The evening is derived, then modifiable, and no flag records which.**
+  `nightIsDerived(palette)` compares the stored night set against what `deriveNightColors`
+  produces from the day one. While they match, retouching a day colour recomputes the whole
+  evening; the first edit to a night value makes them differ, and the evening is left alone.
+  Nothing to store, so nothing that can be stored out of step — it survives a save, a
+  reload, and a row edited from another device. « Recalculer d'après le jour » only exists
+  while there is something to undo.
+- **The night fields are behind a disclosure.** Six more fields open by default would double
+  a long form to show values most managers accept as calculated, and the preview shows the
+  result beside them either way.
+- **Contrast is shown in place and blocks the save.** Each text role prints its WCAG ratio
+  against the surface it sits on (« 8,2:1 sur « fond » »), in red with the minimum named
+  when it fails; the preview repeats the failure under the board of the reading that fails;
+  the save bar says why « Enregistrer » is grey. `updateVenue` refuses the same palette in
+  French behind all three — the boundary for anything that is not this screen. This is what
+  answers the readability half of `CLOCLO-25`'s refusal of a colour picker.
+- **A native colour input, restyled** (`menu-colors-field.css`), not a wheel of our own: the
+  OS picker is the one the manager knows, it is keyboard-reachable, it announces itself, and
+  it costs no dependency. The hex field beside it exists because a manager usually arrives
+  with a code — their sign's, their logo's — and it keeps its own draft until the text parses,
+  so typing « #1 » does not commit a colour per keystroke.
+- **The swatch is labelled by its `<label>`, the hex field by `aria-label`.** A label names
+  one control; the second one takes its own name rather than a hand-written `htmlFor`, which
+  is the rule `TextField` exists to enforce, sidestepped the same way the radios sidestep it.
+- **« Revenir au thème X » is a plain button, not a `DeleteButton`.** Nothing is deleted
+  there: it clears a draft, and the row only goes when « Enregistrer » is pressed — which is
+  the confirmation the no-delete-on-first-click rule asks for.
 
 ### The font picker — `menu-font-field.tsx`
 

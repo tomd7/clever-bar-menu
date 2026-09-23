@@ -3,9 +3,11 @@ import { queryOptions } from '@tanstack/react-query'
 import { VenueNotFoundError } from '#/features/menu/api'
 import { describeError } from '#/lib/postgrest-error'
 import { isSoldOut } from '#/features/menu/stock'
+import { parseMenuPalette } from '#/lib/menu-colors'
 import { supabase } from '#/lib/supabase'
 
 import type { Category, Product, Venue } from '#/lib/supabase'
+import type { MenuPalette } from '#/lib/menu-colors'
 
 /**
  * La carte telle qu'elle voyage jusqu'au client — colonne par colonne.
@@ -65,6 +67,15 @@ export type PublicCategory = Pick<Category, 'id' | 'name' | 'description'> & {
 
 export type PublicMenuData = {
   venue: PublicVenue
+  /**
+   * The venue's own colours, or `null`: it wears its named theme unedited.
+   *
+   * Beside the venue rather than inside it, because it is not a column of
+   * `venues` — it is the `venue_themes` row, and a `Pick` that pretended
+   * otherwise would stop failing the day the shape moves. `PublicMenu` turns
+   * it into the `style` attribute the carte is server-rendered with.
+   */
+  colors: MenuPalette | null
   categories: Array<PublicCategory>
 }
 
@@ -84,6 +95,13 @@ export type PublicMenuData = {
 */
 const VENUE_COLUMNS =
   'id,slug,name,description,currency,orders_enabled,theme,logo_path,logo_plate,font_title,font_category,font_product,font_description,order_reference,service_mode,first_name_mode'
+/*
+  The palette's twelve colours. Asked for by name like everything else here —
+  `select('*')` would ship `venue_id` and the two timestamps into the SSR'd
+  HTML of every carte, for nothing.
+*/
+const VENUE_THEME_COLUMNS =
+  'ground_day,ground_night,board_day,board_night,on_board_day,on_board_night,ink_day,ink_night,ink_soft_day,ink_soft_night,accent_day,accent_night'
 const CATEGORY_COLUMNS = 'id,name,description'
 const PRODUCT_COLUMNS =
   'id,category_id,name,description,size,price_cents,image_path,is_available,stock_quantity'
@@ -118,19 +136,46 @@ export async function fetchPublicMenu(
 
   const venue = venueResult.data
 
-  const categoriesResult = await supabase
-    .from('categories')
-    .select(CATEGORY_COLUMNS)
-    .eq('venue_id', venue.id)
-    .order('position', { ascending: true })
-    .order('name', { ascending: true })
+  /*
+    Two reads, one wait. Both need the venue's id and neither needs the other,
+    so they go out together: the palette costs a round trip the customer would
+    otherwise spend staring at a carte that is not painted yet. An embedded
+    `venue_themes(…)` would have saved the request itself, but this file's
+    `Database` type declares no relationship for PostgREST's resolver to
+    follow — see `src/lib/supabase.ts`.
+  */
+  const [categoriesResult, paletteResult] = await Promise.all([
+    supabase
+      .from('categories')
+      .select(CATEGORY_COLUMNS)
+      .eq('venue_id', venue.id)
+      .order('position', { ascending: true })
+      .order('name', { ascending: true }),
+    supabase
+      .from('venue_themes')
+      .select(VENUE_THEME_COLUMNS)
+      .eq('venue_id', venue.id)
+      .maybeSingle(),
+  ])
 
   if (categoriesResult.error) {
     throw new Error(describeError(categoriesResult.error))
   }
 
+  /*
+    A palette that cannot be read is not a reason to refuse the carte: the
+    venue keeps its named theme, which is exactly what `parseMenuPalette`
+    returns `null` for. The same goes for the request failing — the colours are
+    an edited copy of a theme that is already on the row, so the carte has
+    something to wear either way and nothing here should turn a paint job into
+    a 500.
+  */
+  const colors = paletteResult.error
+    ? null
+    : parseMenuPalette(paletteResult.data)
+
   const categories = categoriesResult.data
-  if (categories.length === 0) return { venue, categories: [] }
+  if (categories.length === 0) return { venue, colors, categories: [] }
 
   const productsResult = await supabase
     .from('products')
@@ -171,6 +216,7 @@ export async function fetchPublicMenu(
 
   return {
     venue,
+    colors,
     /*
       A category with no listed product disappears: a customer has nothing to
       do with a « Cocktails » heading followed by nothing, which is what a
