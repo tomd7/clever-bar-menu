@@ -1,4 +1,4 @@
-import { Palette, RotateCcw, TriangleAlert } from 'lucide-react'
+import { RotateCcw, TriangleAlert } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 import { ActionButton } from '#/components/buttons/action-button'
@@ -12,7 +12,6 @@ import {
   paletteContrast,
   paletteFromDay,
   parseHexColor,
-  readMenuColors,
 } from '#/lib/menu-colors'
 
 import type {
@@ -20,16 +19,16 @@ import type {
   MenuColorSet,
   MenuPalette,
 } from '#/lib/menu-colors'
-import type { MenuTheme } from '#/lib/menu-theme'
 
 /**
  * Les couleurs de la carte, rôle par rôle.
  *
- * Il prolonge le sélecteur de thème au lieu de le remplacer : une palette
- * personnalisée est une **copie retouchée** d'un thème nommé, ce qui lui donne
- * une lecture de jour *et* de nuit complète dès la première seconde, et fait du
- * retour en arrière un seul geste — supprimer la ligne, le thème est toujours
- * là.
+ * Il n'a pas de bouton d'entrée : c'est l'option « Personnalisé » du sélecteur
+ * de thème (`menu-theme-field.tsx`) qui l'ouvre, en semant la palette depuis le
+ * thème nommé choisi juste avant. Une palette personnalisée est donc une
+ * **copie retouchée** d'un thème nommé, ce qui lui donne une lecture de jour
+ * *et* de nuit complète dès la première seconde, et fait du retour en arrière
+ * un seul geste — cliquer un thème nommé.
  *
  * **Le soir est calculé, puis modifiable.** Le mode sombre suit le téléphone,
  * sans interrupteur : choisir une couleur de jour, c'est en choisir une de nuit
@@ -46,48 +45,23 @@ import type { MenuTheme } from '#/lib/menu-theme'
  * fond d'une carte peut désormais bouger.
  */
 export function MenuColorsField({
-  theme,
   themeLabel,
   value,
   onChange,
   className,
 }: {
-  /** The named theme a custom palette starts as a copy of. */
-  theme: MenuTheme
-  /** Its French name, for « Revenir au thème Ardoise ». */
+  /** The French name of the theme the palette was copied from. */
   themeLabel: string
-  value: MenuPalette | null
-  onChange: (palette: MenuPalette | null) => void
+  value: MenuPalette
+  onChange: (palette: MenuPalette) => void
   className?: string
 }) {
-  /*
-    The probe: an element wearing the venue's theme, inside a `.light` wrapper
-    so it carries the day reading of the house palette whatever temperature the
-    back office itself is in.
-
-    It is how « personnaliser » starts from what the carte is showing at that
-    second, and it reads the DOM rather than a table of hexes in TypeScript —
-    `styles/menu-theme.css` stays the one place a named palette is written. See
-    `readMenuColors` for why a fourth copy of those values would be the kind of
-    duplication that drifts in silence.
-  */
-  const probe = useRef<HTMLDivElement>(null)
-
   /* The evening's fields, once asked for. Closed is the ordinary case. */
   const [showNight, setShowNight] = useState(false)
 
-  const derived = value ? nightIsDerived(value) : true
-
-  function customise() {
-    const day = probe.current && readMenuColors(probe.current)
-    if (!day) return
-
-    onChange(paletteFromDay(day))
-  }
+  const derived = nightIsDerived(value)
 
   function changeDay(role: MenuColorRole, color: string) {
-    if (!value) return
-
     const day = { ...value.day, [role]: color }
     /*
       While the evening is still the calculated one, it follows; once the
@@ -98,126 +72,82 @@ export function MenuColorsField({
   }
 
   function changeNight(role: MenuColorRole, color: string) {
-    if (!value) return
     onChange({ day: value.day, night: { ...value.night, [role]: color } })
   }
 
   return (
     <fieldset className={cn('min-w-0', className)}>
-      <legend className="text-sm font-semibold">Couleurs</legend>
+      <legend className="text-sm font-semibold">Vos couleurs</legend>
 
       <p className="mt-1 text-xs text-ink-soft">
-        {value
-          ? `Une copie du thème ${themeLabel}, retouchée. Les couleurs du soir sont calculées à partir de celles du jour.`
-          : 'Votre carte porte les couleurs du thème choisi ci-dessus. Vous pouvez les reprendre une à une.'}
+        Une copie du thème {themeLabel}, retouchée. Les couleurs du soir sont
+        calculées à partir de celles du jour.
       </p>
 
+      <ColorRows
+        colors={value.day}
+        onChange={changeDay}
+        className="mt-4"
+        legend="Le jour"
+      />
+
       {/*
-        The probe, drawn and unread by anyone: `.light` carries the whole day
-        palette (see `styles/theme.css`), and the inner element wears the theme
-        exactly as the carte does. Off screen rather than `display: none` —
-        `getComputedStyle` resolves custom properties either way, but an
-        element with no box is one refactor away from being dropped as dead.
+        The evening, behind a disclosure. Six more fields open by default
+        would double a form that is already long, to show values most
+        managers will accept as calculated — and the preview shows the
+        result right beside it either way.
       */}
-      <div
-        className="light pointer-events-none fixed -left-[9999px] size-px"
-        aria-hidden
-      >
-        <div ref={probe} data-menu-theme={theme} />
-      </div>
-
-      {value ? (
-        <>
-          <ColorRows
-            colors={value.day}
-            onChange={changeDay}
-            className="mt-4"
-            legend="Le jour"
-          />
-
-          {/*
-            The evening, behind a disclosure. Six more fields open by default
-            would double a form that is already long, to show values most
-            managers will accept as calculated — and the preview shows the
-            result right beside it either way.
-          */}
-          <div className="mt-4 border-t border-line pt-3">
-            <button
-              type="button"
-              onClick={() => setShowNight((open) => !open)}
-              className="flex min-h-11 w-full items-center justify-between gap-3 text-left text-sm font-medium transition-colors hover:text-bottle-deep"
-              aria-expanded={showNight}
-            >
-              <span className="min-w-0">
-                Couleurs du soir
-                <span className="mt-0.5 block text-xs font-normal text-ink-soft">
-                  {derived
-                    ? 'Calculées d’après le jour, et vérifiées pour la lisibilité.'
-                    : 'Réglées à la main.'}
-                </span>
-              </span>
-              <span className="shrink-0 text-xs text-ink-soft">
-                {showNight ? 'Masquer' : 'Afficher'}
-              </span>
-            </button>
-
-            {showNight ? (
-              <>
-                <ColorRows
-                  colors={value.night}
-                  onChange={changeNight}
-                  className="mt-2"
-                />
-
-                {/*
-                  Only while there is something to undo. A « recalculer » that
-                  stands there permanently is a button that does nothing nine
-                  times out of ten.
-                */}
-                {derived ? null : (
-                  <ActionButton
-                    icon={RotateCcw}
-                    variant="ghost"
-                    onClick={() =>
-                      onChange({
-                        day: value.day,
-                        night: deriveNightColors(value.day),
-                      })
-                    }
-                    className="mt-2 px-2 text-xs"
-                  >
-                    Recalculer d’après le jour
-                  </ActionButton>
-                )}
-              </>
-            ) : null}
-          </div>
-
-          {/*
-            Going back is a plain button and not a `DeleteButton`: nothing is
-            deleted here. It clears a draft, and the row itself only goes when
-            « Enregistrer » is pressed — which is the confirmation the rule
-            about first-click deletion asks for.
-          */}
-          <ActionButton
-            icon={RotateCcw}
-            variant="outline"
-            onClick={() => onChange(null)}
-            className="mt-4 w-full sm:w-auto"
-          >
-            Revenir au thème {themeLabel}
-          </ActionButton>
-        </>
-      ) : (
-        <ActionButton
-          icon={Palette}
-          variant="outline"
-          onClick={customise}
-          className="mt-4 w-full sm:w-auto"
+      <div className="mt-4 border-t border-line pt-3">
+        <button
+          type="button"
+          onClick={() => setShowNight((open) => !open)}
+          className="flex min-h-11 w-full items-center justify-between gap-3 text-left text-sm font-medium transition-colors hover:text-bottle-deep"
+          aria-expanded={showNight}
         >
-          Personnaliser les couleurs
-        </ActionButton>
-      )}
+          <span className="min-w-0">
+            Couleurs du soir
+            <span className="mt-0.5 block text-xs font-normal text-ink-soft">
+              {derived
+                ? 'Calculées d’après le jour, et vérifiées pour la lisibilité.'
+                : 'Réglées à la main.'}
+            </span>
+          </span>
+          <span className="shrink-0 text-xs text-ink-soft">
+            {showNight ? 'Masquer' : 'Afficher'}
+          </span>
+        </button>
+
+        {showNight ? (
+          <>
+            <ColorRows
+              colors={value.night}
+              onChange={changeNight}
+              className="mt-2"
+            />
+
+            {/*
+              Only while there is something to undo. A « recalculer » that
+              stands there permanently is a button that does nothing nine
+              times out of ten.
+            */}
+            {derived ? null : (
+              <ActionButton
+                icon={RotateCcw}
+                variant="ghost"
+                onClick={() =>
+                  onChange({
+                    day: value.day,
+                    night: deriveNightColors(value.day),
+                  })
+                }
+                className="mt-2 px-2 text-xs"
+              >
+                Recalculer d’après le jour
+              </ActionButton>
+            )}
+          </>
+        ) : null}
+      </div>
     </fieldset>
   )
 }
