@@ -1,12 +1,13 @@
 # Auth — `src/features/auth/`
 
 `components/` (auth-island, login-_, forgot-password-_, reset-password-screen,
-new-password-form, change-password-form, account-page, account-link), `api.ts`,
-`mutations.ts`, `redirect.ts`, `recovery-link.ts`, `password.ts`, `errors.ts`.
+new-password-form, change-password-form, profile-form, change-email-form, account-page,
+account-link), `api.ts`, `mutations.ts`, `redirect.ts`, `recovery-link.ts`,
+`email-change-link.ts`, `profile.ts`, `password.ts`, `errors.ts`.
 
 **Email + password, and no sign-up.** The feature signs a manager in, resets a forgotten
-password from `/login`, and changes the password of a signed-in manager from
-`/admin/compte` — nothing else. There is deliberately no sign-up form: accounts are
+password from `/login`, and lets a signed-in manager change their name, their address and
+their password from `/admin/compte` — nothing else. There is deliberately no sign-up form: accounts are
 provisioned by the platform administrator (Supabase dashboard → Authentication → Users →
 Add user, with _Auto Confirm User_). **Don't add a sign-up screen back** without being
 asked.
@@ -39,7 +40,9 @@ is already signed in, so there is no account left to discover.
 `src/routes/CLAUDE.md`. `useResetPassword` does the same, for the same reason: the manager
 arrives from a mail, so every guard has already concluded « not signed in ».
 `useChangePassword` is the same call **without** it, split on purpose: a signed-in change
-moves no guard's verdict.
+moves no guard's verdict. `useUpdateName` and `useRequestEmailChange` **do** invalidate,
+for a third reason: the guard hands every screen a _snapshot_ of the session's `user`, and
+the name in the column and the pending address on the account screen are read from it.
 
 ## `NewPasswordForm` — one form, two screens
 
@@ -133,3 +136,44 @@ session skips it, it opens a second session, and it burns the sign-in rate limit
 - **`compte` is a reserved slug.** `/admin/compte` is a static child of `/admin`; see
   `src/features/venues/CLAUDE.md`.
 - **The _Reauthentication_ mail template ships in English**, like _Reset Password_.
+
+## Name and address — `/admin/compte`
+
+**The name lives in `user_metadata`** (`first_name`, `last_name`), read through
+`profileName` (`profile.ts`), not in a table. Nothing but the manager reads it and the
+session already carries it: no query, no migration, no policy. The manager can write any
+key there, so it is **display data only** — no RLS policy or server decision may read
+it. It shows as the account screen's title and above the address in the shell's column
+(`BackOfficeShell`'s `name`, a plain string: the shell doesn't read sessions).
+
+**The address change rests on one server-side setting.** `updateUser({ email })` needs
+neither the current password nor a reauthentication code — _Secure password change_
+covers the password only. What stops a borrowed session from moving the sign-in to an
+address its holder reads (then resetting the password from `/login`) is:
+
+| Setting (Authentication → Sign In / Providers → Email) | What Supabase then does                                                                 |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| **Secure email change**                                | Mails a link to the old _and_ the new address, and switches only once both are followed |
+
+In the Management API it is `mailer_secure_email_change_enabled`. On by default in
+Supabase — **the screen's copy promises it**, so switching it off makes the screen lie as
+well as the account unsafe.
+
+- **Asking changes nothing yet.** Until both links are followed the address sits in the
+  user's `new_email`, which the screen shows as pending, with « Renvoyer les liens ».
+  Asking again for the same address resends; another address replaces the pending one.
+  The current address is refused on the client: GoTrue answers 200 and mails nothing.
+- **The links land on `/admin/compte`** (`EMAIL_CHANGE_PATH`), which must be listed in the
+  project's _Redirect URLs_ like the recovery path. The first link followed comes back
+  with an English `#message` and no session — only its presence is read, as « now open the
+  other one »; a dead link with `#error_code`. `emailChangeNotice` reads the fragment once
+  and the screen strips it with `history.replaceState`. The last link comes back with
+  tokens, which `supabase-js` consumes before the guard's `getSession()` returns: the new
+  address is then just the account's.
+- **A link opened in a browser with no session** meets the guard first and goes through
+  `/login`; the change itself is recorded by GoTrue either way, only the notice is lost.
+- **`email_exists` is translated as such**, naming that another account holds the
+  address. Hiding it buys nothing: the caller is signed in and the raw answer says it.
+- **The _Change Email Address_ mail template ships in English**, like the other two.
+- **The demo account is public.** Anyone can rename it; an address change on it can't
+  complete without the demo mailbox's own link.

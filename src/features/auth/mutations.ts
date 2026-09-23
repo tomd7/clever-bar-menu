@@ -2,10 +2,12 @@ import { useMutation } from '@tanstack/react-query'
 import { useRouter } from '@tanstack/react-router'
 
 import {
+  requestEmailChange,
   requestPasswordReset,
   requestReauthentication,
   signIn,
   signOutOtherDevices,
+  updateName,
   updatePassword,
 } from '#/features/auth/api'
 
@@ -99,4 +101,36 @@ export function useRequestReauthentication() {
  */
 export function useSignOutOtherDevices() {
   return useMutation({ mutationFn: signOutOtherDevices })
+}
+
+/**
+ * Saves the manager's name, then invalidates the router.
+ *
+ * Unlike `useChangePassword`, this one does move something a guard computed:
+ * `_authenticated`'s `beforeLoad` hands the session's `user` to every screen
+ * as a snapshot, and the shell's column prints the name from it. `updateUser`
+ * has already written the new user into the stored session, so re-running the
+ * guard is all it takes for the column and this screen to show the new name.
+ */
+export function useUpdateName() {
+  const router = useRouter()
+
+  return useMutation({
+    mutationFn: updateName,
+    onSuccess: () => router.invalidate(),
+  })
+}
+
+/**
+ * Asks for the address change, then invalidates the router — same reason as
+ * `useUpdateName`: the pending address the screen shows is the `new_email`
+ * of the guard's snapshot of the user.
+ */
+export function useRequestEmailChange() {
+  const router = useRouter()
+
+  return useMutation({
+    mutationFn: requestEmailChange,
+    onSuccess: () => router.invalidate(),
+  })
 }

@@ -16,5 +16,5 @@ export const Route = createFileRoute('/_authenticated/admin/compte')({
 function AccountRoute() {
   const { user } = Route.useRouteContext()
 
-  return <AccountPage email={user.email} />
+  return <AccountPage user={user} />
 }

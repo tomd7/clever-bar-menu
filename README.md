@@ -269,7 +269,7 @@ and its first paint matters.
 | `/login`                       | Sign in                                                  |
 | `/admin`                       | The manager's venues, and venue creation                 |
 | `/admin/corbeille`             | Deleted venues, and restoration                          |
-| `/admin/compte`                | The manager's account: password change                   |
+| `/admin/compte`                | The manager's account: name, email address, password     |
 | `/admin/$venueSlug`            | Menu editing: categories, products, prices, availability |
 | `/admin/$venueSlug/stock`      | Stock tracking: levels, alerts, decrements               |
 | `/admin/$venueSlug/stock/scan` | Stock movements at the camera, by barcode                |
@@ -497,6 +497,9 @@ Three behaviours to know:
 - [x] Password change from the back office (`/admin/compte`): the current password is
       checked by Supabase, a session older than a day confirms with a code mailed to the
       account, and the other devices are signed out after every change
+- [x] Personal information in the account (`/admin/compte`): first and last name, shown in
+      the back office, and the sign-in address — changed only once a link mailed to the
+      old address and one mailed to the new one have both been followed
 - [x] Venue CRUD
 - [x] Menu CRUD (categories, products, prices, photos)
 - [x] Public menu

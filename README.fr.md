@@ -268,7 +268,7 @@ premier affichage compte.
 | `/login`                       | Connexion                                                  |
 | `/admin`                       | Liste des établissements du gérant, et création            |
 | `/admin/corbeille`             | Établissements supprimés, et restauration                  |
-| `/admin/compte`                | Compte du gérant : changement de mot de passe              |
+| `/admin/compte`                | Compte du gérant : nom, adresse e-mail, mot de passe       |
 | `/admin/$venueSlug`            | Édition de la carte : catégories, produits, prix, ruptures |
 | `/admin/$venueSlug/stock`      | Suivi de stock : niveaux, alertes, décompte                |
 | `/admin/$venueSlug/stock/scan` | Mouvements de stock à la caméra, code-barres               |
@@ -508,6 +508,9 @@ Trois comportements à connaître :
 - [x] Changement du mot de passe depuis le back-office (`/admin/compte`) : le mot de passe
       actuel est vérifié par Supabase, une session de plus d'un jour confirme avec un code
       envoyé par mail, et les autres appareils sont déconnectés après chaque changement
+- [x] Informations personnelles dans le compte (`/admin/compte`) : prénom et nom, affichés
+      dans le back-office, et adresse de connexion — changée seulement une fois suivis un
+      lien envoyé à l'ancienne adresse et un autre envoyé à la nouvelle
 - [x] CRUD des établissements
 - [x] CRUD de la carte (catégories, produits, prix, photos)
 - [x] Carte publique

@@ -11,6 +11,7 @@ import { BackOfficeShell } from '#/components/back-office/back-office-shell'
 import { OpenOrdersCount } from '#/features/orders/components/open-orders-count'
 import { VenueNav } from '#/features/venues/components/venue-nav'
 import { VenueTrashRailLink } from '#/features/venues/components/venue-trash-link'
+import { fullName, profileName } from '#/features/auth/profile'
 import { supabase } from '#/lib/supabase'
 
 /**
@@ -68,6 +69,7 @@ function BackOfficeLayout() {
   return (
     <BackOfficeShell
       email={user.email}
+      name={fullName(profileName(user))}
       onSignOut={handleSignOut}
       nav={
         <VenueNav

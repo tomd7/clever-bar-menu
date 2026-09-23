@@ -34,9 +34,14 @@ import type { ReactNode } from 'react'
  * « Déconnexion », under the address in the column from `lg`. A slot for the
  * same reason as the other two — the link points at a route, and which one is
  * the route's business, not this shell's.
+ *
+ * `name` is the manager's name when they have set one, printed above the
+ * address in the column. A plain string rather than a user: reading it out of
+ * the session is the auth feature's business.
  */
 export function BackOfficeShell({
   email,
+  name,
   nav,
   navFooter,
   account,
@@ -44,6 +49,7 @@ export function BackOfficeShell({
   children,
 }: {
   email: string | undefined
+  name?: string
   nav?: ReactNode
   navFooter?: ReactNode
   account?: ReactNode
@@ -103,9 +109,12 @@ export function BackOfficeShell({
               <div className="hidden lg:block">{navFooter}</div>
             ) : null}
 
-            <p className="hidden truncate text-xs text-ink-soft lg:block">
-              {email}
-            </p>
+            <div className="hidden min-w-0 lg:block">
+              {name ? (
+                <p className="truncate text-sm font-medium">{name}</p>
+              ) : null}
+              <p className="truncate text-xs text-ink-soft">{email}</p>
+            </div>
             {account}
             <ActionButton
               icon={LogOut}
