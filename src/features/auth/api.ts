@@ -1,6 +1,8 @@
 import { AuthFailure, translateAuthError } from '#/features/auth/errors'
 import { supabase } from '#/lib/supabase'
 
+import type { ProfileName } from '#/features/auth/profile'
+
 /**
  * Connexion par e-mail et mot de passe.
  *
@@ -127,6 +129,68 @@ export async function signOutOtherDevices(): Promise<void> {
       translateAuthError(
         error.code,
         "Vos autres appareils n'ont pas pu être déconnectés. Réessayez.",
+      ),
+    )
+  }
+}
+
+/**
+ * Saves the manager's first and last name into `user_metadata`.
+ *
+ * `data` is merged key by key into what is already there, so only the two
+ * keys this screen owns are sent. No current password and no code, unlike the
+ * password: a name opens nothing, and a borrowed session that renames the
+ * account locks no one out.
+ */
+export async function updateName({
+  firstName,
+  lastName,
+}: ProfileName): Promise<void> {
+  const { error } = await supabase.auth.updateUser({
+    data: { first_name: firstName.trim(), last_name: lastName.trim() },
+  })
+  if (error) {
+    throw new AuthFailure(
+      error.code,
+      translateAuthError(
+        error.code,
+        "Votre nom n'a pas pu être enregistré. Réessayez.",
+      ),
+    )
+  }
+}
+
+/**
+ * Asks Supabase to move the account to a new address.
+ *
+ * Nothing changes yet: Supabase mails a confirmation link and records the
+ * address as the user's `new_email` until it is followed. With the project's
+ * **Secure email change** setting on, a link goes to *both* addresses and the
+ * switch waits for both. That setting is the whole defence here — this call
+ * needs no current password and no code, so without it a borrowed session
+ * could move the sign-in to an address its holder reads, then reset the
+ * password from `/login`.
+ *
+ * Asking again for the same address sends the links again; asking for another
+ * one replaces the pending change.
+ */
+export async function requestEmailChange({
+  email,
+  redirectTo,
+}: {
+  email: string
+  redirectTo: string
+}): Promise<void> {
+  const { error } = await supabase.auth.updateUser(
+    { email: email.trim() },
+    { emailRedirectTo: redirectTo },
+  )
+  if (error) {
+    throw new AuthFailure(
+      error.code,
+      translateAuthError(
+        error.code,
+        "Le changement d'adresse n'a pas pu être demandé. Réessayez.",
       ),
     )
   }

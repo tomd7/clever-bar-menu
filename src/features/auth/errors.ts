@@ -79,6 +79,22 @@ export function translateAuthError(
     */
     case 'reauthentication_needed':
       return "Confirmez d'abord votre identité avec le code envoyé par e-mail."
+    /*
+      The email change. `email_exists` does say an account holds the address,
+      and hiding it would buy nothing: the caller is signed in, and the raw
+      API answer names it anyway.
+    */
+    case 'email_exists':
+      return "Cette adresse est déjà celle d'un autre compte."
+    case 'email_address_invalid':
+      return "Cette adresse e-mail n'est pas valide."
+    /*
+      Supabase's built-in mailer only writes to the project team's own
+      addresses. Met on a real manager's address, it means the project has no
+      SMTP of its own yet — nothing the manager can fix.
+    */
+    case 'email_address_not_authorized':
+      return "Impossible d'écrire à cette adresse pour le moment. Contactez votre administrateur."
     default:
       return fallback
   }
