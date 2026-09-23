@@ -39,6 +39,7 @@ import {
 import { venueImageUrl } from '#/lib/venue-images'
 import { venueTablesQueryOptions } from '#/features/venues/tables-api'
 
+import type { MenuColorReading } from '#/features/venues/components/menu-colors-field'
 import type { MenuFonts } from '#/lib/menu-fonts'
 import type { MenuPalette } from '#/lib/menu-colors'
 import type { MenuTheme } from '#/lib/menu-theme'
@@ -172,6 +173,12 @@ function VenueSettingsForm({
   const [description, setDescription] = useState(venue.description ?? '')
   const [theme, setTheme] = useState<MenuTheme>(parseMenuTheme(venue.theme))
   const [colors, setColors] = useState<MenuPalette | null>(savedColors)
+  /*
+    The reading the colour editor is on. Held here rather than in the editor
+    because the preview answers it: the board being edited is ringed, so the
+    manager sees which of the two their next colour lands on.
+  */
+  const [reading, setReading] = useState<MenuColorReading>('day')
 
   /* The row's faces, parsed: what the draft starts from and is compared to. */
   const savedFonts = parseMenuFonts(venue)
@@ -493,6 +500,8 @@ function VenueSettingsForm({
             colors={colors}
             onThemeChange={setTheme}
             onColorsChange={setColors}
+            reading={reading}
+            onReadingChange={setReading}
           />
         </section>
 
@@ -512,7 +521,10 @@ function VenueSettingsForm({
           between the theme and the fonts, the two panels it answers most.
         */}
         <section
-          className={cn('panel rounded-2xl p-4 sm:p-6 lg:p-4', PREVIEW_CELL)}
+          className={cn(
+            'panel rounded-2xl p-4 [--ring-editing:var(--bottle)] sm:p-6 lg:p-4',
+            PREVIEW_CELL,
+          )}
         >
           <h2 className="text-sm font-semibold">Aperçu</h2>
           <p className="mt-1 text-xs text-ink-soft">
@@ -530,6 +542,7 @@ function VenueSettingsForm({
               colors={colors}
               fonts={fonts}
               mode="light"
+              editing={colors !== null && reading === 'day'}
               name={name || venue.name}
               logoUrl={logoUrl}
               logoPlate={logoPlate}
@@ -539,6 +552,7 @@ function VenueSettingsForm({
               colors={colors}
               fonts={fonts}
               mode="dark"
+              editing={colors !== null && reading === 'night'}
               name={name || venue.name}
               logoUrl={logoUrl}
               logoPlate={logoPlate}
@@ -714,6 +728,7 @@ function ThemePreview({
   colors,
   fonts,
   mode,
+  editing,
   name,
   logoUrl,
   logoPlate,
@@ -723,6 +738,8 @@ function ThemePreview({
   colors: MenuPalette | null
   fonts: MenuFonts
   mode: 'light' | 'dark'
+  /** The colour editor is on this reading: ring the box. */
+  editing: boolean
   name: string
   logoUrl: string | null
   logoPlate: boolean
@@ -750,8 +767,15 @@ function ThemePreview({
 
   return (
     <div
+      /*
+        The ring is drawn in the back office's own accent, not the box's: the
+        `light`/`dark` class redefines every token on this element, so it is
+        passed as a value resolved outside it (`--ring-editing`, set on the
+        preview section). The offset keeps it off the customer's ground.
+      */
       className={cn(
-        'overflow-hidden rounded-xl border border-line bg-ground p-2',
+        'overflow-hidden rounded-xl border border-line bg-ground p-2 outline-2 outline-offset-2 outline-transparent transition-[outline-color] duration-150 ease-out',
+        editing && 'outline-(--ring-editing)',
         mode,
       )}
     >

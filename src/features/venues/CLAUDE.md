@@ -297,9 +297,15 @@ side.
   Nothing to store, so nothing that can be stored out of step — it survives a save, a
   reload, and a row edited from another device. « Recalculer d'après le jour » only exists
   while there is something to undo.
-- **The night fields are behind a disclosure.** Six more fields open by default would double
-  a long form to show values most managers accept as calculated, and the preview shows the
-  result beside them either way.
+- **One reading at a time, picked by a Jour | Soir segmented control.** Both readings have
+  the same six roles: stacking them, or hiding the evening behind a disclosure (the first
+  version), made twelve fields to read where there are six to understand, and left the
+  evening to be found. The control says there are two, which one is being edited, and — a
+  warning icon on its segment — which one is unreadable, so a grey « Enregistrer » is never
+  caused by a reading off screen. A line under it says how the two are tied, from the side
+  being looked at. `VenueSettings` holds the reading so the preview **rings the board being
+  edited**; the ring colour is resolved on the preview section (`--ring-editing`) because
+  each box's `light`/`dark` class redefines every token on itself.
 - **Contrast is shown in place and blocks the save.** Each text role prints its WCAG ratio
   against the surface it sits on (« 8,2:1 sur « fond » »), in red with the minimum named
   when it fails; the preview repeats the failure under the board of the reading that fails;

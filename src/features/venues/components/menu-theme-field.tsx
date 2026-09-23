@@ -10,6 +10,7 @@ import {
   readMenuColors,
 } from '#/lib/menu-colors'
 
+import type { MenuColorReading } from '#/features/venues/components/menu-colors-field'
 import type { MenuPalette } from '#/lib/menu-colors'
 import type { MenuTheme } from '#/lib/menu-theme'
 import type { ReactNode } from 'react'
@@ -47,6 +48,8 @@ export function MenuThemeField({
   colors,
   onThemeChange,
   onColorsChange,
+  reading,
+  onReadingChange,
   className,
 }: {
   /** The named theme — the carte's look, or the base of a custom palette. */
@@ -55,6 +58,9 @@ export function MenuThemeField({
   colors: MenuPalette | null
   onThemeChange: (theme: MenuTheme) => void
   onColorsChange: (colors: MenuPalette | null) => void
+  /** The reading the colour editor shows — held above, for the preview. */
+  reading: MenuColorReading
+  onReadingChange: (reading: MenuColorReading) => void
   className?: string
 }) {
   /*
@@ -191,6 +197,8 @@ export function MenuThemeField({
             themeLabel={themeLabel}
             value={colors}
             onChange={onColorsChange}
+            reading={reading}
+            onReadingChange={onReadingChange}
           />
         </div>
       ) : null}
