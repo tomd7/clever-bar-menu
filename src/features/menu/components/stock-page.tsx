@@ -68,8 +68,8 @@ export function StockPage({ venueSlug }: { venueSlug: string }) {
     majorité d'une carte de bar : trente lignes inertes à traverser pour
     atteindre les six qui comptent. Sans seuil d'alerte, la ligne ne pourrait
     jamais rien signaler, et cette page se parcourt justement pour savoir quoi
-    réapprovisionner. L'exception est la rupture : à zéro, le produit a quitté
-    la carte des clients, et c'est ici qu'il se répare — `isWatched` le garde
+    réapprovisionner. L'exception est la rupture : à zéro, le produit ne se
+    commande plus, et c'est ici qu'il se répare — `isWatched` le garde
     donc, seuil ou pas. Le pied de page compte le reste et renvoie à la carte,
     seul endroit où ces deux champs se règlent.
   */
@@ -110,8 +110,8 @@ export function StockPage({ venueSlug }: { venueSlug: string }) {
           {venue.name}
         </h1>
         <p className="mt-2 text-sm text-ink-soft">
-          Un produit épuisé quitte la carte des clients et y revient dès qu'il
-          est réapprovisionné.
+          Un produit épuisé reste sur la carte des clients sans pouvoir être
+          commandé, et redevient disponible dès qu'il est réapprovisionné.
         </p>
 
         {/*

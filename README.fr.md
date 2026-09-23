@@ -51,6 +51,7 @@ posé sur les tables.
   - [Back-office](#back-office)
     - [Suivi de stock](#suivi-de-stock) — [scan des codes-barres](#scan-des-codes-barres)
     - [Commande au comptoir](#commande-au-comptoir)
+    - [Commande par table](#commande-par-table)
     - [Création des comptes](#création-des-comptes)
     - [Supprimer un établissement](#supprimer-un-établissement)
   - [QR code](#qr-code)
@@ -63,15 +64,20 @@ posé sur les tables.
 - **Carte publique via QR code** — chaque table renvoie vers la carte de l'établissement,
   consultable sur mobile, sans installation ni compte.
 - **Back-office de gestion** — création et édition des catégories, produits, prix,
-  descriptions et photos ; un produit en rupture peut être masqué en un clic.
+  descriptions et photos ; un produit peut être masqué de la carte, ou marqué en rupture, en
+  un clic.
 - **Suivi de stock** — activable produit par produit, avec un seuil d'alerte et une page
-  faite pour être tenue debout derrière le bar. Un produit épuisé quitte la carte des
-  clients et y revient de lui-même au réapprovisionnement.
+  faite pour être tenue debout derrière le bar. Un produit épuisé reste sur la carte des
+  clients, marqué épuisé, et redevient commandable de lui-même au réapprovisionnement.
 - **Commande au comptoir** — le client compose son panier depuis la carte scannée, laisse
   un prénom, et suit l'état de sa commande jusqu'à « prête ». Le bar la voit arriver dans
   une file qui se rafraîchit toute seule. **Sans paiement en ligne** : le règlement se fait
   au comptoir, et aucune donnée bancaire ne transite. Fermé par défaut sur chaque
   établissement, à ouvrir depuis l'écran des commandes.
+- **Commande par table** — un établissement peut désigner ses commandes par table plutôt
+  que par prénom, depuis `/admin/<slug>/reglages` : un QR code par table, un choix de table
+  quand le code général est scanné, et le choix entre retrait au comptoir et service à
+  table. Tout établissement démarre au prénom.
 - **Multi-établissements** — un même déploiement héberge plusieurs bars. Un gérant en
   possède autant qu'il veut, chacun avec sa carte, son adresse publique et son QR code.
   L'isolation est portée par Postgres : un gérant ne voit et ne modifie que ses
@@ -87,6 +93,14 @@ posé sur les tables.
   les surfaces gardent la palette maison, si bien que les prix et les descriptions
   conservent le contraste pour lequel ils ont été dessinés. Tout établissement démarre sur
   « Ardoise », le thème de la maison.
+- **Couleurs personnalisées** — un établissement qui veut plus qu'un bandeau nommé en
+  retouche un, rôle par rôle : fond, bandeau, texte du bandeau, texte de la carte, texte
+  secondaire et accent. Une palette personnalisée démarre comme une copie du thème qu'elle
+  prolonge, elle a donc une lecture de jour _et_ de nuit dès la première seconde — le soir
+  est calculé d'après les couleurs du jour, puis ajustable. Chaque couleur de texte est
+  mesurée sur le fond où elle se lit réellement, dans les deux lectures, et une carte qui
+  passe sous les 4,5:1 du WCAG ne peut pas être enregistrée : une carte se lit à une table,
+  le soir, sur un téléphone en demi-luminosité. Revenir au thème nommé tient en un bouton.
 - **Logo de l'établissement** — déposé depuis le même écran de réglages, il coiffe le
   bandeau de la carte publique. Le navigateur le réduit avant l'envoi et devine si un logo
   foncé a besoin d'une pastille claire pour rester lisible sur le bandeau ; le gérant peut
@@ -254,11 +268,13 @@ premier affichage compte.
 | `/login`                       | Connexion                                                  |
 | `/admin`                       | Liste des établissements du gérant, et création            |
 | `/admin/corbeille`             | Établissements supprimés, et restauration                  |
+| `/admin/compte`                | Compte du gérant : changement de mot de passe              |
 | `/admin/$venueSlug`            | Édition de la carte : catégories, produits, prix, ruptures |
 | `/admin/$venueSlug/stock`      | Suivi de stock : niveaux, alertes, décompte                |
 | `/admin/$venueSlug/stock/scan` | Mouvements de stock à la caméra, code-barres               |
 | `/admin/$venueSlug/qr`         | Feuille de QR code à imprimer                              |
 | `/admin/$venueSlug/commandes`  | File des commandes et historique                           |
+| `/admin/$venueSlug/tables`     | Tables de l'établissement, chacune avec son QR code        |
 | `/m/$venueSlug`                | **Carte publique** — la page que vise le QR code           |
 
 Les prix sont saisis en euros et stockés en **centimes entiers**
@@ -284,8 +300,10 @@ avant la conduite qui mène au prix. Il est recopié sur la ligne de commande à
 faut deviner.
 
 L'ordre des catégories et des produits est porté par une colonne `position`, avançant de 100
-en 100 pour permettre d'insérer entre deux voisines sans réécrire la liste. Un produit en
-rupture reste dans la carte du gérant, barré, et sera masqué côté client.
+en 100 pour permettre d'insérer entre deux voisines sans réécrire la liste. Un produit peut
+être **masqué** — barré dans la carte du gérant, absent de celle du client — ou **en
+rupture** : la carte du client le montre alors toujours, marqué épuisé, sans permettre de le
+commander. Ce sont deux interrupteurs indépendants sur la ligne.
 
 #### Suivi de stock
 
@@ -303,8 +321,8 @@ appuie sur son « −1 ».
 Deux points de conception valent d'être connus :
 
 - **La rupture par épuisement est déduite, jamais écrite.** `is_available` reste le geste
-  manuel du gérant ; un stock à zéro masque le produit de la carte publique par un filtre de
-  requête, et le réapprovisionnement le fait réapparaître sans intervention. Basculer
+  manuel du gérant ; un stock à zéro marque le produit épuisé sur la carte publique, et le
+  réapprovisionnement le remet en vente sans intervention. Basculer
   vraiment la colonne obligerait à réactiver chaque produit à la main après une livraison,
   et écraserait au passage une décision prise pour une tout autre raison.
 - **Le décompte passe par une fonction Postgres**, `adjust_product_stock` (migration
@@ -371,6 +389,31 @@ Une limite connue : **`place_order` n'est pas limitée en débit**. C'est un poi
 d'écriture non authentifié, ouvert sur Internet. Les plafonds par ligne (20) et par
 commande (40 lignes) bornent ce qu'un appel peut écrire, rien ne borne le nombre d'appels.
 
+#### Commande par table
+
+Par défaut, une commande s'appelle par son prénom. Depuis `/admin/$venueSlug/reglages`, un
+établissement peut passer **par table** : il définit ses tables sur
+`/admin/$venueSlug/tables` (un numéro, et une zone facultative comme « Terrasse »), imprime
+un QR code par table, et choisit si la commande se retire au comptoir — on appelle la table
+— ou est apportée à table, et si le prénom est encore demandé, de façon facultative.
+
+- **Le QR code d'une table porte un identifiant opaque, jamais son numéro.** Renuméroter ou
+  renommer une table garde son code imprimé valide ; la supprimer fait retomber le code sur
+  le choix de la table.
+- **Le code général continue de fonctionner** : en mode table, le panier demande au client
+  de choisir sa table. Un identifiant inconnu est traité comme un identifiant absent, pas
+  comme une page d'erreur.
+- **Le code d'une table fixe la table.** Scanné depuis une table, le panier affiche cette
+  table sans moyen d'en changer : le code est posé sur la table où le client est assis.
+- **L'identifiant opaque n'est pas une frontière de sécurité.** La liste des tables est
+  publique — le choix de la table en a besoin — et n'importe qui peut choisir n'importe
+  quelle table. `place_order` revérifie en SQL que la table appartient à l'établissement et
+  que celui-ci est en mode table ; envoyer une commande à la mauvaise table est le même genre
+  d'erreur que donner un faux prénom.
+- **Une commande garde une copie de sa table et de son mode de service**, comme une ligne
+  garde le nom de son produit. Changer de mode pendant que des commandes sont en cours
+  demande d'abord confirmation, puisque la file sera mélangée un moment.
+
 #### Création des comptes
 
 **Il n'y a pas d'inscription libre.** Les accès sont créés par l'administrateur de la
@@ -416,10 +459,12 @@ Ce que garantit Postgres, et pas seulement le code :
 
 ### QR code
 
-`/admin/<slug>/qr` produit le code à imprimer et à poser sur les tables. Il encode l'URL
-publique de la carte, et c'est **un seul code pour tout l'établissement** : la carte est
-identique à chaque table, distinguer les tables n'apporterait rien tant qu'aucune
-fonctionnalité ne lit ce numéro.
+`/admin/<slug>/qr` produit les codes à imprimer et à poser sur les tables. Pour un
+établissement qui commande au prénom — le réglage par défaut — c'est **un seul code pour tout
+l'établissement** : la carte est identique à chaque table. Pour un établissement qui commande
+par table, il imprime **un code par table**, avec le numéro et la zone de la table sous
+chacun, sur une grille faite pour être découpée ; le code général reste téléchargeable et
+ouvre le choix de la table.
 
 - **Sortie SVG**, pas PNG : le code finit imprimé à une taille choisie par le gérant, d'un
   sous-bock à une affiche. Un vecteur reste net partout.
@@ -442,10 +487,10 @@ réseau mobile d'un client attablé.
 
 Trois comportements à connaître :
 
-- **Les produits en rupture sont écartés dans la requête**, pas à l'affichage : ils ne
-  quittent jamais le serveur. Deux causes indépendantes les écartent — la rupture décidée à
-  la main, et un stock épuisé. Une catégorie dont tous les produits sont partis disparaît
-  également.
+- **Les produits masqués sont écartés dans la requête**, pas à l'affichage : ils ne
+  quittent jamais le serveur, et une catégorie qui n'en garde aucun disparaît également.
+  **Les produits en rupture restent affichés**, « épuisé » à la place du prix et sans bouton
+  d'ajout au panier — rupture décidée à la main ou stock tombé à zéro.
 - **Un produit sans prix n'affiche rien** — pas « Prix non renseigné », qui est un message
   destiné au gérant. C'est ce que fait une carte imprimée pour un plat du jour.
 - **Une adresse inconnue répond un vrai 404**, et non une page d'erreur en 200 : ces URL sont
@@ -460,21 +505,29 @@ Trois comportements à connaître :
       part par mail via Supabase ; la confirmation est la même selon que l'adresse a un
       compte ou non, et un lien mort ou déjà utilisé arrive sur un écran qui en propose un
       nouveau
+- [x] Changement du mot de passe depuis le back-office (`/admin/compte`) : le mot de passe
+      actuel est vérifié par Supabase, une session de plus d'un jour confirme avec un code
+      envoyé par mail, et les autres appareils sont déconnectés après chaque changement
 - [x] CRUD des établissements
 - [x] CRUD de la carte (catégories, produits, prix, photos)
 - [x] Carte publique
-- [x] Génération du QR code (un par établissement)
+- [x] Génération du QR code (un par établissement, ou un par table)
 - [x] Taille du produit : format servi (25cl, 50cl, au fût…), sur la carte comme sur les
       tickets de commande
 - [x] Thème : variantes jour et nuit suivant le système
 - [x] Suppression d'un établissement (logique, avec corbeille et restauration)
 - [x] Gestion des ruptures de stock
+- [x] Masquer un produit de la carte, indépendamment du stock : un produit masqué disparaît de
+      la carte client, un produit en rupture y reste affiché comme épuisé
 - [x] Gestion de l'inventaire : niveaux de stock activables par produit, seuils d'alerte,
       décompte manuel et passage automatique en rupture
 - [x] Commande au comptoir : panier côté client, envoi au bar depuis la carte scannée,
       suivi de l'état par le client, file et historique dans le back-office, décompte du
       stock à l'acceptation. **Sans paiement en ligne** — le règlement se fait au comptoir,
       la commande ne transporte aucune donnée bancaire
+- [x] Commande par table, réglable par établissement : tables définies dans le back-office,
+      un QR code par table portant un identifiant opaque, un choix de table derrière le code
+      général, service au comptoir ou à table, prénom facultatif
 - [x] Scan du code-barres pour les mouvements de stock : entrées et sorties saisies devant
       la caméra depuis `/admin/<slug>/stock/scan`, avec appairage du code au premier scan.
       Fonctionne sur tous les navigateurs, iOS compris : `BarcodeDetector` natif quand il
@@ -493,7 +546,11 @@ Trois comportements à connaître :
 - [x] Polices par établissement : une police par usage (nom, catégories, produits,
       descriptions) parmi une liste choisie, hébergées par l'application, prévisualisées de
       jour comme de nuit
-- [ ] Couleurs et image de fond personnalisées pour la carte publique
+- [x] Couleurs personnalisées pour la carte publique : six rôles édités depuis
+      `/admin/<slug>/reglages`, démarrant en copie du thème nommé de l'établissement, avec
+      une lecture de nuit calculée puis ajustable et un contrôle WCAG à 4,5:1 qui refuse
+      l'enregistrement
+- [ ] Image de fond personnalisée pour la carte publique
 - [ ] Internationalisation
 - [ ] Accès partagés : plusieurs comptes sur un même établissement, rôles, transfert de
       propriété

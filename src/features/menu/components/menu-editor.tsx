@@ -1,5 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, Boxes, ConciergeBell, QrCode, Settings } from 'lucide-react'
+import {
+  Armchair,
+  ArrowLeft,
+  Boxes,
+  ConciergeBell,
+  QrCode,
+  Settings,
+} from 'lucide-react'
 
 import { AddCategoryForm } from '#/features/menu/components/add-category-form'
 import { CategorySection } from '#/features/menu/components/category-section'
@@ -14,6 +21,7 @@ import {
   SkeletonScreen,
 } from '#/components/skeleton'
 import { menuQueryOptions } from '#/features/menu/api'
+import { parseOrderSettings } from '#/lib/order-settings'
 import { useMoveItem } from '#/features/menu/mutations'
 
 /**
@@ -67,7 +75,8 @@ export function MenuEditor({ venueSlug }: { venueSlug: string }) {
         <MenuAddress slug={venue.slug} className="mt-1" />
 
         <p className="mt-2 text-sm text-ink-soft">
-          Les produits en rupture sont masqués pour les clients.
+          Un produit en rupture reste sur la carte des clients, marqué épuisé.
+          Un produit masqué n’y apparaît pas.
         </p>
 
         {/* Même raison : ces sections sont dans la colonne à partir de `lg`. */}
@@ -88,6 +97,17 @@ export function MenuEditor({ venueSlug }: { venueSlug: string }) {
           >
             Stock
           </NavLink>
+          {/* Same condition as the column: only a venue ordering by table. */}
+          {parseOrderSettings(venue).reference === 'table' ? (
+            <NavLink
+              to="/admin/$venueSlug/tables"
+              params={{ venueSlug: venue.slug }}
+              icon={Armchair}
+              className="mt-1 font-medium"
+            >
+              Tables
+            </NavLink>
+          ) : null}
           <NavLink
             to="/admin/$venueSlug/qr"
             params={{ venueSlug: venue.slug }}
@@ -235,13 +255,18 @@ function MenuEditorSkeleton() {
                   />
 
                   {/*
-                    Les commandes de la ligne : l'interrupteur « En vente »,
-                    puis monter, descendre, modifier, supprimer. Elles sont ce
-                    qui donne sa hauteur à la ligne (`lg:min-h-9`), bien avant
-                    le texte — les oublier aurait fait une ossature plus serrée
-                    que la carte qu'elle annonce.
+                    Les commandes de la ligne : l'œil « Masquer de la carte »,
+                    l'interrupteur « En vente », puis monter, descendre,
+                    modifier, supprimer. Elles sont ce qui donne sa hauteur à
+                    la ligne (`lg:min-h-9`), bien avant le texte — les oublier
+                    aurait fait une ossature plus serrée que la carte qu'elle
+                    annonce.
                   */}
                   <div className="flex shrink-0 items-center gap-1">
+                    <Skeleton
+                      className="size-9"
+                      delay={450 + section * 120 + row * 55}
+                    />
                     <Skeleton
                       className="h-5 w-9 rounded-full"
                       delay={460 + section * 120 + row * 55}

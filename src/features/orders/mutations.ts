@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 import {
   GUEST_ORDER_QUERY_KEY,
+  PUBLIC_TABLES_QUERY_KEY,
   cancelGuestOrder,
   placeOrder,
 } from '#/features/orders/public-api'
@@ -103,16 +104,31 @@ export function usePlaceOrder(venueSlug: string) {
 
   return useMutation({
     mutationFn: (input: {
-      guestName: string
+      guestName: string | null
       guestNote: string | null
+      /** The table's public id, in table mode. */
+      guestTable?: string | null
       items: Array<{ productId: string; quantity: number }>
-    }) => placeOrder({ venueSlug, ...input }),
+    }) =>
+      placeOrder({
+        venueSlug,
+        ...input,
+        guestTable: input.guestTable ?? null,
+      }),
 
     onSuccess: (ticket) => {
       addTicket(venueSlug, ticket)
       clearCart(venueSlug)
       queryClient.invalidateQueries({ queryKey: GUEST_ORDER_QUERY_KEY })
     },
+
+    /*
+      A refusal may come from a table removed since the list was read — the
+      picker then has to stop offering it. Refetching the list on any refusal
+      costs one small request on a path that is already an error.
+    */
+    onError: () =>
+      queryClient.invalidateQueries({ queryKey: PUBLIC_TABLES_QUERY_KEY }),
   })
 }
 

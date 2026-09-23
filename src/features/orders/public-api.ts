@@ -4,8 +4,9 @@ import { describeError } from '#/lib/postgrest-error'
 import { isOpenOrder } from '#/features/orders/status'
 import { supabase } from '#/lib/supabase'
 
-import type { OrderStatus } from '#/lib/supabase'
+import type { OrderStatus, VenueTable } from '#/lib/supabase'
 import type { OrderTicket } from '#/features/orders/ticket'
+import type { ServiceMode } from '#/lib/order-settings'
 
 /**
  * Côté client : déposer une commande, puis la suivre.
@@ -20,7 +21,13 @@ import type { OrderTicket } from '#/features/orders/ticket'
 /** Une commande telle que son client la relit. */
 export type GuestOrder = {
   id: string
-  customerName: string
+  /** `null` on a table order placed without a first name. */
+  customerName: string | null
+  /** The table the order was sent from, as it was called at the time. */
+  tableNumber: number | null
+  tableLabel: string | null
+  /** How the order is served — it decides the status wording. */
+  serviceMode: ServiceMode
   note: string | null
   status: OrderStatus
   totalCents: number
@@ -56,11 +63,18 @@ export class OrderNotFoundError extends Error {
  * ni les noms, ni le total : `place_order` les relit en base. Un total envoyé
  * par le navigateur est un total négociable, et cette fonction est ouverte à
  * qui possède la clé publiable — c'est-à-dire à tout le monde.
+ *
+ * The table travels as its **public id**, never as its number, and
+ * `place_order` checks it belongs to the venue. `guest_table` is left out of
+ * the call when there is none: a name-mode order then makes exactly the call
+ * it made before tables existed, which keeps it working against a database
+ * whose migration is late.
  */
 export async function placeOrder(input: {
   venueSlug: string
-  guestName: string
+  guestName: string | null
   guestNote: string | null
+  guestTable: string | null
   items: Array<{ productId: string; quantity: number }>
 }): Promise<OrderTicket> {
   const { data, error } = await supabase.rpc('place_order', {
@@ -71,6 +85,7 @@ export async function placeOrder(input: {
       product_id: line.productId,
       quantity: line.quantity,
     })),
+    ...(input.guestTable ? { guest_table: input.guestTable } : {}),
   })
 
   if (error) throw new Error(describeError(error))
@@ -102,6 +117,14 @@ export async function fetchOrder(ticket: OrderTicket): Promise<GuestOrder> {
   return {
     id: data.id,
     customerName: data.customer_name,
+    /*
+      `?? null`, and `?? 'counter'`: against a database that has not run the
+      table migration yet, the keys are absent, and an order from before tables
+      is exactly a name order collected at the counter.
+    */
+    tableNumber: data.table_number ?? null,
+    tableLabel: data.table_label ?? null,
+    serviceMode: data.service_mode === 'table' ? 'table' : 'counter',
     note: data.note,
     status: data.status,
     totalCents: data.total_cents,
@@ -176,5 +199,48 @@ export function guestOrderQueryOptions(ticket: OrderTicket) {
     */
     retry: (failureCount, error) =>
       !(error instanceof OrderNotFoundError) && failureCount < 3,
+  })
+}
+
+/** A table as the customer's picker needs it — no ids but the public one. */
+export type PublicTable = Pick<VenueTable, 'number' | 'label' | 'public_id'>
+
+/**
+ * A venue's tables, in number order, read as `anon`.
+ *
+ * Public by design (`venue_tables_public_read`): the customer who scanned the
+ * venue-wide code picks their table from this list. It is also what resolves
+ * the `?table=` of a table's code — an id that is not in it is treated like no
+ * id at all, and the picker shows.
+ *
+ * Not in the server-rendered payload: most visitors read the menu and never
+ * open the cart, and this list only matters once they do.
+ */
+export async function fetchPublicTables(
+  venueId: string,
+): Promise<Array<PublicTable>> {
+  const { data, error } = await supabase
+    .from('venue_tables')
+    .select('number,label,public_id')
+    .eq('venue_id', venueId)
+    .order('number', { ascending: true })
+
+  if (error) throw new Error(describeError(error))
+  return data
+}
+
+export const PUBLIC_TABLES_QUERY_KEY = ['public-tables'] as const
+
+export function publicTablesQueryOptions(venueId: string) {
+  return queryOptions({
+    queryKey: [...PUBLIC_TABLES_QUERY_KEY, venueId],
+    queryFn: () => fetchPublicTables(venueId),
+    /*
+      A venue's tables move once in a while, not during a round. A minute keeps
+      the sheet from refetching on every open, and `usePlaceOrder` invalidates
+      the list when `place_order` refuses a table, which is the one moment it
+      is known to be stale.
+    */
+    staleTime: 60_000,
   })
 }

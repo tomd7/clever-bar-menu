@@ -14,6 +14,7 @@ import {
 } from '#/components/skeleton'
 import { Switch } from '#/components/ui/switch'
 import { isOpenOrder } from '#/features/orders/status'
+import { parseOrderSettings } from '#/lib/order-settings'
 import { ordersQueryOptions } from '#/features/orders/api'
 import { useSetOrdersEnabled } from '#/features/orders/mutations'
 
@@ -74,6 +75,7 @@ export function OrdersPage({ venueSlug }: { venueSlug: string }) {
 
   const { venue, orders } = ordersQuery.data
   const history = orders.filter((order) => !isOpenOrder(order.status))
+  const settings = parseOrderSettings(venue)
 
   return (
     <div className="page-wrap px-0">
@@ -93,8 +95,12 @@ export function OrdersPage({ venueSlug }: { venueSlug: string }) {
           {venue.name}
         </h1>
         <p className="mt-2 text-sm text-ink-soft">
-          Les clients commandent depuis la carte et viennent retirer au
-          comptoir. Accepter une commande décompte le stock des produits suivis.
+          {settings.reference === 'name'
+            ? 'Les clients commandent depuis la carte et viennent retirer au comptoir.'
+            : settings.service === 'table'
+              ? 'Les clients commandent depuis leur table, et la commande leur est apportée.'
+              : 'Les clients commandent depuis leur table et viennent retirer au comptoir quand on appelle leur table.'}{' '}
+          Accepter une commande décompte le stock des produits suivis.
         </p>
       </header>
 

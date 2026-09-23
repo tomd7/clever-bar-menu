@@ -6,6 +6,7 @@ import {
   useRouter,
 } from '@tanstack/react-router'
 
+import { AccountLink } from '#/features/auth/components/account-link'
 import { BackOfficeShell } from '#/components/back-office/back-office-shell'
 import { OpenOrdersCount } from '#/features/orders/components/open-orders-count'
 import { VenueNav } from '#/features/venues/components/venue-nav'
@@ -86,6 +87,7 @@ function BackOfficeLayout() {
         />
       }
       navFooter={<VenueTrashRailLink ownerId={user.id} />}
+      account={<AccountLink />}
     >
       <Outlet />
     </BackOfficeShell>

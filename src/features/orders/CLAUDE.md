@@ -1,11 +1,12 @@
 # Orders — `src/features/orders/`
 
 Counter ordering: the customer orders from the scanned menu, gives a first name, and
-collects at the bar. **No online payment** — nothing here carries card data, and nothing
-should.
+collects at the bar — or, at a venue ordering by table, orders from their table (see
+« Ordering by table » below). **No online payment** — nothing here carries card data, and
+nothing should.
 
-`cart.ts`, `ticket.ts`, `status.ts` (domain), `api.ts` (bar side), `public-api.ts` (customer
-side), `mutations.ts`, `components/`. Screens: `/admin/$venueSlug/commandes` for the bar, and
+`cart.ts`, `ticket.ts`, `table.ts`, `status.ts`, `reference.ts` (domain), `api.ts` (bar
+side), `public-api.ts` (customer side), `mutations.ts`, `components/`. Screens: `/admin/$venueSlug/commandes` for the bar, and
 a fixed bar at the bottom of `/m/$venueSlug` for the customer.
 
 **No cross-feature imports**, and this feature is what made the rule bite. See the two
@@ -17,7 +18,9 @@ sections below on what had to move down as a result.
 Everything the customer does goes through two `security definer` functions (migration
 `0009`), which are the only door:
 
-- `place_order(venue_slug, guest_name, guest_note, items)` — validates and inserts.
+- `place_order(venue_slug, guest_name, guest_note, items, guest_table default null)` —
+  validates and inserts. `guest_table` is a table's public id, required in table mode and
+  refused in name mode.
 - `get_order(lookup_id, lookup_token)` — reads one order back.
 
 This is the **opposite** choice from `adjust_product_stock` (`security invoker`), and
@@ -38,9 +41,9 @@ Invariants that hold the design up:
   function is reachable by anyone holding the publishable key — that is, by everyone.
 - **`venues.orders_enabled` is checked in SQL too**, not only to hide a button. A menu left
   open in a tab must not keep sending after the bar closes.
-- **Availability is re-checked at insert time** — `is_available`, and a non-zero
-  `stock_quantity` — with the same condition `fetchPublicMenu` uses. The displayed menu may
-  be ten minutes old.
+- **Availability is re-checked at insert time** — `is_visible` (the menu's filter), then
+  `is_available` and a non-zero `stock_quantity` (`isSoldOut`, the menu's « épuisé »), as
+  of migration `0023`. The displayed menu may be ten minutes old.
 - **A dropped line fails the whole order.** If a requested product is no longer orderable,
   `place_order` raises rather than inserting a shortened order. Serving an amputated order
   would make the customer discover the gap at the counter, which is the worst possible
@@ -168,6 +171,11 @@ saving eight lines.
   route fills it with `AddToCartButton`, and `src/routes/m.$venueSlug.tsx` is the one file
   allowed to know both features. Same assembly as `_authenticated.tsx` passing `<VenueNav>`
   to `BackOfficeShell`.
+- **A sold-out product is on the menu but not in the cart's catalogue.** `PublicMenu` does
+  not call `productAction` for it, and `m.$venueSlug.tsx` leaves it out of the `products`
+  handed to `OrderBar`. The cart sheet drops a line it cannot resolve — which is what a
+  product that ran out while in the cart should do, rather than stay drawn as orderable
+  until `place_order` refuses the send.
 - **When a section reserves a photo column, a product without a photo renders an explicit
   empty `<div>`.** Not cosmetic: `null` produces no element, and grid auto-placement would
   slide the action into the image column — prices would stop lining up on photo-less rows,
@@ -224,7 +232,8 @@ saving eight lines.
   reasoning that keeps the stock list from re-sorting.
 - **Each block in the sheet carries the first name, not the status hint.** Two orders in the
   same state would print the same sentence twice, where what tells them apart is precisely
-  the name each will be called under. The hint stays as the sheet's subtitle, and only when
+  the name each will be called under. A table order carries its table instead (« Table 12 »,
+  « Table 12, au nom de Camille »). The hint stays as the sheet's subtitle, and only when
   there is a single order to give one for.
 - **One panel open at a time** (`'cart' | 'order' | null`). A boolean per sheet would let
   both open and stack two modal dialogs on the same edge.
@@ -278,12 +287,58 @@ saving eight lines.
   duplicating the confirmation would duplicate the focus-on-« Annuler » invariant, which no
   type would tell you had broken.
 
+## Ordering by table
+
+A venue chooses in « Réglages » how its orders are identified (`venues.order_reference`:
+`name`, the default, or `table`), and by table how they are served (`service_mode`:
+`counter` or `table`) and whether a first name is still asked (`first_name_mode`: `none` or
+`optional`). `lib/order-settings.ts` holds the browser's copy and `parseOrderSettings`, which
+forces the service to `counter` in name mode. Name mode behaves exactly as before tables
+existed.
+
+- **The table comes from the QR code, or from the picker.** A table's code carries
+  `?table=<public id>`; `m.$venueSlug.tsx` shape-checks it, `OrderBar` fetches the venue's
+  tables (`publicTablesQueryOptions` — only once there is a cart or an id to check, never in
+  the SSR'd payload) and adopts the id **only if it resolves**. `table.ts` keeps the choice
+  for the visit in `sessionStorage`, not `localStorage`: next week the same phone sits at
+  another table.
+- **A table named by the code is fixed.** When `?table=` resolves, the cart sheet shows that
+  table with **no « Changer »** and never the picker: the code is stuck on the table the
+  customer sits at, and a picker one tap away is how an order ends up across the room. The
+  sheet resolves the URL's id itself rather than waiting for `OrderBar` to write the store,
+  so « Changer » never flashes in between. « Changer » survives only for a table picked by
+  hand. An id that stops resolving (its table deleted mid-visit, the list refetched after a
+  refusal) releases the lock and the picker comes back.
+- **An unknown id is a missing id.** The venue-wide code, a deleted table's code, a
+  hand-edited URL: the cart sheet shows `TablePicker`. Never an error page — a printed code
+  must not become a dead end.
+- **The picker stays open after a choice** until the sheet closes: its native radios choose
+  as the arrow keys move, and a picker collapsing on the first arrow would lose the keyboard.
+- **The opaque id is not a security boundary.** It stops a digit edit from landing on the
+  next table, nothing more: the table list is public (the picker needs it), and anyone can
+  pick any table. `place_order` guarantees that the table exists and belongs to the venue,
+  that the venue is in table mode, and the name rules of each mode — a name the venue did
+  not ask for is dropped, not refused. A wrong table is the same class of mistake as a wrong
+  first name.
+- **The order copies its table and its service** (`orders.table_number`, `table_label`,
+  `service_mode`), like a line copies its product. A table renumbered afterwards does not
+  rename the order, and a venue switching service mid-evening leaves the orders already
+  placed served as their customers were told — which is why the settings screen confirms a
+  switch while orders are open, and why the bar card says « à apporter en salle » per order.
+- **The wording follows each order's service** (`status.ts`): « Prête — on vous l'apporte »
+  and « Servie » at the table, « venez la chercher » and « Récupérée » at the counter, where
+  the hint asks for the table number when the order has one. `reference.ts` writes what an
+  order is called by — « Table 12 », « Terrasse · 12 — Camille », or the first name — for the
+  bar card, the cancel confirmation and the tracker, always from the copies on the row.
+- **Live-deploy compatibility.** The migration runs before this front end ships. `guest_table`
+  is last and defaulted, so the deployed four-argument call still resolves; `placeOrder`
+  leaves `guest_table` out of the call when there is none, and `fetchOrder` reads absent
+  table keys as a name order collected at the counter.
+
 ## Deliberately absent
 
-- **No table numbers.** The QR code stays one per venue and the first name is the order's
-  reference: it gets called out loud, which a number does badly. `venues/CLAUDE.md`'s note —
-  "one code per venue, a table number would be inert until something reads it" — still holds,
-  because nothing reads one.
+- **No grouping or filtering of the queue by table**, no bill per table, no waiter
+  assignment, no floor plan. The queue stays chronological, oldest first, in both modes.
 - **No sale-time decrement beyond acceptance**, no partial fulfilment, no order editing after
   send, and no retention policy: `orders` has no `delete` policy, and history grows. A purge
   belongs with a retention decision nobody has made.

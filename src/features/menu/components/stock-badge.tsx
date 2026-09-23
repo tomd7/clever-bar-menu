@@ -15,7 +15,7 @@ import type { Product } from '#/lib/supabase'
  * précisément parce qu'il ressemblait à un état d'alerte par défaut — et un
  * stock bas n'est pas une erreur : c'est une information qui doit se lire sans
  * crier. Seul l'épuisement prend la couleur destructive, parce qu'il a une
- * conséquence visible pour un client : le produit a quitté la carte.
+ * conséquence visible pour un client : le produit ne se commande plus.
  */
 export function StockBadge({
   product,

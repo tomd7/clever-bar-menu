@@ -28,17 +28,25 @@ import type { ReactNode } from 'react'
  * que ces deux zones sont séparées par toute la hauteur de la colonne, et
  * qu'un seul `nav` étiré jusqu'en bas rendrait la coquille responsable de
  * l'écart entre ses éléments.
+ *
+ * `account` is the way into the manager's own account, and unlike `nav` and
+ * `navFooter` it renders **at every width**: in the phone's top bar next to
+ * « Déconnexion », under the address in the column from `lg`. A slot for the
+ * same reason as the other two — the link points at a route, and which one is
+ * the route's business, not this shell's.
  */
 export function BackOfficeShell({
   email,
   nav,
   navFooter,
+  account,
   onSignOut,
   children,
 }: {
   email: string | undefined
   nav?: ReactNode
   navFooter?: ReactNode
+  account?: ReactNode
   onSignOut: () => void
   children: ReactNode
 }) {
@@ -63,9 +71,23 @@ export function BackOfficeShell({
         <div className="flex items-center justify-between gap-3 px-4 py-3 lg:min-h-full lg:flex-col lg:items-stretch lg:px-4 lg:py-6">
           <div className="lg:flex-1">
             <p className="island-kicker">Back-office</p>
-            <p className="display-title text-lg leading-tight">
-              {env.VITE_APP_TITLE}
-            </p>
+            {/*
+              The beta pill sits beside the title, not inside it: inside, it
+              would inherit `.display-title`'s wide stretch and negative
+              tracking, made for headings, not an 11px label. A filled pill on
+              `--bottle`, never a bordered one — on this app the bordered pill
+              is `StockBadge`, and it means something is wrong.
+            */}
+            <div className="flex items-center gap-2">
+              <p className="display-title text-lg leading-tight">
+                {env.VITE_APP_TITLE}
+              </p>
+              {env.VITE_APP_BETA ? (
+                <span className="rounded-full bg-bottle px-2 py-0.5 text-[0.6875rem] leading-none font-semibold text-on-bottle">
+                  Bêta
+                </span>
+              ) : null}
+            </div>
 
             <div className="mt-6 hidden lg:block">{nav}</div>
           </div>
@@ -84,6 +106,7 @@ export function BackOfficeShell({
             <p className="hidden truncate text-xs text-ink-soft lg:block">
               {email}
             </p>
+            {account}
             <ActionButton
               icon={LogOut}
               variant="ghost"

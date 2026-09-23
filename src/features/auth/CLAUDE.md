@@ -1,9 +1,12 @@
 # Auth — `src/features/auth/`
 
-`components/` (auth-island, login-_, forgot-password-_, reset-password-*), `api.ts`,
+`components/` (auth-island, login-_, forgot-password-_, reset-password-screen,
+new-password-form, change-password-form, account-page, account-link), `api.ts`,
 `mutations.ts`, `redirect.ts`, `recovery-link.ts`, `password.ts`, `errors.ts`.
 
-**Email + password, sign-in only.** There is deliberately no sign-up form: accounts are
+**Email + password, and no sign-up.** The feature signs a manager in, resets a forgotten
+password from `/login`, and changes the password of a signed-in manager from
+`/admin/compte` — nothing else. There is deliberately no sign-up form: accounts are
 provisioned by the platform administrator (Supabase dashboard → Authentication → Users →
 Add user, with _Auto Confirm User_). **Don't add a sign-up screen back** without being
 asked.
@@ -22,14 +25,30 @@ curl -s "$VITE_SUPABASE_URL/auth/v1/settings" -H "apikey: $VITE_SUPABASE_ANON_KE
 **Supabase auth errors arrive in English.** `translateAuthError` (`errors.ts`) maps
 `AuthApiError.code` — fed from the API's `error_code` — to French, and `api.ts` applies it
 so the thrown message is already translated: the auth counterpart of `describeError` for
-PostgREST.
+PostgREST. What `api.ts` throws is an **`AuthFailure`**, which keeps Supabase's `code`
+next to the French message: most screens only print the message, but the account screen
+branches on the code (`authFailureCode`). Every call outside sign-in passes a `fallback`
+that names its own failure — the default, « Connexion impossible », is a sign-in sentence.
 
 **Keep the credentials message indistinct** between unknown address and wrong password.
-Naming which one failed turns the screen into an account-enumeration oracle.
+Naming which one failed turns the screen into an account-enumeration oracle. The one
+exception is `current_password_invalid`, which does name the current password: its caller
+is already signed in, so there is no account left to discover.
 
 `router.invalidate()` after sign-in lives in `useSignIn`, not in the route — see
-`src/routes/CLAUDE.md`. `useUpdatePassword` does the same, for the same reason: the
-manager arrives from a mail, so every guard has already concluded « not signed in ».
+`src/routes/CLAUDE.md`. `useResetPassword` does the same, for the same reason: the manager
+arrives from a mail, so every guard has already concluded « not signed in ».
+`useChangePassword` is the same call **without** it, split on purpose: a signed-in change
+moves no guard's verdict.
+
+## `NewPasswordForm` — one form, two screens
+
+The reset screen and the account screen choose a password with the same component, so the
+length rule, the « both fields match » check (`passwordProblem`) and the password-manager
+wiring can't drift between them. It owns the fields and that one check; the screen owns
+the call, passes `pending` and `error` back in, and decides what happens after.
+`askCurrentPassword` adds the current-password field, `username` the hidden address field
+(see below).
 
 ## Password reset
 
@@ -57,10 +76,60 @@ loading bar in the real `h1` while it still has no title to show.
 - **`passwordProblem` checks what the API cannot** — that the two fields match. Two
   identically mistyped passwords are a valid pair for Supabase, and the manager would be
   locked out by a password they never meant to set.
-- **Nothing in `updatePassword` proves the caller followed a link**; `updateUser` only
-  needs a session. The boundary is server-side, as everywhere else here: the project's
-  **Secure password change** setting makes Supabase refuse the change on a session that is
-  not recent.
+- **The reset screen sends no current password.** Supabase skips that check for a
+  recovery session (`session.IsRecovery()` in GoTrue's `user.go`). Consequence worth
+  knowing: a manager who has just reset their password and opens `/admin/compte` is still
+  in that recovery session, so the current password is not checked there either — they
+  proved access to the mailbox minutes earlier.
 - **Two settings live outside the code** and the feature is broken without them: the
   return URL (`recoveryUrl`) must be listed in the project's _Redirect URLs_, and the
   _Reset Password_ mail template ships in English.
+
+## Changing the password — `/admin/compte`
+
+**A session is not proof of identity.** `updateUser({ password })` only needs one, and on a
+tablet left signed in behind a bar that is the easiest thing in the building to borrow — a
+borrowed session that can change the password locks the owner out of their venues. Two
+**server-side** settings close that, and the screen is unsafe without both:
+
+| Setting (Authentication → Sign In / Providers → Email) | What Supabase then does                                                                                 | Refusal codes                                           |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| **Require current password when updating**             | Checks `current_password` on `updateUser` — except for a recovery session                               | `current_password_required`, `current_password_invalid` |
+| **Secure password change**                             | Refuses a session created over 24h ago until `reauthenticate()` has mailed a code, sent back as `nonce` | `reauthentication_needed`, `reauthentication_not_valid` |
+
+In the Management API they are `security_update_password_require_current_password` and
+`security_update_password_require_reauthentication` (`PATCH /v1/projects/{ref}/config/auth`).
+**A `signInWithPassword` re-check from the browser is not a substitute**: anyone holding the
+session skips it, it opens a second session, and it burns the sign-in rate limit.
+
+- **The code step is the nominal case.** Sessions refresh silently for weeks, so a manager
+  whose session dates from last Tuesday is past 24 hours. `reauthentication_needed` is
+  caught and never printed: it sends the code and swaps to the code field. Its translation
+  exists only as a safety net.
+- **The three typed passwords survive the swap** — the password step is `hidden`, not
+  unmounted — and `passwords` holds what was submitted, which is what the retry with the
+  code sends.
+- **GoTrue verifies the code before it checks the current password** or refuses a reused
+  one (`user.go`), outside the update's transaction. A code met with one of those refusals
+  is therefore spent: the screen drops it and returns to the passwords, and the next submit
+  mails a new one. Short of that, a code already sent is reused — going back to fix a typo
+  does not mail a second one.
+- **The other devices are signed out after every change**, with `signOut({ scope: 'others' })`
+  — the update handler revokes nothing on its own. `'others'` fires no `SIGNED_OUT` here,
+  so nothing is invalidated. Access tokens already issued stay valid until they expire (an
+  hour by default): the confirmation says « déconnectés », never « immédiatement ».
+- **The two calls can split**, so they are two hooks. When the change succeeds and the
+  sign-out fails, the password _has_ changed; the screen says exactly that and offers to
+  retry the sign-out alone. A generic error there would make the manager change it twice.
+- **Password managers**: a visually hidden `autoComplete="username"` field holding the
+  address, `current-password` and `new-password` on the fields, `one-time-code` on the code.
+  Without the username field the manager's password manager doesn't know which saved login
+  the new password belongs to. Clearing the fields after success (the form is remounted
+  with a new `key`) is the signal it reads as « the change went through ».
+- **The entry point is reachable at every width**: `AccountLink`, passed by
+  `_authenticated.tsx` into `BackOfficeShell`'s `account` slot — in the phone's top bar and
+  in the column from `lg`. It is a `.rail-link` like every other item of the column, not a
+  `NavLink`.
+- **`compte` is a reserved slug.** `/admin/compte` is a static child of `/admin`; see
+  `src/features/venues/CLAUDE.md`.
+- **The _Reauthentication_ mail template ships in English**, like _Reset Password_.

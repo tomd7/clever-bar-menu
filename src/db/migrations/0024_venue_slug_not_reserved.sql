@@ -1,0 +1,1 @@
+ALTER TABLE "venues" ADD CONSTRAINT "venues_slug_not_reserved" CHECK ("venues"."slug" not in ('corbeille', 'compte'));

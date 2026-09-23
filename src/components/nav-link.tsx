@@ -27,7 +27,7 @@ import type { LucideIcon } from 'lucide-react'
  *
  * Ce composant est celui des liens **en ligne dans le contenu**. La colonne du
  * back-office n'en est pas : ses éléments passent par `.rail-link`
- * (`features/venues/components/venue-nav.css`), parce qu'un mot souligné au
+ * (`components/back-office/rail-link.css`), parce qu'un mot souligné au
  * milieu d'une colonne de mots ne se repère qu'en la lisant.
  */
 function BaseNavLink({

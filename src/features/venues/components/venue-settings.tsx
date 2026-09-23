@@ -1,4 +1,4 @@
-import { ArrowLeft, Check } from 'lucide-react'
+import { ArrowLeft, Check, TriangleAlert } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 
@@ -6,9 +6,11 @@ import { CancelButton } from '#/components/buttons/cancel-button'
 import { ErrorNote } from '#/components/error-note'
 import { ImageField, useObjectUrl } from '#/components/form/image-field'
 import { MenuAddress } from '#/components/back-office/menu-address'
+import { MenuColorsField } from '#/features/venues/components/menu-colors-field'
 import { MenuFontField } from '#/features/venues/components/menu-font-field'
 import { MenuThemeField } from '#/features/venues/components/menu-theme-field'
 import { NavLink } from '#/components/nav-link'
+import { OrderSettingsField } from '#/features/venues/components/order-settings-field'
 import { SaveButton } from '#/components/buttons/save-button'
 import { Switch } from '#/components/ui/switch'
 import { TextAreaField } from '#/components/form/textarea-field'
@@ -23,14 +25,25 @@ import {
   SkeletonScreen,
 } from '#/components/skeleton'
 import { guessLogoPlate } from '#/features/venues/logo'
-import { parseMenuTheme } from '#/lib/menu-theme'
+import { MENU_THEMES, parseMenuTheme } from '#/lib/menu-theme'
+import {
+  menuPaletteStyle,
+  paletteContrast,
+  paletteFailures,
+} from '#/lib/menu-colors'
 import { MENU_FONT_ROLES, menuFace, parseMenuFonts } from '#/lib/menu-fonts'
 import { useUpdateVenue } from '#/features/venues/mutations'
-import { venueBySlugQueryOptions } from '#/features/venues/api'
+import {
+  venueBySlugQueryOptions,
+  venueColorsQueryOptions,
+} from '#/features/venues/api'
 import { venueImageUrl } from '#/lib/venue-images'
+import { venueTablesQueryOptions } from '#/features/venues/tables-api'
 
 import type { MenuFonts } from '#/lib/menu-fonts'
+import type { MenuPalette } from '#/lib/menu-colors'
 import type { MenuTheme } from '#/lib/menu-theme'
+import type { OrderSettings, ServiceMode } from '#/lib/order-settings'
 import type { Venue } from '#/lib/supabase'
 
 /**
@@ -59,12 +72,17 @@ const SETTINGS_GRID =
   'grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,18rem)] lg:gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]'
 
 /*
-  The preview's cell: the right column, over the three control panels. It
+  The preview's cell: the right column, over the four control panels. It
   spans their rows and sits at the top of them (`self-start`) — stretched to
   the rows' height, a sticky box has nowhere to stick.
 */
 const PREVIEW_CELL =
-  'lg:sticky lg:top-10 lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:self-start'
+  'lg:sticky lg:top-10 lg:col-start-2 lg:row-span-5 lg:row-start-1 lg:self-start'
+
+/** Where an order actually goes: a name-mode venue always serves at the counter. */
+function effectiveService(settings: OrderSettings): ServiceMode {
+  return settings.reference === 'table' ? settings.service : 'counter'
+}
 
 /**
  * Réglages d'un établissement : son nom, sa description, son logo, le thème et
@@ -78,15 +96,41 @@ const PREVIEW_CELL =
  * fichier de route ne porte que du routage. C'est d'ailleurs la même requête
  * que celle du QR code, donc passer de l'un à l'autre ne coûte rien.
  */
-export function VenueSettings({ venueSlug }: { venueSlug: string }) {
+export function VenueSettings({
+  venueSlug,
+  openOrdersCount,
+}: {
+  venueSlug: string
+  /**
+   * The venue's open orders, counted by `features/orders` and passed down by
+   * the route — this feature may not import that one. `undefined` while the
+   * queue loads.
+   */
+  openOrdersCount?: number
+}) {
   const venueQuery = useQuery(venueBySlugQueryOptions(venueSlug))
 
-  if (venueQuery.isPending) {
+  /*
+    The venue's own colours, which live in their own row. Read here rather than
+    in the form so the form is mounted with its draft already complete: a
+    palette arriving a moment later would either flash an unpainted preview or
+    need a third « pas encore chargé » state in every dirty check below.
+
+    `isPending` stays true while the query is disabled, so the wait covers both
+    reads with one ossature.
+  */
+  const colorsQuery = useQuery(venueColorsQueryOptions(venueQuery.data?.id))
+
+  if (venueQuery.isPending || colorsQuery.isPending) {
     return <VenueSettingsSkeleton />
   }
 
   if (venueQuery.isError) {
     return <ErrorNote>{venueQuery.error.message}</ErrorNote>
+  }
+
+  if (colorsQuery.isError) {
+    return <ErrorNote>{colorsQuery.error.message}</ErrorNote>
   }
 
   /*
@@ -96,7 +140,14 @@ export function VenueSettings({ venueSlug }: { venueSlug: string }) {
     celui-ci. La clé le remonte à neuf, avec ses états initialisés du bon
     établissement.
   */
-  return <VenueSettingsForm key={venueQuery.data.id} venue={venueQuery.data} />
+  return (
+    <VenueSettingsForm
+      key={venueQuery.data.id}
+      venue={venueQuery.data}
+      savedColors={colorsQuery.data}
+      openOrdersCount={openOrdersCount}
+    />
+  )
 }
 
 /**
@@ -106,16 +157,71 @@ export function VenueSettings({ venueSlug }: { venueSlug: string }) {
  * anticipés de chargement et d'erreur — le même découpage que `VenueQr` et
  * `QrSheet`.
  */
-function VenueSettingsForm({ venue }: { venue: Venue }) {
+function VenueSettingsForm({
+  venue,
+  savedColors,
+  openOrdersCount,
+}: {
+  venue: Venue
+  /** The venue's palette as stored, or `null`: its named theme, unedited. */
+  savedColors: MenuPalette | null
+  openOrdersCount: number | undefined
+}) {
   const update = useUpdateVenue()
 
   const [name, setName] = useState(venue.name)
   const [description, setDescription] = useState(venue.description ?? '')
   const [theme, setTheme] = useState<MenuTheme>(parseMenuTheme(venue.theme))
+  const [colors, setColors] = useState<MenuPalette | null>(savedColors)
 
   /* The row's faces, parsed: what the draft starts from and is compared to. */
   const savedFonts = parseMenuFonts(venue)
   const [fonts, setFonts] = useState<MenuFonts>(savedFonts)
+
+  /*
+    The order settings as **stored**, not through `parseOrderSettings`, whose
+    effective reading forces the service to `counter` in name mode: compared
+    against that, an untouched form of a name-mode venue with a stored
+    `service_mode = 'table'` would look dirty.
+  */
+  const savedOrderSettings: OrderSettings = {
+    reference: venue.order_reference === 'table' ? 'table' : 'name',
+    service: venue.service_mode === 'table' ? 'table' : 'counter',
+    firstName: venue.first_name_mode === 'optional' ? 'optional' : 'none',
+  }
+  const [orderSettings, setOrderSettings] =
+    useState<OrderSettings>(savedOrderSettings)
+
+  /*
+    Switching how orders are identified, or how they are served, while orders
+    are still open leaves a mixed queue — each order keeps what it was placed
+    with. The first « Enregistrer » therefore asks, and names the count; the
+    second one saves. Any change to the order settings withdraws the question,
+    since it was asked about another draft.
+  */
+  const [confirmingMode, setConfirmingMode] = useState(false)
+  const keepEditingRef = useRef<HTMLButtonElement>(null)
+
+  const modeChanged =
+    orderSettings.reference !== savedOrderSettings.reference ||
+    effectiveService(orderSettings) !== effectiveService(savedOrderSettings)
+  const needsModeConfirmation = modeChanged && (openOrdersCount ?? 0) > 0
+  const showModeConfirmation = confirmingMode && needsModeConfirmation
+
+  /* Same focus rule as `DeleteButton`: a reflex Enter must land on « Revenir ». */
+  useEffect(() => {
+    if (showModeConfirmation) keepEditingRef.current?.focus()
+  }, [showModeConfirmation])
+
+  const tablesCount = useQuery({
+    ...venueTablesQueryOptions(venue.id),
+    select: (tables) => tables.length,
+  }).data
+
+  function changeOrderSettings(next: OrderSettings) {
+    setOrderSettings(next)
+    setConfirmingMode(false)
+  }
 
   /*
     The logo takes three pieces of state, where a product's photo takes two:
@@ -138,14 +244,38 @@ function VenueSettingsForm({ venue }: { venue: Venue }) {
   const logoUrl = pickedLogoUrl ?? (logoPath ? venueImageUrl(logoPath) : null)
   const hasLogo = logoFile !== null || logoPath !== null
 
+  /*
+    A palette compares by value: six colours in two readings, and every one of
+    them can be typed back to what it was. `JSON.stringify` is enough because
+    `MenuPalette` is two flat records built from `MENU_COLOR_ROLES`, so the key
+    order is the same on both sides whatever produced them.
+  */
+  const colorsChanged = JSON.stringify(colors) !== JSON.stringify(savedColors)
+
   const isDirty =
     name !== venue.name ||
     description !== (venue.description ?? '') ||
     theme !== venue.theme ||
+    colorsChanged ||
     MENU_FONT_ROLES.some((role) => fonts[role.id] !== savedFonts[role.id]) ||
     logoFile !== null ||
     logoPath !== venue.logo_path ||
-    (hasLogo && logoPlate !== venue.logo_plate)
+    (hasLogo && logoPlate !== venue.logo_plate) ||
+    orderSettings.reference !== savedOrderSettings.reference ||
+    orderSettings.service !== savedOrderSettings.service ||
+    orderSettings.firstName !== savedOrderSettings.firstName
+
+  /*
+    What cannot be saved, and why the save button greys out.
+
+    `CLOCLO-25` refused a colour picker over two reasons, readability and
+    night; this is the first one held at the one place it can be. Both readings
+    are measured — a manager choosing at noon is choosing what a customer reads
+    at eleven — and `updateVenue` refuses the same palette in French behind
+    this, for anything that is not this screen.
+  */
+  const contrastFailures = colors ? paletteFailures(colors) : []
+  const unreadable = contrastFailures.length > 0
 
   /*
     The confirmation answers for what is in the database, so it only stands
@@ -182,11 +312,14 @@ function VenueSettingsForm({ venue }: { venue: Venue }) {
     setName(venue.name)
     setDescription(venue.description ?? '')
     setTheme(parseMenuTheme(venue.theme))
+    setColors(savedColors)
     setFonts(savedFonts)
     guessedFile.current = null
     setLogoFile(null)
     setLogoPath(venue.logo_path)
     setLogoPlate(venue.logo_plate)
+    setOrderSettings(savedOrderSettings)
+    setConfirmingMode(false)
     update.reset()
   }
 
@@ -222,17 +355,34 @@ function VenueSettingsForm({ venue }: { venue: Venue }) {
       <form
         onSubmit={(event) => {
           event.preventDefault()
+
+          /*
+            Belt to the disabled button's braces: a form submits on Enter from
+            any field, and a disabled button stops the click, not the key.
+          */
+          if (unreadable) return
+
+          if (needsModeConfirmation && !confirmingMode) {
+            setConfirmingMode(true)
+            return
+          }
+
+          setConfirmingMode(false)
           update.mutate(
             {
               venueId: venue.id,
               name,
               description,
               theme,
+              colors,
               fonts,
               logoFile,
               logoPath,
               logoPlate,
               previousLogoPath: venue.logo_path,
+              orderReference: orderSettings.reference,
+              serviceMode: orderSettings.service,
+              firstNameMode: orderSettings.firstName,
             },
             {
               /*
@@ -343,6 +493,24 @@ function VenueSettingsForm({ venue }: { venue: Venue }) {
         </section>
 
         {/*
+          Its own panel, right under the theme it copies: the two answer the
+          same question at two depths, and a manager who has just clicked a
+          swatch is exactly the one who may want to move one of its colours.
+          Folded into « Thème » it would have doubled that panel's height for
+          every venue, including the nine in ten that never open it.
+        */}
+        <section className="panel rounded-2xl p-4 sm:p-6 lg:col-start-1 lg:row-start-3">
+          <MenuColorsField
+            theme={theme}
+            themeLabel={
+              MENU_THEMES.find((entry) => entry.id === theme)?.label ?? 'maison'
+            }
+            value={colors}
+            onChange={setColors}
+          />
+        </section>
+
+        {/*
           L'aperçu suit le **brouillon**, pas la ligne enregistrée : choisir
           un thème sans le voir reviendrait à choisir un habillage de mémoire.
 
@@ -373,6 +541,7 @@ function VenueSettingsForm({ venue }: { venue: Venue }) {
           <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-1 xl:grid-cols-2">
             <ThemePreview
               theme={theme}
+              colors={colors}
               fonts={fonts}
               mode="light"
               name={name || venue.name}
@@ -381,6 +550,7 @@ function VenueSettingsForm({ venue }: { venue: Venue }) {
             />
             <ThemePreview
               theme={theme}
+              colors={colors}
               fonts={fonts}
               mode="dark"
               name={name || venue.name}
@@ -390,8 +560,22 @@ function VenueSettingsForm({ venue }: { venue: Venue }) {
           </div>
         </section>
 
-        <section className="panel rounded-2xl p-4 sm:p-6 lg:col-start-1 lg:row-start-3">
+        <section className="panel rounded-2xl p-4 sm:p-6 lg:col-start-1 lg:row-start-4">
           <MenuFontField value={fonts} onChange={setFonts} />
+        </section>
+
+        {/*
+          Last of the left column: the carte's look is what a manager comes
+          back to; how orders work is decided once. The preview holds nothing
+          of it, and the confirmation it may need lives in the save bar below.
+        */}
+        <section className="panel rounded-2xl p-4 sm:p-6 lg:col-start-1 lg:row-start-5">
+          <OrderSettingsField
+            value={orderSettings}
+            onChange={changeOrderSettings}
+            venueSlug={venue.slug}
+            tablesCount={tablesCount}
+          />
         </section>
 
         {/*
@@ -413,13 +597,68 @@ function VenueSettingsForm({ venue }: { venue: Venue }) {
         */}
         <div
           data-visible={isDirty || showSaved}
-          className="sticky bottom-[max(1rem,env(safe-area-inset-bottom))] z-10 rounded-2xl border border-line bg-surface p-3 shadow-[var(--shadow-2)] transition-[opacity,translate,visibility] duration-200 ease-out data-[visible=false]:invisible data-[visible=false]:translate-y-2 data-[visible=false]:opacity-0 data-[visible=false]:duration-150 sm:px-4 lg:col-span-2 lg:row-start-4"
+          className="sticky bottom-[max(1rem,env(safe-area-inset-bottom))] z-10 rounded-2xl border border-line bg-surface p-3 shadow-[var(--shadow-2)] transition-[opacity,translate,visibility] duration-200 ease-out data-[visible=false]:invisible data-[visible=false]:translate-y-2 data-[visible=false]:opacity-0 data-[visible=false]:duration-150 sm:px-4 lg:col-span-2 lg:row-start-6"
         >
           {update.isError ? (
             <ErrorNote className="mt-0 mb-3">{update.error.message}</ErrorNote>
           ) : null}
 
-          <div className="flex items-center justify-end gap-2">
+          {/*
+            The question about open orders. In the bar and not in a popover:
+            it answers « Enregistrer », which is here, and on the phone it stays
+            under the thumb that pressed it. `role="alert"` because it appears
+            as the result of a press the manager expected to save.
+          */}
+          {showModeConfirmation ? (
+            <p
+              role="alert"
+              className="mb-3 text-sm duration-150 ease-out animate-in fade-in-0"
+            >
+              <span className="font-medium">
+                {openOrdersCount === 1
+                  ? '1 commande est encore en cours.'
+                  : `${openOrdersCount} commandes sont encore en cours.`}
+              </span>{' '}
+              <span className="text-ink-soft">
+                Elles gardent la référence et le service avec lesquels elles ont
+                été passées : la file mêlera les deux modes le temps de les
+                servir.
+              </span>
+            </p>
+          ) : null}
+
+          {/*
+            Why « Enregistrer » is greyed out. In the bar, with the button it
+            explains, and `role="alert"` for the same reason the question above
+            takes one: it stands between a press and the save that press
+            expected. The fields name the failing ratio; this names the way
+            out.
+          */}
+          {unreadable ? (
+            <p
+              role="alert"
+              className="mb-3 flex items-start gap-1.5 text-sm duration-150 ease-out animate-in fade-in-0"
+            >
+              <TriangleAlert
+                className="mt-0.5 size-4 shrink-0 text-destructive"
+                aria-hidden
+              />
+              <span>
+                <span className="font-medium">
+                  {contrastFailures.length === 1
+                    ? `« ${contrastFailures[0].label} » ne se lit pas sur son fond.`
+                    : `${contrastFailures.length} couleurs ne se lisent pas sur leur fond.`}
+                </span>{' '}
+                <span className="text-ink-soft">
+                  Une carte se lit à une table, le soir, sur un téléphone en
+                  demi-luminosité : reprenez les couleurs signalées avant
+                  d’enregistrer.
+                </span>
+              </span>
+            </p>
+          ) : null}
+
+          <div className="flex flex-wrap items-center justify-end gap-2">
             {/*
               Always rendered, so the live region exists before its text
               changes — a `role="status"` inserted with its message is often
@@ -439,11 +678,31 @@ function VenueSettingsForm({ venue }: { venue: Venue }) {
               ) : null}
             </p>
 
-            {isDirty ? (
-              <CancelButton onClick={reset} disabled={update.isPending} />
-            ) : null}
-            {/* Kept while the confirmation shows, so the bar keeps its height. */}
-            <SaveButton pending={update.isPending} disabled={!isDirty} />
+            {showModeConfirmation ? (
+              <>
+                {/* Goes back to the form without touching the draft. */}
+                <CancelButton
+                  ref={keepEditingRef}
+                  onClick={() => setConfirmingMode(false)}
+                >
+                  Revenir
+                </CancelButton>
+                <SaveButton pending={update.isPending} disabled={unreadable}>
+                  Enregistrer quand même
+                </SaveButton>
+              </>
+            ) : (
+              <>
+                {isDirty ? (
+                  <CancelButton onClick={reset} disabled={update.isPending} />
+                ) : null}
+                {/* Kept while the confirmation shows, so the bar keeps its height. */}
+                <SaveButton
+                  pending={update.isPending}
+                  disabled={!isDirty || unreadable}
+                />
+              </>
+            )}
           </div>
         </div>
       </form>
@@ -466,6 +725,7 @@ function VenueSettingsForm({ venue }: { venue: Venue }) {
  */
 function ThemePreview({
   theme,
+  colors,
   fonts,
   mode,
   name,
@@ -473,12 +733,35 @@ function ThemePreview({
   logoPlate,
 }: {
   theme: MenuTheme
+  /** The draft palette, or `null`: the named theme alone. */
+  colors: MenuPalette | null
   fonts: MenuFonts
   mode: 'light' | 'dark'
   name: string
   logoUrl: string | null
   logoPlate: boolean
 }) {
+  /*
+    The same two attributes the carte carries, and the same style — this is
+    `PublicMenu`'s own contract, rendered at preview scale, so what the manager
+    judges here is what `styles/menu-theme.css` will paint on a phone.
+  */
+  const custom = colors
+    ? {
+        'data-menu-theme': theme,
+        'data-menu-custom': '',
+        style: menuPaletteStyle(colors),
+      }
+    : { 'data-menu-theme': theme }
+
+  /* This box's own reading, and only that one: a day board says nothing about
+     an evening. */
+  const failures = colors
+    ? paletteContrast(mode === 'light' ? colors.day : colors.night).filter(
+        (check) => !check.passes,
+      )
+    : []
+
   return (
     <div
       className={cn(
@@ -486,10 +769,7 @@ function ThemePreview({
         mode,
       )}
     >
-      <div
-        data-menu-theme={theme}
-        className="rounded-lg bg-board px-3 py-4 text-on-board"
-      >
+      <div {...custom} className="rounded-lg bg-board px-3 py-4 text-on-board">
         {/*
           The same component the carte renders, at preview scale — so the plate
           the manager judges here is the one a customer will see.
@@ -533,7 +813,7 @@ function ThemePreview({
         the reading lines included, so the size correction of `menu-fonts.css`
         is previewed too.
       */}
-      <div data-menu-theme={theme} className="px-3 pt-3 pb-1">
+      <div {...custom} className="px-3 pt-3 pb-1">
         <p
           data-menu-face={menuFace(fonts.category)}
           className="display-title truncate text-sm leading-tight text-ink"
@@ -559,6 +839,31 @@ function ThemePreview({
           {mode === 'light' ? 'Le jour' : 'Le soir'}
         </p>
       </div>
+
+      {/*
+        The warning sits under the board it is about, not in a summary
+        somewhere else: the manager reads the failure next to the thing that
+        fails, in the reading that fails — which is the whole reason the
+        preview shows two temperatures at all.
+
+        Outside the themed element on purpose. It is the back office speaking,
+        not the carte, so it keeps the house `--destructive` and does not go
+        looking for legibility inside a palette that has just been shown not to
+        have any.
+      */}
+      {failures.length > 0 ? (
+        <p
+          role="status"
+          className="mt-1 flex items-start gap-1 px-1 pb-1 text-[0.6875rem] font-medium text-destructive"
+        >
+          <TriangleAlert className="mt-px size-3 shrink-0" aria-hidden />
+          <span>
+            {failures.map((check) => check.label).join(', ')} —{' '}
+            {failures.length === 1 ? 'illisible' : 'illisibles'}{' '}
+            {mode === 'light' ? 'le jour' : 'le soir'}.
+          </span>
+        </p>
+      ) : null}
     </div>
   )
 }
@@ -610,11 +915,25 @@ function VenueSettingsSkeleton() {
         </div>
 
         <div className="panel rounded-2xl p-4 sm:p-6 lg:col-start-1 lg:row-start-3">
-          <Skeleton className="h-4 w-40 rounded-full" delay={380} />
-          <Skeleton className="mt-4 h-3 w-48 rounded-full" delay={400} />
-          <Skeleton className="mt-2 h-11 w-full" delay={420} />
-          <Skeleton className="mt-4 h-3 w-40 rounded-full" delay={440} />
-          <Skeleton className="mt-2 h-11 w-full" delay={460} />
+          <Skeleton className="h-4 w-24 rounded-full" delay={360} />
+          <Skeleton className="mt-2 h-3 w-52 rounded-full" delay={370} />
+          <Skeleton className="mt-4 h-11 w-56" delay={380} />
+        </div>
+
+        <div className="panel rounded-2xl p-4 sm:p-6 lg:col-start-1 lg:row-start-4">
+          <Skeleton className="h-4 w-40 rounded-full" delay={400} />
+          <Skeleton className="mt-4 h-3 w-48 rounded-full" delay={420} />
+          <Skeleton className="mt-2 h-11 w-full" delay={440} />
+          <Skeleton className="mt-4 h-3 w-40 rounded-full" delay={460} />
+          <Skeleton className="mt-2 h-11 w-full" delay={480} />
+        </div>
+
+        <div className="panel rounded-2xl p-4 sm:p-6 lg:col-start-1 lg:row-start-5">
+          <Skeleton className="h-4 w-28 rounded-full" delay={500} />
+          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <Skeleton className="h-14 w-full" delay={520} />
+            <Skeleton className="h-14 w-full" delay={540} />
+          </div>
         </div>
       </div>
     </SkeletonScreen>

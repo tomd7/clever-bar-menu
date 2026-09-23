@@ -11,7 +11,7 @@ Guidance for Claude Code (claude.ai/code) working in this repository.
 | `src/routes/CLAUDE.md`          | SSR settings, guards, the root shell, `login`'s search param |
 | `src/styles/CLAUDE.md`          | The "ardoise" theme, stylesheet layout, visual vocabulary    |
 | `src/components/CLAUDE.md`      | Button family, form fields, `surface.ts`, links              |
-| `src/features/auth/CLAUDE.md`   | Sign-in only, error translation                              |
+| `src/features/auth/CLAUDE.md`   | Sign-in, password reset and change, error translation        |
 | `src/features/menu/CLAUDE.md`   | Prices, photos, stock, the customer menu                     |
 | `src/features/orders/CLAUDE.md` | Counter ordering: the two SQL doors, cart, queue             |
 | `src/features/venues/CLAUDE.md` | Sidebar, soft delete, QR code                                |
@@ -129,6 +129,9 @@ different sources:
   Everything declared here ships in the browser bundle, so **public values only**. Holds
   `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (the publishable key,
   `sb_publishable_…`). The Supabase **secret** key must never take a `VITE_` prefix.
+  `VITE_APP_BETA` is the one optional flag (default `false`): a required display flag left
+  unset would fail validation at import and take the whole app down, customer menu
+  included.
 - `src/env.server.ts` — server, `runtimeEnv: process.env`, server-only, evaluated lazily
   via `serverEnv()`.
 
@@ -262,14 +265,16 @@ is **not** ignored wholesale: `settings.json` and `hooks/` live there and are sh
 
 The data layer, the back office, the customer-facing menu (`/m/$venueSlug`), the printable
 QR sheet (`/admin/$venueSlug/qr`), the stock screen (`/admin/$venueSlug/stock`), the venue
-settings screen (`/admin/$venueSlug/reglages` — name, description, per-venue menu theme)
-and counter ordering (`/admin/$venueSlug/commandes`, plus the order bar on the public menu)
-all exist.
+settings screen (`/admin/$venueSlug/reglages` — name, description, per-venue menu theme and
+custom colours) and counter ordering (`/admin/$venueSlug/commandes`, plus the order bar on
+the public menu) all exist, as do the account screen (`/admin/compte` — password change) and ordering by
+table (`/admin/$venueSlug/tables`, a code per table, a per-venue setting in « Réglages »).
 The "ardoise" theme is in place across the home page, `/login`, the back office and the
 public menu.
 
 **Ordering is off by default** on every venue (`venues.orders_enabled`), and turning it on
-is the manager's decision, taken from the orders screen.
+is the manager's decision, taken from the orders screen. Orders are identified **by first
+name** until the manager switches the venue to tables in « Réglages ».
 
 The home page is a landing page, **not** the customer menu: `/` markets the product,
 `/m/$venueSlug` is what a QR code points at.

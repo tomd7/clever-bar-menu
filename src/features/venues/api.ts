@@ -3,12 +3,30 @@ import { queryOptions } from '@tanstack/react-query'
 import { VENUES_QUERY_KEY } from '#/lib/query-keys'
 import { MENU_FONT_ROLES, isMenuFontAllowed } from '#/lib/menu-fonts'
 import { MENU_THEMES } from '#/lib/menu-theme'
+import {
+  MENU_CONTRAST_MIN,
+  isHexColor,
+  menuPaletteToRow,
+  paletteFailures,
+  parseMenuPalette,
+} from '#/lib/menu-colors'
+import {
+  FIRST_NAME_MODES,
+  ORDER_REFERENCES,
+  SERVICE_MODES,
+} from '#/lib/order-settings'
 import { describeError } from '#/lib/postgrest-error'
 import { removeVenueImages } from '#/lib/venue-images'
 import { supabase } from '#/lib/supabase'
 
 import type { MenuFonts } from '#/lib/menu-fonts'
+import type { MenuPalette } from '#/lib/menu-colors'
 import type { MenuTheme } from '#/lib/menu-theme'
+import type {
+  FirstNameMode,
+  OrderReference,
+  ServiceMode,
+} from '#/lib/order-settings'
 import type { Venue } from '#/lib/supabase'
 
 /**
@@ -37,8 +55,15 @@ export function slugify(value: string): string {
  * sans la moindre erreur puis resterait introuvable — sa carte publique
  * marcherait, son écran d'édition non. Le refus à la création est le seul
  * endroit où le problème est encore explicable.
+ *
+ * `/admin/compte` is the second one. This set is not the boundary: Postgres
+ * is, through the `venues_slug_not_reserved` check in `src/db/schema.ts`,
+ * which also stops a hand-written `insert` or an `update` of `slug`. This copy
+ * exists for the French message, since `describeError` has no case for the
+ * check's `23514`. **The two lists change together**, and every new static
+ * child of `/admin/` joins both in the same commit.
  */
-const RESERVED_SLUGS = new Set(['corbeille'])
+const RESERVED_SLUGS = new Set(['corbeille', 'compte'])
 
 /**
  * Les établissements d'un gérant, du plus ancien au plus récent.
@@ -169,6 +194,34 @@ export function venueBySlugQueryOptions(venueSlug: string) {
   })
 }
 
+/**
+ * The venue's custom colours, or `null`: it wears its named theme unedited.
+ *
+ * A query of its own rather than a column of the one above, because it is a
+ * row of its own — and it sits **under `VENUES_QUERY_KEY`** so `useUpdateVenue`
+ * refreshes it with everything else it already invalidates. A prefix of its own
+ * would be a second cache to remember, for a row only this screen reads.
+ *
+ * `enabled` waits for the venue: the palette is keyed by its id, and firing on
+ * `undefined` would read someone's palette or nobody's.
+ */
+export function venueColorsQueryOptions(venueId: string | undefined) {
+  return queryOptions({
+    queryKey: [...VENUES_QUERY_KEY, 'colors', venueId],
+    enabled: Boolean(venueId),
+    queryFn: async (): Promise<MenuPalette | null> => {
+      const { data, error } = await supabase
+        .from('venue_themes')
+        .select('*')
+        .eq('venue_id', venueId!)
+        .maybeSingle()
+
+      if (error) throw new Error(describeError(error))
+      return parseMenuPalette(data)
+    },
+  })
+}
+
 /** Crée un établissement à partir de son seul nom, dont le slug est dérivé. */
 export async function createVenue(name: string): Promise<void> {
   const slug = slugify(name)
@@ -212,6 +265,18 @@ export type VenueSettings = {
   logoPath: string | null
   logoPlate: boolean
   fonts: MenuFonts
+  /**
+   * The venue's own colours, or `null` to go back to the named theme.
+   *
+   * `null` is a real instruction and not "leave it alone": it deletes the
+   * `venue_themes` row, which is what makes « revenir au thème » one gesture.
+   * The form always sends what it holds, so there is no third state to carry.
+   */
+  colors: MenuPalette | null
+  /** How orders are identified and served — see `lib/order-settings.ts`. */
+  orderReference: OrderReference
+  serviceMode: ServiceMode
+  firstNameMode: FirstNameMode
 }
 
 /**
@@ -258,6 +323,48 @@ export async function updateVenue(
     throw new Error('Cette police n’est pas proposée pour cet usage.')
   }
 
+  /*
+    The palette, checked before anything is written — and checked on two axes
+    the database cannot see.
+
+    The shape is `venue_themes_colors_format`'s job as well, and restating it
+    here is the `venues_theme_allowed` pattern: a violated check surfaces as an
+    English `23514`, which `describeError` has no case for.
+
+    **The contrast is this application's alone.** No regular expression can say
+    whether an ink can be read on its ground, so the 4.5:1 line that
+    `CLOCLO-25` refused a colour picker over is held here, in front of the only
+    write that can cross it. The settings screen already greys « Enregistrer »
+    out and names the failing role; this is the boundary behind it, for the
+    palette posted by something that is not that screen.
+  */
+  if (settings.colors) {
+    const values = [
+      ...Object.values(settings.colors.day),
+      ...Object.values(settings.colors.night),
+    ]
+
+    if (!values.every(isHexColor)) {
+      throw new Error('Ces couleurs ne sont pas au format attendu.')
+    }
+
+    const failures = paletteFailures(settings.colors)
+    if (failures.length > 0) {
+      throw new Error(
+        `« ${failures[0].label} » ne se lit pas sur son fond (${MENU_CONTRAST_MIN}:1 minimum). Ajustez la couleur avant d’enregistrer.`,
+      )
+    }
+  }
+
+  /* Same reason again: `venues_order_reference_allowed` & co. answer in English. */
+  if (
+    !ORDER_REFERENCES.includes(settings.orderReference) ||
+    !SERVICE_MODES.includes(settings.serviceMode) ||
+    !FIRST_NAME_MODES.includes(settings.firstNameMode)
+  ) {
+    throw new Error('Ce mode de commande n’existe pas.')
+  }
+
   const { data, error } = await supabase
     .from('venues')
     .update({
@@ -279,6 +386,14 @@ export async function updateVenue(
       font_category: settings.fonts.category,
       font_product: settings.fonts.product,
       font_description: settings.fonts.description,
+      /*
+        Written as chosen, even in name mode: `service_mode` and
+        `first_name_mode` then wait unused, and switching back to tables finds
+        the venue's previous answers. `place_order` ignores both in name mode.
+      */
+      order_reference: settings.orderReference,
+      service_mode: settings.serviceMode,
+      first_name_mode: settings.firstNameMode,
     })
     .eq('id', venueId)
     /*
@@ -296,6 +411,64 @@ export async function updateVenue(
   if (data.length === 0) {
     throw new Error(
       'Ces réglages n’ont pas été enregistrés : cet établissement n’est pas rattaché à votre compte.',
+    )
+  }
+
+  await writeVenueColors(venueId, settings.colors)
+}
+
+/**
+ * Writes — or removes — a venue's custom colours.
+ *
+ * **After the venue's own row, and the order is the useful one.** That update
+ * carries the ownership check (the zero-row rule above), so by the time this
+ * runs the account is known to own the venue and a delete that matches nothing
+ * can be read as « there was no palette », which is the ordinary case. It also
+ * writes the theme the palette is an edited copy of, and a palette landing
+ * before its theme would be a carte painted over the wrong starting point for
+ * as long as the second call takes.
+ *
+ * PostgREST has no transaction across two calls, so a failure here leaves the
+ * name and the theme saved and the colours not. The form surfaces the error
+ * with its draft intact and the retry is idempotent — an `upsert` on a primary
+ * key, or a delete of something already gone.
+ */
+async function writeVenueColors(
+  venueId: string,
+  colors: MenuPalette | null,
+): Promise<void> {
+  if (!colors) {
+    /*
+      No zero-row check: deleting a palette that was never there is the normal
+      way back to a named theme, not a refusal. The ownership question was
+      already answered by the update above.
+    */
+    const { error } = await supabase
+      .from('venue_themes')
+      .delete()
+      .eq('venue_id', venueId)
+
+    if (error) throw new Error(describeError(error))
+    return
+  }
+
+  /*
+    `upsert` rather than insert-or-update: `venue_id` is the primary key, so
+    « this venue's palette » is one row by construction and there is nothing to
+    look up first. The row is asked back for the reason the update above asks
+    for its own — under RLS, a refused write matches zero rows and answers 204,
+    which is indistinguishable from a success.
+  */
+  const { data, error } = await supabase
+    .from('venue_themes')
+    .upsert({ venue_id: venueId, ...menuPaletteToRow(colors) })
+    .select('venue_id')
+
+  if (error) throw new Error(describeError(error))
+
+  if (data.length === 0) {
+    throw new Error(
+      'Ces couleurs n’ont pas été enregistrées : cet établissement n’est pas rattaché à votre compte.',
     )
   }
 }

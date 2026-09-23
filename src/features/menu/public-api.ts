@@ -2,9 +2,12 @@ import { queryOptions } from '@tanstack/react-query'
 
 import { VenueNotFoundError } from '#/features/menu/api'
 import { describeError } from '#/lib/postgrest-error'
+import { isSoldOut } from '#/features/menu/stock'
+import { parseMenuPalette } from '#/lib/menu-colors'
 import { supabase } from '#/lib/supabase'
 
 import type { Category, Product, Venue } from '#/lib/supabase'
+import type { MenuPalette } from '#/lib/menu-colors'
 
 /**
  * La carte telle qu'elle voyage jusqu'au client — colonne par colonne.
@@ -35,6 +38,9 @@ export type PublicVenue = Pick<
   | 'font_category'
   | 'font_product'
   | 'font_description'
+  | 'order_reference'
+  | 'service_mode'
+  | 'first_name_mode'
 >
 
 export type PublicProduct = Pick<
@@ -46,7 +52,14 @@ export type PublicProduct = Pick<
   | 'size'
   | 'price_cents'
   | 'image_path'
->
+> & {
+  /**
+   * Listed, but no longer orderable — out of stock by hand or at zero, see
+   * `isSoldOut`. Derived here rather than shipped as the two columns it comes
+   * from: the menu needs the verdict, not the stock level.
+   */
+  sold_out: boolean
+}
 
 export type PublicCategory = Pick<Category, 'id' | 'name' | 'description'> & {
   products: Array<PublicProduct>
@@ -54,27 +67,52 @@ export type PublicCategory = Pick<Category, 'id' | 'name' | 'description'> & {
 
 export type PublicMenuData = {
   venue: PublicVenue
+  /**
+   * The venue's own colours, or `null`: it wears its named theme unedited.
+   *
+   * Beside the venue rather than inside it, because it is not a column of
+   * `venues` — it is the `venue_themes` row, and a `Pick` that pretended
+   * otherwise would stop failing the day the shape moves. `PublicMenu` turns
+   * it into the `style` attribute the carte is server-rendered with.
+   */
+  colors: MenuPalette | null
   categories: Array<PublicCategory>
 }
 
 /*
-  Les colonnes demandées à PostgREST, écrites une fois et lues par la requête.
-  `is_available`, `stock_quantity` et `position` sont absents alors que la
-  requête s'en sert : ils filtrent et ordonnent **côté serveur**, le client n'a
-  pas à les recevoir pour autant.
+  The columns asked of PostgREST, written once and read by the query.
+  `is_visible` and `position` are absent although the query uses them: they
+  filter and order **server-side**, and the client has no need to receive them.
+
+  `is_available` and `stock_quantity` are asked for, but never returned:
+  `fetchPublicMenu` folds them into `sold_out` before building the payload, so
+  the stock level is not dehydrated into the page's HTML.
+*/
+/*
+  `order_reference`, `service_mode` and `first_name_mode` travel with the venue:
+  the route hands them to the order bar, which decides what the cart sheet asks.
+  Three short strings, and they spare the sheet a second venue read.
 */
 const VENUE_COLUMNS =
-  'id,slug,name,description,currency,orders_enabled,theme,logo_path,logo_plate,font_title,font_category,font_product,font_description'
+  'id,slug,name,description,currency,orders_enabled,theme,logo_path,logo_plate,font_title,font_category,font_product,font_description,order_reference,service_mode,first_name_mode'
+/*
+  The palette's twelve colours. Asked for by name like everything else here —
+  `select('*')` would ship `venue_id` and the two timestamps into the SSR'd
+  HTML of every carte, for nothing.
+*/
+const VENUE_THEME_COLUMNS =
+  'ground_day,ground_night,board_day,board_night,on_board_day,on_board_night,ink_day,ink_night,ink_soft_day,ink_soft_night,accent_day,accent_night'
 const CATEGORY_COLUMNS = 'id,name,description'
 const PRODUCT_COLUMNS =
-  'id,category_id,name,description,size,price_cents,image_path'
+  'id,category_id,name,description,size,price_cents,image_path,is_available,stock_quantity'
 
 /**
  * Lecture de la carte telle qu'un client la voit.
  *
  * Volontairement séparée de `fetchMenu`, qui sert l'éditeur : ce n'est pas la
- * même requête. Celle-ci écarte les ruptures et les catégories devenues vides,
- * et surtout elle s'exécute **sans compte**, sous le rôle `anon`. Les policies
+ * même requête. Celle-ci écarte les produits masqués et les catégories devenues
+ * vides, marque les ruptures (`sold_out`), et surtout elle s'exécute **sans
+ * compte**, sous le rôle `anon`. Les policies
  * de lecture publique déclarées dans `src/db/schema.ts` sont ce qui la rend
  * possible ; rien ici n'a besoin d'être authentifié.
  *
@@ -98,19 +136,46 @@ export async function fetchPublicMenu(
 
   const venue = venueResult.data
 
-  const categoriesResult = await supabase
-    .from('categories')
-    .select(CATEGORY_COLUMNS)
-    .eq('venue_id', venue.id)
-    .order('position', { ascending: true })
-    .order('name', { ascending: true })
+  /*
+    Two reads, one wait. Both need the venue's id and neither needs the other,
+    so they go out together: the palette costs a round trip the customer would
+    otherwise spend staring at a carte that is not painted yet. An embedded
+    `venue_themes(…)` would have saved the request itself, but this file's
+    `Database` type declares no relationship for PostgREST's resolver to
+    follow — see `src/lib/supabase.ts`.
+  */
+  const [categoriesResult, paletteResult] = await Promise.all([
+    supabase
+      .from('categories')
+      .select(CATEGORY_COLUMNS)
+      .eq('venue_id', venue.id)
+      .order('position', { ascending: true })
+      .order('name', { ascending: true }),
+    supabase
+      .from('venue_themes')
+      .select(VENUE_THEME_COLUMNS)
+      .eq('venue_id', venue.id)
+      .maybeSingle(),
+  ])
 
   if (categoriesResult.error) {
     throw new Error(describeError(categoriesResult.error))
   }
 
+  /*
+    A palette that cannot be read is not a reason to refuse the carte: the
+    venue keeps its named theme, which is exactly what `parseMenuPalette`
+    returns `null` for. The same goes for the request failing — the colours are
+    an edited copy of a theme that is already on the row, so the carte has
+    something to wear either way and nothing here should turn a paint job into
+    a 500.
+  */
+  const colors = paletteResult.error
+    ? null
+    : parseMenuPalette(paletteResult.data)
+
   const categories = categoriesResult.data
-  if (categories.length === 0) return { venue, categories: [] }
+  if (categories.length === 0) return { venue, colors, categories: [] }
 
   const productsResult = await supabase
     .from('products')
@@ -120,27 +185,16 @@ export async function fetchPublicMenu(
       categories.map((category) => category.id),
     )
     /*
-      Le filtre des ruptures est ici, dans la requête, et non à l'affichage :
-      un produit masqué ne doit pas transiter jusqu'au navigateur du client. Ce
-      qui n'est pas envoyé ne peut pas apparaître par accident dans le HTML
-      rendu au serveur.
-    */
-    .eq('is_available', true)
-    /*
-      Seconde cause de disparition, indépendante de la première : le stock est
-      épuisé. Elle est **déduite** et jamais écrite dans `is_available` — un
-      produit réapprovisionné revient donc tout seul, sans que personne ait à
-      rouvrir la carte pour le réactiver.
+      A hidden product is filtered here, in the query, and not at render: it
+      must not travel to the customer's browser at all. What isn't sent cannot
+      turn up by accident in the server-rendered HTML.
 
-      `stock_quantity is null` doit rester dans la condition : c'est l'immense
-      majorité des lignes, celles qu'on ne compte pas. Un filtre écrit
-      naïvement `gt.0` viderait la carte de tous les produits non suivis.
-
-      La règle est la même que `isHiddenFromCustomers` dans `stock.ts`, écrite
-      deux fois parce qu'elle s'applique de deux côtés — SQL ici, TypeScript
-      pour le back-office. Elles se modifient ensemble.
+      Sold out filters nothing any more. Such a product stays listed, marked
+      « épuisé » (`sold_out`, below): a line the customer can read as gone is
+      information, where a line that silently vanished is a question for the
+      counter.
     */
-    .or('stock_quantity.is.null,stock_quantity.gt.0')
+    .eq('is_visible', true)
     .order('position', { ascending: true })
     .order('name', { ascending: true })
 
@@ -149,7 +203,12 @@ export async function fetchPublicMenu(
   }
 
   const byCategory = new Map<string, Array<PublicProduct>>()
-  for (const product of productsResult.data) {
+  for (const row of productsResult.data) {
+    const { is_available, stock_quantity, ...columns } = row
+    const product: PublicProduct = {
+      ...columns,
+      sold_out: isSoldOut({ is_available, stock_quantity }),
+    }
     const bucket = byCategory.get(product.category_id)
     if (bucket) bucket.push(product)
     else byCategory.set(product.category_id, [product])
@@ -157,10 +216,13 @@ export async function fetchPublicMenu(
 
   return {
     venue,
+    colors,
     /*
-      Une catégorie sans produit disponible disparaît. Un client n'a rien à
-      faire d'un intitulé « Cocktails » suivi de rien — et c'est exactement ce
-      qu'affiche une carte dont tout le rayon est en rupture.
+      A category with no listed product disappears: a customer has nothing to
+      do with a « Cocktails » heading followed by nothing, which is what a
+      section whose every product is hidden would show. A section of sold-out
+      products stays — each of its lines says « épuisé », which is the thing to
+      read.
     */
     categories: categories
       .map((category) => ({

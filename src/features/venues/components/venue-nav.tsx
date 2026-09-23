@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import {
+  Armchair,
   Boxes,
   ConciergeBell,
   QrCode,
@@ -9,6 +10,7 @@ import {
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 
+import { parseOrderSettings } from '#/lib/order-settings'
 import { venuesQueryOptions } from '#/features/venues/api'
 
 import type { ReactNode } from 'react'
@@ -131,6 +133,24 @@ export function VenueNav({
                     Stock
                   </Link>
                 </li>
+                {/*
+                  Only for a venue ordering by table: a counter bar has no use
+                  for a list of tables in its column every day. The screen stays
+                  reachable before the switch, from « Réglages ».
+                */}
+                {parseOrderSettings(venue).reference === 'table' ? (
+                  <li>
+                    <Link
+                      to="/admin/$venueSlug/tables"
+                      params={{ venueSlug: venue.slug }}
+                      activeProps={{ className: 'is-active' }}
+                      className="rail-link"
+                    >
+                      <Armchair className="size-4 shrink-0" />
+                      Tables
+                    </Link>
+                  </li>
+                ) : null}
                 <li>
                   <Link
                     to="/admin/$venueSlug/qr"

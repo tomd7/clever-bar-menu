@@ -6,7 +6,16 @@
  * montre l'aperçu. C'est du routage, comme les codes d'erreur de PostgREST
  * sont de la persistance — d'où sa place ici plutôt que dans une feature, que
  * les deux autres devraient alors s'importer entre elles.
+ *
+ * **This file is the only place the URL shape is written**, table included:
+ * `m.$venueSlug.tsx` reads the same `table` search parameter this file writes.
  */
+
+/**
+ * The search parameter a table's QR code carries. It holds the table's opaque
+ * public id (`venue_tables.public_id`), never its number.
+ */
+export const TABLE_SEARCH_PARAM = 'table'
 
 /**
  * Le chemin, relatif à l'application.
@@ -14,9 +23,17 @@
  * Suffisant pour un `href` : le navigateur le résout contre la page courante,
  * et l'écrire relatif évite qu'un lien du back-office parte vers l'origine de
  * production depuis un environnement de recette.
+ *
+ * `tablePublicId` adds `?table=<id>` — the address one table's code encodes.
  */
-export function publicMenuPath(venueSlug: string): string {
-  return `/m/${venueSlug}`
+export function publicMenuPath(
+  venueSlug: string,
+  tablePublicId?: string,
+): string {
+  const path = `/m/${venueSlug}`
+  return tablePublicId
+    ? `${path}?${TABLE_SEARCH_PARAM}=${encodeURIComponent(tablePublicId)}`
+    : path
 }
 
 /**
@@ -28,6 +45,10 @@ export function publicMenuPath(venueSlug: string): string {
  * passé plutôt que lu ici, pour que la fonction reste vérifiable sans
  * navigateur.
  */
-export function publicMenuUrl(origin: string, venueSlug: string): string {
-  return `${origin}${publicMenuPath(venueSlug)}`
+export function publicMenuUrl(
+  origin: string,
+  venueSlug: string,
+  tablePublicId?: string,
+): string {
+  return `${origin}${publicMenuPath(venueSlug, tablePublicId)}`
 }

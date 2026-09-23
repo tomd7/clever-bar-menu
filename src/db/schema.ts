@@ -153,6 +153,38 @@ export const VENUE_FONTS = [
 export type VenueFont = (typeof VENUE_FONTS)[number]
 
 /**
+ * How a venue's orders are identified: by the customer's first name (the
+ * default, and the only mode before tables existed), or by the table the order
+ * was sent from.
+ *
+ * Constrained text, for the reason `VENUE_THEMES` gives. The three whitelists
+ * below live in three places that move together: here with the checks on
+ * `venues` (and `orders_service_mode_valid`), `src/lib/order-settings.ts` (the
+ * browser's copy), and the `place_order` function, which branches on them.
+ */
+export const ORDER_REFERENCES = ['name', 'table'] as const
+
+export type OrderReference = (typeof ORDER_REFERENCES)[number]
+
+/**
+ * How an order reaches the customer: collected at the counter, or brought to
+ * the table. Only meaningful in table mode — a name-mode venue always serves at
+ * the counter, whatever this column holds.
+ */
+export const SERVICE_MODES = ['counter', 'table'] as const
+
+export type ServiceMode = (typeof SERVICE_MODES)[number]
+
+/**
+ * Whether a table-mode venue still asks for a first name: not at all, or as an
+ * optional field. Name mode ignores it — the name is the reference there, so it
+ * is always required.
+ */
+export const FIRST_NAME_MODES = ['none', 'optional'] as const
+
+export type FirstNameMode = (typeof FIRST_NAME_MODES)[number]
+
+/**
  * Établissement — un bar ou un café. Racine de tout le cloisonnement
  * multi-établissements : catégories et produits n'existent qu'à travers lui.
  */
@@ -244,6 +276,22 @@ export const venues = pgTable(
     fontDescription: text('font_description').notNull().default('archivo'),
 
     /**
+     * How orders are identified — see `ORDER_REFERENCES`.
+     *
+     * `not null default 'name'`, for the reason `orders_enabled` defaults to
+     * `false`: nothing may change under a live bar the minute the migration
+     * runs. Switching to tables is a manager's decision, taken from the
+     * settings screen.
+     */
+    orderReference: text('order_reference').notNull().default('name'),
+
+    /** How a table order is served — see `SERVICE_MODES`. */
+    serviceMode: text('service_mode').notNull().default('counter'),
+
+    /** Whether table mode still asks for a first name — see `FIRST_NAME_MODES`. */
+    firstNameMode: text('first_name_mode').notNull().default('none'),
+
+    /**
      * Archivage — suppression logique.
      *
      * Une date plutôt qu'un booléen : elle répond à « archivé ? » comme à
@@ -264,6 +312,29 @@ export const venues = pgTable(
   (table) => [
     uniqueIndex('venues_slug_unique').on(table.slug),
     index('venues_owner_id_idx').on(table.ownerId),
+
+    /**
+     * No venue may take a slug the back office uses as a static segment under
+     * `/admin/`. The router puts `/admin/corbeille` and `/admin/compte` before
+     * `/admin/$venueSlug`, so such a venue would be created without an error
+     * and then be unreachable from the back office while its public menu
+     * worked.
+     *
+     * Enforced here because the browser writes to PostgREST directly: a
+     * hand-written `insert`, or an `update` that sets `slug`, never meets
+     * `createVenue`. Unlike `venues_theme_allowed` this one also covers a
+     * column the application never updates — and that is the point.
+     *
+     * **The list lives in two places that change together**: here and
+     * `RESERVED_SLUGS` in `src/features/venues/api.ts`, which refuses in French
+     * before this answers in English (`describeError` has no case for
+     * `23514`). Every new static child of `/admin/` goes into both, in the same
+     * commit. Importing this file into the bundle is not the way to share it.
+     */
+    check(
+      'venues_slug_not_reserved',
+      sql`${table.slug} not in ('corbeille', 'compte')`,
+    ),
 
     /**
      * Lecture publique : les établissements actifs seulement.
@@ -329,6 +400,25 @@ export const venues = pgTable(
     check(
       'venues_font_description_allowed',
       sql`${table.fontDescription} in ('archivo', 'playfair-display', 'newsreader', 'fredoka', 'courier-prime')`,
+    ),
+
+    /*
+      The order settings belong to their whitelists. Same relationship to
+      `updateVenue` as the theme check: the application refuses in French
+      first, these catch a row written from outside it — and `place_order`
+      branches on these values, so a stray one must not exist.
+    */
+    check(
+      'venues_order_reference_allowed',
+      sql`${table.orderReference} in ('name', 'table')`,
+    ),
+    check(
+      'venues_service_mode_allowed',
+      sql`${table.serviceMode} in ('counter', 'table')`,
+    ),
+    check(
+      'venues_first_name_mode_allowed',
+      sql`${table.firstNameMode} in ('none', 'optional')`,
     ),
 
     ...ownerWrite('venues', sql`${authUid} = ${table.ownerId}`),
@@ -449,16 +539,40 @@ export const products = pgTable(
     imagePath: text('image_path'),
 
     /**
-     * Rupture décidée à la main : masque le produit sur la carte publique.
+     * A shortage decided by hand: the product stays on the public menu, marked
+     * sold out, and can no longer be ordered.
      *
-     * Distinct de l'épuisement du stock, qui se déduit de `stockQuantity`. Un
-     * gérant retire un produit pour des raisons qu'aucun compteur ne connaît —
-     * la machine est en panne, le fournisseur a changé, la recette ne suit
-     * plus. Écraser ce drapeau à chaque fois qu'un stock retombe à zéro ferait
-     * réapparaître, à la livraison suivante, un produit que personne n'avait
-     * demandé à remettre.
+     * Distinct from an exhausted stock, which is derived from `stockQuantity`.
+     * A manager pulls a product for reasons no counter knows — the machine is
+     * down, the keg is pierced. Overwriting this flag every time a stock falls
+     * to zero would bring back, at the next delivery, a product nobody had
+     * asked to put back on sale.
+     *
+     * It says nothing about whether the product is *listed* — that is
+     * `isVisible`. Before that column existed, this flag hid the product
+     * outright, so it did both jobs at once.
      */
     isAvailable: boolean('is_available').notNull().default(true),
+
+    /**
+     * Whether the product is listed on the public menu at all.
+     *
+     * `false` takes it off the customer's menu entirely — no row, no « épuisé »
+     * — while it stays in the editor: a seasonal drink out of season, a
+     * cocktail not launched yet, a line the manager keeps for later. A sold-out
+     * product, by contrast, is still on the menu; the customer reads that it
+     * has run out, which is information, where a vanished line is a question.
+     *
+     * `not null default true`: a new column must not take anything off a menu
+     * the minute the migration runs. Migration `0023` hides the products that
+     * were unavailable by hand before this column existed, since hiding was
+     * what that switch did at the time.
+     *
+     * Checked by `fetchPublicMenu` (not listed) and by `place_order` (not
+     * orderable) — the second because a menu left open in a tab can be older
+     * than the gesture.
+     */
+    isVisible: boolean('is_visible').notNull().default(true),
 
     /**
      * Niveau de stock restant, ou `null` si le produit n'est pas suivi.
@@ -548,6 +662,216 @@ export const products = pgTable(
 )
 
 /**
+ * A table of a venue, for venues whose orders are identified by table.
+ *
+ * Defined by a number (unique per venue) and an optional label — « Terrasse »,
+ * « Mezzanine » — and displayed as « Table 12 » or « Terrasse · 12 »
+ * (`tableName` in `src/lib/order-settings.ts`).
+ *
+ * **Readable by anyone**, like `categories`. The customer menu is `anon`, and a
+ * customer who scanned the venue-wide code picks their table from this list.
+ * Nothing here is a secret: see `publicId`.
+ */
+export const venueTables = pgTable(
+  'venue_tables',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+
+    venueId: uuid('venue_id')
+      .notNull()
+      .references(() => venues.id, { onDelete: 'cascade' }),
+
+    /** What the staff and the customer call the table. Unique per venue. */
+    number: integer('number').notNull(),
+
+    /** An optional area or name — « Terrasse ». `null`: « Table 12 ». */
+    label: text('label'),
+
+    /**
+     * The opaque id a table's QR code carries: `/m/<slug>?table=<publicId>`.
+     *
+     * Random, never derived from the number, so renumbering or relabelling a
+     * table keeps its printed code valid, and editing a digit in the URL does
+     * not land on the neighbouring table. **It is not a security boundary**:
+     * the table list is public (the picker needs it), and `place_order` only
+     * guarantees the table exists and belongs to the venue. Sending an order
+     * to the wrong table is the same class of mistake as giving a wrong name.
+     *
+     * Eight URL-safe characters, about 46 random bits — short on purpose: the
+     * address is what the QR code encodes, and a longer address makes a denser
+     * code (see the tolerance measured in `features/venues/qr.ts`). The bits
+     * are the first six bytes of a v4 uuid, which are all random, so no
+     * extension is needed; base64 turns them into eight characters.
+     *
+     * **No digits**, and that is not cosmetic: TanStack Router parses search
+     * params JSON-first, so `?table=12345678` would arrive as a number and
+     * `?table=1e123456` as `Infinity`. `translate` maps the digits onto
+     * letters, which costs about two bits and makes every id a string no
+     * JSON parser accepts. A collision is caught by
+     * `venue_tables_public_id_unique`, and `createVenueTable` retries once.
+     */
+    publicId: text('public_id')
+      .notNull()
+      .default(
+        sql`substr(translate(encode(decode(replace(gen_random_uuid()::text, '-', ''), 'hex'), 'base64'), '+/0123456789', '-_abcdefghij'), 1, 8)`,
+      ),
+
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex('venue_tables_venue_id_number_unique').on(
+      table.venueId,
+      table.number,
+    ),
+    uniqueIndex('venue_tables_public_id_unique').on(table.publicId),
+
+    check('venue_tables_number_range', sql`${table.number} between 1 and 9999`),
+    check(
+      'venue_tables_label_length',
+      sql`${table.label} is null or char_length(${table.label}) between 1 and 40`,
+    ),
+    /*
+      The shape the default produces: safe in a URL, and never readable as a
+      number by the router's search parsing (see `publicId`).
+    */
+    check(
+      'venue_tables_public_id_format',
+      sql`${table.publicId} ~ '^[A-Za-z_-]{8}$'`,
+    ),
+
+    publicRead('venue_tables_public_read'),
+    ...ownerWrite(
+      'venue_tables',
+      sql`exists (
+        select 1 from ${venues}
+        where ${venues.id} = ${table.venueId}
+          and ${venues.ownerId} = ${authUid}
+      )`,
+    ),
+  ],
+)
+
+/**
+ * The custom colours of a venue's carte — one row per venue, or none.
+ *
+ * **A row is an edited copy of the venue's named theme, not a replacement for
+ * it.** `venues.theme` stays, and keeps meaning something: it is what the
+ * palette was copied from, what the picker shows as the starting point, and
+ * what the carte falls back to the moment this row is deleted — which is how
+ * « revenir à un thème » is one gesture and not twelve fields to clear.
+ *
+ * **A table rather than columns on `venues`.** Twelve nullable colour columns
+ * would sit on the row every screen of the back office and every customer menu
+ * already reads, to serve the one venue in ten that paints its own carte; and
+ * « pas de couleurs personnalisées » would be twelve nulls that nothing stops
+ * from being written six at a time. Here the invariant is the row's existence,
+ * and `venue_id` is the primary key, so « one palette per venue » is structural
+ * rather than something the application remembers to enforce.
+ *
+ * The cost is its own policies — a table has no RLS until someone writes it —
+ * and they are below: public `select` like `venue_tables`, since the anonymous
+ * carte reads this to paint itself, and the owner triple through `venues`.
+ *
+ * Six roles, two readings, twelve columns. The role list lives in three places
+ * that move together: here with `venue_themes_colors_format`,
+ * `src/lib/menu-colors.ts` (the browser's copy, and the maths), and the
+ * `[data-menu-custom]` blocks of `src/styles/menu-theme.css`.
+ */
+export const venueThemes = pgTable(
+  'venue_themes',
+  {
+    /**
+     * The venue, and the primary key: a venue has one palette or none.
+     *
+     * `on delete cascade` like every other child of `venues` — a purged venue
+     * takes its colours with it, and the bin's `deleted_at` keeps the row
+     * standing meanwhile, so restoring gives the carte its colours back.
+     */
+    venueId: uuid('venue_id')
+      .primaryKey()
+      .references(() => venues.id, { onDelete: 'cascade' }),
+
+    /**
+     * Each role, in its two readings.
+     *
+     * **Both are `not null`, and that is the whole point of the pair.** A
+     * night value left blank would mean picking one colour and silently
+     * getting two, which is the trap `CLOCLO-25` named when it refused a
+     * colour picker. The browser derives the night reading from the day one
+     * (`deriveNightColors`) and shows it in the preview, so the manager either
+     * accepts what they can see or edits it — never leaves it to chance.
+     */
+    groundDay: text('ground_day').notNull(),
+    groundNight: text('ground_night').notNull(),
+    boardDay: text('board_day').notNull(),
+    boardNight: text('board_night').notNull(),
+    onBoardDay: text('on_board_day').notNull(),
+    onBoardNight: text('on_board_night').notNull(),
+    inkDay: text('ink_day').notNull(),
+    inkNight: text('ink_night').notNull(),
+    inkSoftDay: text('ink_soft_day').notNull(),
+    inkSoftNight: text('ink_soft_night').notNull(),
+    accentDay: text('accent_day').notNull(),
+    accentNight: text('accent_night').notNull(),
+
+    ...timestamps,
+  },
+  (table) => [
+    /**
+     * Twelve columns, one constraint.
+     *
+     * Same relationship to the client that `venues_theme_allowed` has: it
+     * restates the shape `parseHexColor` already guarantees, and what it
+     * catches is the row written from outside the application. One named check
+     * rather than twelve, because a manager never meets it — `updateVenue`
+     * answers in French first — so the only reader of the constraint name is
+     * whoever is debugging a `curl`.
+     *
+     * Lowercase `#rrggbb` only: no shorthand, no `rgb()`, no colour keyword.
+     * The carte inlines these values into a `style` attribute, and the picker
+     * measures contrast on them — both want one spelling, not six.
+     *
+     * **It cannot check contrast**, which is the interesting half: a regular
+     * expression has nothing to say about whether `#f0f0f0` on `#ffffff` can
+     * be read. That check lives in `src/lib/menu-colors.ts` and is enforced by
+     * the settings screen, which refuses to save below 4.5:1. A row written
+     * around the application can therefore be unreadable — the same class of
+     * trust this schema already extends to `products.name`.
+     */
+    check(
+      'venue_themes_colors_format',
+      sql`${table.groundDay} ~ '^#[0-9a-f]{6}$'
+        and ${table.groundNight} ~ '^#[0-9a-f]{6}$'
+        and ${table.boardDay} ~ '^#[0-9a-f]{6}$'
+        and ${table.boardNight} ~ '^#[0-9a-f]{6}$'
+        and ${table.onBoardDay} ~ '^#[0-9a-f]{6}$'
+        and ${table.onBoardNight} ~ '^#[0-9a-f]{6}$'
+        and ${table.inkDay} ~ '^#[0-9a-f]{6}$'
+        and ${table.inkNight} ~ '^#[0-9a-f]{6}$'
+        and ${table.inkSoftDay} ~ '^#[0-9a-f]{6}$'
+        and ${table.inkSoftNight} ~ '^#[0-9a-f]{6}$'
+        and ${table.accentDay} ~ '^#[0-9a-f]{6}$'
+        and ${table.accentNight} ~ '^#[0-9a-f]{6}$'`,
+    ),
+
+    /*
+      Read by anyone, like the carte it paints: the customer menu is served to
+      `anon`, and a palette it could not read would leave the carte in its
+      named theme for customers and in its own colours for the manager.
+    */
+    publicRead('venue_themes_public_read'),
+    ...ownerWrite(
+      'venue_themes',
+      sql`exists (
+        select 1 from ${venues}
+        where ${venues.id} = ${table.venueId}
+          and ${venues.ownerId} = ${authUid}
+      )`,
+    ),
+  ],
+)
+
+/**
  * Les états d'une commande, dans l'ordre où elle les traverse.
  *
  * Du texte contraint plutôt qu'un `pgEnum` : ajouter un état à une énumération
@@ -594,8 +918,36 @@ export const orders = pgTable(
      * Le prénom donné au comptoir. C'est la référence de la commande : un
      * numéro d'ordre demanderait un compteur par établissement, et un prénom
      * s'appelle à voix haute, ce qu'un numéro fait mal.
+     *
+     * Nullable since table ordering: a table-mode venue may not ask for one.
+     * `orders_reference_present` still requires a name or a table.
      */
-    customerName: text('customer_name').notNull(),
+    customerName: text('customer_name'),
+
+    /**
+     * The table the order was sent from, if it still exists. `set null`: a
+     * table removed from the venue must not take its orders' history with it.
+     * The number and label below are what gets displayed.
+     */
+    tableId: uuid('table_id').references(() => venueTables.id, {
+      onDelete: 'set null',
+    }),
+
+    /**
+     * The table's number and label **at the time of the order**, copied like
+     * `order_items.name`: a line is a trace, and a table will be renumbered,
+     * relabelled or removed. `null` on an order identified by name.
+     */
+    tableNumber: integer('table_number'),
+    tableLabel: text('table_label'),
+
+    /**
+     * How this order is served, copied from the venue when it was placed —
+     * `counter` for every name-mode order. Copied for the same reason as the
+     * table: a venue switching service mode mid-evening leaves the orders
+     * already placed served the way the customer was told.
+     */
+    serviceMode: text('service_mode').notNull().default('counter'),
 
     /** Mot du client : « sans glace », « à emporter ». Facultatif. */
     note: text('note'),
@@ -655,6 +1007,19 @@ export const orders = pgTable(
     check(
       'orders_cancelled_by_valid',
       sql`${table.cancelledBy} is null or ${table.cancelledBy} in ('guest', 'venue')`,
+    ),
+    /*
+      An order is called by something: a first name, a table, or both. Since
+      `customer_name` became nullable, this is what keeps an order from being
+      nobody's. `place_order` enforces the per-mode rules in French first.
+    */
+    check(
+      'orders_reference_present',
+      sql`${table.customerName} is not null or ${table.tableNumber} is not null`,
+    ),
+    check(
+      'orders_service_mode_valid',
+      sql`${table.serviceMode} in ('counter', 'table')`,
     ),
 
     /*
@@ -766,15 +1131,36 @@ export const orderItems = pgTable(
   ],
 )
 
-export const venuesRelations = relations(venues, ({ many }) => ({
+export const venuesRelations = relations(venues, ({ many, one }) => ({
   categories: many(categories),
   orders: many(orders),
+  tables: many(venueTables),
+  /* One or none — `venue_themes.venue_id` is that table's primary key. */
+  colors: one(venueThemes),
+}))
+
+export const venueThemesRelations = relations(venueThemes, ({ one }) => ({
+  venue: one(venues, {
+    fields: [venueThemes.venueId],
+    references: [venues.id],
+  }),
+}))
+
+export const venueTablesRelations = relations(venueTables, ({ one }) => ({
+  venue: one(venues, {
+    fields: [venueTables.venueId],
+    references: [venues.id],
+  }),
 }))
 
 export const ordersRelations = relations(orders, ({ one, many }) => ({
   venue: one(venues, {
     fields: [orders.venueId],
     references: [venues.id],
+  }),
+  table: one(venueTables, {
+    fields: [orders.tableId],
+    references: [venueTables.id],
   }),
   items: many(orderItems),
 }))
@@ -811,6 +1197,8 @@ export type Category = typeof categories.$inferSelect
 export type NewCategory = typeof categories.$inferInsert
 export type Product = typeof products.$inferSelect
 export type NewProduct = typeof products.$inferInsert
+export type VenueTable = typeof venueTables.$inferSelect
+export type NewVenueTable = typeof venueTables.$inferInsert
 export type Order = typeof orders.$inferSelect
 export type NewOrder = typeof orders.$inferInsert
 export type OrderItem = typeof orderItems.$inferSelect

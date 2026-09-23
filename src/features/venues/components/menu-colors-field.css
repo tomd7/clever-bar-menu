@@ -1,0 +1,65 @@
+/*
+  The colour picker's swatch.
+
+  A **native `<input type="color">`**, restyled rather than replaced. The OS
+  picker it opens is the one the manager already knows — an eyedropper on the
+  desktop, the system wheel on a phone — it is reachable from the keyboard, it
+  announces itself, and it costs no dependency for a control the project would
+  otherwise have to build twice (a wheel and a field). What it does not do is
+  look like anything: hence this file.
+
+  The two pseudo-elements are the swatch inside the input's box, and they are
+  vendor-specific with no standard equivalent — WebKit and Blink expose
+  `::-webkit-color-swatch(-wrapper)`, Firefox styles the box directly. Both
+  paths are written below; neither is a fallback for the other.
+*/
+
+.color-swatch {
+  /* 44px: the touch target this project holds every control to. */
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0.5rem;
+  background: transparent;
+  cursor: pointer;
+  /* Safari draws its own inner border and shadow on this control. */
+  appearance: none;
+  -webkit-appearance: none;
+  transition: transform 150ms ease-out;
+}
+
+.color-swatch:active {
+  transform: scale(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .color-swatch {
+    transition-duration: 0.01ms;
+  }
+}
+
+.color-swatch::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+/*
+  The rim, and it earns its place: a swatch holding the page's own ground would
+  otherwise have no edge at all — which is exactly the colour a manager is most
+  likely to be looking at when they open this panel. Drawn in ink at low
+  opacity so it reads on a light swatch and on a dark one.
+*/
+.color-swatch::-webkit-color-swatch {
+  border: 1px solid color-mix(in oklab, var(--ink) 20%, transparent);
+  border-radius: 0.4rem;
+}
+
+.color-swatch::-moz-color-swatch {
+  border: 1px solid color-mix(in oklab, var(--ink) 20%, transparent);
+  border-radius: 0.4rem;
+}
+
+.color-swatch:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}

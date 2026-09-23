@@ -16,11 +16,13 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as MVenueSlugRouteImport } from './routes/m.$venueSlug'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
+import { Route as AuthenticatedAdminCompteRouteImport } from './routes/_authenticated/admin.compte'
 import { Route as AuthenticatedAdminCorbeilleRouteImport } from './routes/_authenticated/admin.corbeille'
 import { Route as AuthenticatedAdminVenueSlugIndexRouteImport } from './routes/_authenticated/admin.$venueSlug.index'
 import { Route as AuthenticatedAdminVenueSlugCommandesRouteImport } from './routes/_authenticated/admin.$venueSlug.commandes'
 import { Route as AuthenticatedAdminVenueSlugQrRouteImport } from './routes/_authenticated/admin.$venueSlug.qr'
 import { Route as AuthenticatedAdminVenueSlugReglagesRouteImport } from './routes/_authenticated/admin.$venueSlug.reglages'
+import { Route as AuthenticatedAdminVenueSlugTablesRouteImport } from './routes/_authenticated/admin.$venueSlug.tables'
 import { Route as AuthenticatedAdminVenueSlugStockIndexRouteImport } from './routes/_authenticated/admin.$venueSlug.stock.index'
 import { Route as AuthenticatedAdminVenueSlugStockScanRouteImport } from './routes/_authenticated/admin.$venueSlug.stock.scan'
 
@@ -58,6 +60,12 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   path: '/admin/',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedAdminCompteRoute =
+  AuthenticatedAdminCompteRouteImport.update({
+    id: '/admin/compte',
+    path: '/admin/compte',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAdminCorbeilleRoute =
   AuthenticatedAdminCorbeilleRouteImport.update({
     id: '/admin/corbeille',
@@ -88,6 +96,12 @@ const AuthenticatedAdminVenueSlugReglagesRoute =
     path: '/admin/$venueSlug/reglages',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedAdminVenueSlugTablesRoute =
+  AuthenticatedAdminVenueSlugTablesRouteImport.update({
+    id: '/admin/$venueSlug/tables',
+    path: '/admin/$venueSlug/tables',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAdminVenueSlugStockIndexRoute =
   AuthenticatedAdminVenueSlugStockIndexRouteImport.update({
     id: '/admin/$venueSlug/stock/',
@@ -107,11 +121,13 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/m/$venueSlug': typeof MVenueSlugRoute
+  '/admin/compte': typeof AuthenticatedAdminCompteRoute
   '/admin/corbeille': typeof AuthenticatedAdminCorbeilleRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/admin/$venueSlug/commandes': typeof AuthenticatedAdminVenueSlugCommandesRoute
   '/admin/$venueSlug/qr': typeof AuthenticatedAdminVenueSlugQrRoute
   '/admin/$venueSlug/reglages': typeof AuthenticatedAdminVenueSlugReglagesRoute
+  '/admin/$venueSlug/tables': typeof AuthenticatedAdminVenueSlugTablesRoute
   '/admin/$venueSlug/': typeof AuthenticatedAdminVenueSlugIndexRoute
   '/admin/$venueSlug/stock/scan': typeof AuthenticatedAdminVenueSlugStockScanRoute
   '/admin/$venueSlug/stock/': typeof AuthenticatedAdminVenueSlugStockIndexRoute
@@ -122,11 +138,13 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/m/$venueSlug': typeof MVenueSlugRoute
+  '/admin/compte': typeof AuthenticatedAdminCompteRoute
   '/admin/corbeille': typeof AuthenticatedAdminCorbeilleRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/admin/$venueSlug/commandes': typeof AuthenticatedAdminVenueSlugCommandesRoute
   '/admin/$venueSlug/qr': typeof AuthenticatedAdminVenueSlugQrRoute
   '/admin/$venueSlug/reglages': typeof AuthenticatedAdminVenueSlugReglagesRoute
+  '/admin/$venueSlug/tables': typeof AuthenticatedAdminVenueSlugTablesRoute
   '/admin/$venueSlug': typeof AuthenticatedAdminVenueSlugIndexRoute
   '/admin/$venueSlug/stock/scan': typeof AuthenticatedAdminVenueSlugStockScanRoute
   '/admin/$venueSlug/stock': typeof AuthenticatedAdminVenueSlugStockIndexRoute
@@ -139,11 +157,13 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/m/$venueSlug': typeof MVenueSlugRoute
+  '/_authenticated/admin/compte': typeof AuthenticatedAdminCompteRoute
   '/_authenticated/admin/corbeille': typeof AuthenticatedAdminCorbeilleRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/admin/$venueSlug/commandes': typeof AuthenticatedAdminVenueSlugCommandesRoute
   '/_authenticated/admin/$venueSlug/qr': typeof AuthenticatedAdminVenueSlugQrRoute
   '/_authenticated/admin/$venueSlug/reglages': typeof AuthenticatedAdminVenueSlugReglagesRoute
+  '/_authenticated/admin/$venueSlug/tables': typeof AuthenticatedAdminVenueSlugTablesRoute
   '/_authenticated/admin/$venueSlug/': typeof AuthenticatedAdminVenueSlugIndexRoute
   '/_authenticated/admin/$venueSlug/stock/scan': typeof AuthenticatedAdminVenueSlugStockScanRoute
   '/_authenticated/admin/$venueSlug/stock/': typeof AuthenticatedAdminVenueSlugStockIndexRoute
@@ -156,11 +176,13 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/m/$venueSlug'
+    | '/admin/compte'
     | '/admin/corbeille'
     | '/admin/'
     | '/admin/$venueSlug/commandes'
     | '/admin/$venueSlug/qr'
     | '/admin/$venueSlug/reglages'
+    | '/admin/$venueSlug/tables'
     | '/admin/$venueSlug/'
     | '/admin/$venueSlug/stock/scan'
     | '/admin/$venueSlug/stock/'
@@ -171,11 +193,13 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/m/$venueSlug'
+    | '/admin/compte'
     | '/admin/corbeille'
     | '/admin'
     | '/admin/$venueSlug/commandes'
     | '/admin/$venueSlug/qr'
     | '/admin/$venueSlug/reglages'
+    | '/admin/$venueSlug/tables'
     | '/admin/$venueSlug'
     | '/admin/$venueSlug/stock/scan'
     | '/admin/$venueSlug/stock'
@@ -187,11 +211,13 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/m/$venueSlug'
+    | '/_authenticated/admin/compte'
     | '/_authenticated/admin/corbeille'
     | '/_authenticated/admin/'
     | '/_authenticated/admin/$venueSlug/commandes'
     | '/_authenticated/admin/$venueSlug/qr'
     | '/_authenticated/admin/$venueSlug/reglages'
+    | '/_authenticated/admin/$venueSlug/tables'
     | '/_authenticated/admin/$venueSlug/'
     | '/_authenticated/admin/$venueSlug/stock/scan'
     | '/_authenticated/admin/$venueSlug/stock/'
@@ -257,6 +283,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/admin/compte': {
+      id: '/_authenticated/admin/compte'
+      path: '/admin/compte'
+      fullPath: '/admin/compte'
+      preLoaderRoute: typeof AuthenticatedAdminCompteRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/admin/corbeille': {
       id: '/_authenticated/admin/corbeille'
       path: '/admin/corbeille'
@@ -292,6 +325,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminVenueSlugReglagesRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/admin/$venueSlug/tables': {
+      id: '/_authenticated/admin/$venueSlug/tables'
+      path: '/admin/$venueSlug/tables'
+      fullPath: '/admin/$venueSlug/tables'
+      preLoaderRoute: typeof AuthenticatedAdminVenueSlugTablesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/admin/$venueSlug/stock/': {
       id: '/_authenticated/admin/$venueSlug/stock/'
       path: '/admin/$venueSlug/stock'
@@ -310,17 +350,20 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteChildren {
+  AuthenticatedAdminCompteRoute: typeof AuthenticatedAdminCompteRoute
   AuthenticatedAdminCorbeilleRoute: typeof AuthenticatedAdminCorbeilleRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
   AuthenticatedAdminVenueSlugCommandesRoute: typeof AuthenticatedAdminVenueSlugCommandesRoute
   AuthenticatedAdminVenueSlugQrRoute: typeof AuthenticatedAdminVenueSlugQrRoute
   AuthenticatedAdminVenueSlugReglagesRoute: typeof AuthenticatedAdminVenueSlugReglagesRoute
+  AuthenticatedAdminVenueSlugTablesRoute: typeof AuthenticatedAdminVenueSlugTablesRoute
   AuthenticatedAdminVenueSlugIndexRoute: typeof AuthenticatedAdminVenueSlugIndexRoute
   AuthenticatedAdminVenueSlugStockScanRoute: typeof AuthenticatedAdminVenueSlugStockScanRoute
   AuthenticatedAdminVenueSlugStockIndexRoute: typeof AuthenticatedAdminVenueSlugStockIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedAdminCompteRoute: AuthenticatedAdminCompteRoute,
   AuthenticatedAdminCorbeilleRoute: AuthenticatedAdminCorbeilleRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
   AuthenticatedAdminVenueSlugCommandesRoute:
@@ -328,6 +371,8 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminVenueSlugQrRoute: AuthenticatedAdminVenueSlugQrRoute,
   AuthenticatedAdminVenueSlugReglagesRoute:
     AuthenticatedAdminVenueSlugReglagesRoute,
+  AuthenticatedAdminVenueSlugTablesRoute:
+    AuthenticatedAdminVenueSlugTablesRoute,
   AuthenticatedAdminVenueSlugIndexRoute: AuthenticatedAdminVenueSlugIndexRoute,
   AuthenticatedAdminVenueSlugStockScanRoute:
     AuthenticatedAdminVenueSlugStockScanRoute,

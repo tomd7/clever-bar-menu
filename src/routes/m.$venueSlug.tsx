@@ -5,8 +5,10 @@ import { env } from '#/env'
 import { OrderBar } from '#/features/orders/components/order-bar'
 import { NotFound } from '#/components/not-found'
 import { PublicMenu } from '#/features/menu/components/public-menu'
+import { TABLE_SEARCH_PARAM } from '#/lib/public-menu-url'
 import { VenueNotFoundError } from '#/features/menu/api'
 import { menuFontPreloads, parseMenuFonts } from '#/lib/menu-fonts'
+import { parseOrderSettings } from '#/lib/order-settings'
 import { publicMenuQueryOptions } from '#/features/menu/public-api'
 
 /**
@@ -17,6 +19,26 @@ import { publicMenuQueryOptions } from '#/features/menu/public-api'
  * complet, la carte est lisible avant même que le JavaScript n'ait été évalué.
  */
 export const Route = createFileRoute('/m/$venueSlug')({
+  /*
+    `?table=<public id>`, from a table's QR code (`lib/public-menu-url.ts`
+    writes it). Only its shape is checked here: whether it names one of this
+    venue's tables is the order bar's question, and `place_order`'s in SQL. A
+    missing, malformed or unknown id is not an error — the cart sheet shows the
+    table picker instead.
+
+    A string or nothing. The router parses search params JSON-first, which is
+    why the ids are generated without digits (see `venue_tables.public_id`): a
+    number here would be a code this schema never printed.
+
+    The loader does not read it, so changing it refetches nothing.
+  */
+  validateSearch: (search: Record<string, unknown>): { table?: string } => {
+    const value = search[TABLE_SEARCH_PARAM]
+    return typeof value === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(value)
+      ? { table: value }
+      : {}
+  },
+
   loader: async ({ context, params }) => {
     try {
       /*
@@ -84,6 +106,7 @@ export const Route = createFileRoute('/m/$venueSlug')({
  */
 function PublicMenuRoute() {
   const menu = Route.useLoaderData()
+  const { table } = Route.useSearch()
   const { venue, categories } = menu
 
   if (!venue.orders_enabled) return <PublicMenu menu={menu} />
@@ -93,8 +116,15 @@ function PublicMenuRoute() {
     identifiant. Elle est aplatie ici plutôt que dans le panier : c'est la
     route qui tient la carte, et la commande n'a pas à connaître la notion de
     catégorie.
+
+    Sold-out products are left out, although the menu lists them. The cart
+    sheet drops a line whose product it cannot find, and that is the behaviour
+    to keep: a product that ran out while sitting in the cart must not be shown
+    there as orderable, only to be refused by `place_order` on send.
   */
-  const products = categories.flatMap((category) => category.products)
+  const products = categories
+    .flatMap((category) => category.products)
+    .filter((product) => !product.sold_out)
 
   return (
     <>
@@ -106,8 +136,11 @@ function PublicMenuRoute() {
       />
       <OrderBar
         venueSlug={venue.slug}
+        venueId={venue.id}
         products={products}
         currency={venue.currency}
+        orderSettings={parseOrderSettings(venue)}
+        urlTableId={table}
       />
     </>
   )

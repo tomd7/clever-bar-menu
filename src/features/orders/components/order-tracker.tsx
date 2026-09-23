@@ -8,10 +8,11 @@ import { BottomSheet } from '#/features/orders/components/bottom-sheet'
 import { DeleteButton } from '#/components/buttons/delete-button'
 import { ErrorNote } from '#/components/error-note'
 import {
-  GUEST_STATUS_HINT,
-  GUEST_STATUS_LABEL,
+  guestStatusHint,
+  guestStatusLabel,
   isOpenOrder,
 } from '#/features/orders/status'
+import { orderReference } from '#/features/orders/reference'
 import { ProductSize } from '#/components/product-size'
 import { formatPrice } from '#/lib/money'
 import { forgetTickets } from '#/features/orders/ticket'
@@ -115,7 +116,10 @@ export function OrderTracker({
         /* Une seule commande : la consigne tient en sous-titre. Plusieurs, il
            n'y a pas de consigne unique à donner. */
         tickets.length === 1 && orderQueries[0]?.data
-          ? GUEST_STATUS_HINT[orderQueries[0].data.status]
+          ? guestStatusHint(orderQueries[0].data.status, {
+              serviceMode: orderQueries[0].data.serviceMode,
+              byTable: typeof orderQueries[0].data.tableNumber === 'number',
+            })
           : undefined
       }
     >
@@ -272,6 +276,7 @@ function OrderBlock({
   currency: string
 }) {
   const cancel = useCancelGuestOrder()
+  const reference = orderReference(order)
 
   return (
     <>
@@ -290,16 +295,23 @@ function OrderBlock({
             chercher en rouvrant cette feuille. L'addition, il l'a déjà validée.
           */}
           <p className="display-title text-xl leading-tight">
-            {GUEST_STATUS_LABEL[order.status]}
+            {guestStatusLabel(order.status, order.serviceMode)}
           </p>
           {/*
             Le prénom, et non la consigne — celle-ci est en sous-titre de la
             feuille. Deux commandes dans le même état afficheraient sinon deux
             fois le même chapô mot pour mot, là où ce qui les distingue est
             justement le nom sous lequel chacune sera appelée.
+
+            A table order is called by its table: « Table 12 » stands where the
+            name stood, followed by the name when the customer gave one.
           */}
           <p className="mt-1 text-sm text-ink-soft">
-            Au nom de {order.customerName}.
+            {typeof order.tableNumber === 'number'
+              ? reference.name
+                ? `${reference.title}, au nom de ${reference.name}`
+                : reference.title
+              : `Au nom de ${reference.title}.`}
           </p>
         </div>
 

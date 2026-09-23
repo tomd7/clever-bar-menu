@@ -4,9 +4,19 @@
  * Regroupé ici parce que trois écrans le lisent — la file du bar, l'historique
  * et le suivi du client — et qu'un état ajouté ailleurs qu'ici serait
  * forcément oublié dans l'un des trois.
+ *
+ * **The words depend on how the order is served** (`ServiceMode`, copied onto
+ * the order when it was placed). An order collected at the counter is
+ * « Prête — venez la chercher », then « Récupérée »; one brought to the table
+ * is « Prête — on vous l'apporte », then « Servie ». Nobody collected it, and
+ * telling a seated customer to come and fetch it would get them up for
+ * nothing. The service is read from the order, not from the venue: a venue
+ * that switches mid-evening leaves the orders already placed served the way
+ * their customers were told.
  */
 
 import type { OrderStatus } from '#/lib/supabase'
+import type { ServiceMode } from '#/lib/order-settings'
 
 export type { OrderStatus }
 
@@ -28,7 +38,7 @@ export function isOpenOrder(status: OrderStatus): boolean {
  * Ce que le bar lit. Court, à la troisième personne : c'est une file, chaque
  * ligne y est un objet posé sur le comptoir.
  */
-export const BAR_STATUS_LABEL: Record<OrderStatus, string> = {
+const BAR_STATUS_LABEL: Record<OrderStatus, string> = {
   received: 'Nouvelle',
   preparing: 'En préparation',
   ready: 'Prête',
@@ -36,19 +46,44 @@ export const BAR_STATUS_LABEL: Record<OrderStatus, string> = {
   cancelled: 'Annulée',
 }
 
+export function barStatusLabel(
+  status: OrderStatus,
+  service: ServiceMode,
+): string {
+  if (status === 'collected' && service === 'table') return 'Servie'
+  return BAR_STATUS_LABEL[status]
+}
+
 /**
  * Ce que le client lit, et ce n'est pas la même chose.
  *
  * « Prête » côté bar est une case cochée ; côté client c'est une convocation,
  * et le mot doit le dire — c'est le seul état de toute la chaîne qui demande
- * au client de se lever.
+ * au client de se lever. Unless the order comes to them: then « Prête » is a
+ * promise, and it says so.
  */
-export const GUEST_STATUS_LABEL: Record<OrderStatus, string> = {
-  received: 'Reçue par le bar',
-  preparing: 'En préparation',
-  ready: 'Prête — venez la chercher',
-  collected: 'Récupérée',
-  cancelled: 'Annulée',
+const GUEST_STATUS_LABEL: Record<ServiceMode, Record<OrderStatus, string>> = {
+  counter: {
+    received: 'Reçue par le bar',
+    preparing: 'En préparation',
+    ready: 'Prête — venez la chercher',
+    collected: 'Récupérée',
+    cancelled: 'Annulée',
+  },
+  table: {
+    received: 'Reçue par le bar',
+    preparing: 'En préparation',
+    ready: 'Prête — on vous l’apporte',
+    collected: 'Servie',
+    cancelled: 'Annulée',
+  },
+}
+
+export function guestStatusLabel(
+  status: OrderStatus,
+  service: ServiceMode,
+): string {
+  return GUEST_STATUS_LABEL[service][status]
 }
 
 /**
@@ -56,13 +91,31 @@ export const GUEST_STATUS_LABEL: Record<OrderStatus, string> = {
  *
  * Un état seul laisse la question suivante sans réponse : « reçue », et
  * ensuite ? Chacune dit ce qui va se passer, ou ce qu'il faut faire.
+ *
+ * At the counter, what the customer gives is what the order is called by: a
+ * first name, or the table number when the venue calls tables.
  */
-export const GUEST_STATUS_HINT: Record<OrderStatus, string> = {
-  received: 'Le bar l’a sous les yeux. Gardez cette page ouverte.',
-  preparing: 'C’est en cours de préparation.',
-  ready: 'Présentez-vous au comptoir en donnant votre prénom.',
-  collected: 'Bonne dégustation.',
-  cancelled: 'Le bar n’a pas pu la servir. Rapprochez-vous du comptoir.',
+export function guestStatusHint(
+  status: OrderStatus,
+  order: { serviceMode: ServiceMode; byTable: boolean },
+): string {
+  switch (status) {
+    case 'received':
+      return 'Le bar l’a sous les yeux. Gardez cette page ouverte.'
+    case 'preparing':
+      return 'C’est en cours de préparation.'
+    case 'ready':
+      if (order.serviceMode === 'table') return 'Elle arrive à votre table.'
+      return order.byTable
+        ? 'Présentez-vous au comptoir en donnant votre numéro de table.'
+        : 'Présentez-vous au comptoir en donnant votre prénom.'
+    case 'collected':
+      return 'Bonne dégustation.'
+    case 'cancelled':
+      return order.serviceMode === 'table'
+        ? 'Le bar n’a pas pu la servir. Demandez au personnel en salle.'
+        : 'Le bar n’a pas pu la servir. Rapprochez-vous du comptoir.'
+  }
 }
 
 /**
@@ -80,10 +133,17 @@ export function nextOrderStatus(status: OrderStatus): OrderStatus | null {
   return null
 }
 
-/** Le libellé du bouton qui fait avancer la commande, côté bar. */
-export const ADVANCE_LABEL: Partial<Record<OrderStatus, string>> = {
-  preparing: 'Prête',
-  ready: 'Récupérée',
+/**
+ * Le libellé du bouton qui fait avancer la commande, côté bar — `undefined`
+ * where `nextOrderStatus` has nothing to offer.
+ */
+export function advanceLabel(
+  status: OrderStatus,
+  service: ServiceMode,
+): string | undefined {
+  if (status === 'preparing') return 'Prête'
+  if (status === 'ready') return service === 'table' ? 'Servie' : 'Récupérée'
+  return undefined
 }
 
 /**

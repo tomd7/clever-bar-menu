@@ -71,6 +71,7 @@ the trash button, not inline (it pushed the surrounding row around) and not
 | `TextField`     | `useId()` wiring, `<Label>`, height from `surface`, optional `hint`, `hiddenLabel`                               |
 | `TextAreaField` | Same, minus `surface` — a textarea sizes by `rows`, it has no resting height to match                            |
 | `ImageField`    | A hidden file input driven by a button, a thumbnail, « Remplacer » / « Retirer » — and no image state of its own |
+| `ChoiceField`   | A short group of exclusive choices as cards: native radios in their `<label>`, `useId` for the group's `name`    |
 
 On both, `className` dresses the **block** (that's what you put in a grid or grow with
 `flex-1`); `inputClassName` / `textareaClassName` dress the control.
@@ -223,6 +224,25 @@ today). A separate prop and not the tail of `nav`, because the two zones are a f
 apart: one stretched `nav` would make the shell responsible for the gap between its own
 items. Like `nav`, it only renders from `lg`, and it draws **no separator of its own** —
 that belongs to whatever is put in it, so an empty zone leaves no trace.
+
+A third slot, **`account`**, is the way into the manager's own account (`AccountLink` from
+`features/auth`), and it is the one that renders **at every width**: in the phone's top bar
+next to « Déconnexion », under the address in the column from `lg`. Before it, the phone
+bar held nothing but the sign-out — a screen reachable only from `lg` is unfinished.
+
+**Every item of the column is a `.rail-link`** (`back-office/rail-link.css`), whichever
+slot and feature it comes from — `VenueNav`, `VenueTrashRailLink`, `AccountLink`. The class
+lives with the shell rather than next to `venue-nav.tsx` because three features' items
+must look alike, and a feature may not lean on another's stylesheet. An item drawn with
+`NavLink` instead is the one that marks its page with an underline and a heavier weight
+while its neighbours use the raised fill and the left bar: that is how « Compte » first
+shipped.
+
+**The « Bêta » pill** beside the product name is driven by `VITE_APP_BETA`, and shows in
+the back office only — not on the landing page, the auth screens or the customer menu. It
+is a **sibling** of the title, not a child: inside `.display-title` it would inherit the
+wide stretch and negative tracking. **Filled** (`bg-bottle` / `text-on-bottle`), never
+bordered — the bordered pill is `StockBadge`, and it means something is wrong.
 
 `MenuAddress` (`back-office/menu-address.tsx`) draws `/m/<slug>` as a **control, not a
 caption**: a link opening the customer menu in a **new tab** — the manager checks the

@@ -9,11 +9,16 @@
 
   **Scope: the board and the accents, never the ground.** `--ground`,
   `--surface`, `--surface-raised`, `--line`, `--ink` and `--primary-fill` are
-  deliberately absent below. A menu is read, not admired: the page stays stone
-  by day and slate by night whatever the venue, prices and descriptions keep the
-  contrast they were designed with, and `--primary` stays ink — which
-  `styles/CLAUDE.md` calls non-negotiable, since green signals and never fills
-  an « Enregistrer » button.
+  deliberately absent from the *named* blocks below. A menu is read, not
+  admired: the page stays stone by day and slate by night whatever the venue,
+  prices and descriptions keep the contrast they were designed with, and
+  `--primary` stays ink — which `styles/CLAUDE.md` calls non-negotiable, since
+  green signals and never fills an « Enregistrer » button.
+
+  The rule is lifted, deliberately and for `[data-menu-custom]` only, at the
+  foot of this file: a manager who picks a background colour is picking the
+  ground, and there the contrast check does the work the scope used to. The
+  named palettes above are unaffected. `--primary-fill` stays out of both.
 
   Every palette below is contrast-checked against the surfaces it actually meets:
   chalk and soft chalk on its own board, the fill against `--on-bottle`, and the
@@ -193,4 +198,123 @@
   --theme-bottle-night: #3d6c54;
   --theme-bottle-deep-day: #2c5540;
   --theme-bottle-deep-night: #8fbca4;
+}
+
+/*
+  ─────────────────────────────────────────────────────────────────────────────
+  Custom colours — `[data-menu-custom]`
+
+  A venue that paints its own carte still carries `data-menu-theme`: a custom
+  palette is an **edited copy** of a named one, so the theme stays what it was
+  copied from and what the carte falls back to the day the row is deleted. The
+  second attribute is what says « and these values on top », and it only ever
+  appears together with an inline `style` declaring the whole set — see
+  `menuPaletteStyle` in `src/lib/menu-colors.ts`, which is the other half of
+  this contract.
+
+  **The values are inlined, not written here.** They are per venue, and the
+  carte is server rendered: they have to be in the first byte of HTML or the
+  customer watches a named theme repaint itself. A `style` attribute is the one
+  place a per-request value can live without a per-request stylesheet, which
+  `styles.css` argues against at length.
+
+  **The ground moves, and that is a decision.** The file above states the rule
+  the named themes obey — the board and the accents, never the ground — and it
+  still holds for them. It is lifted here for one reason: a manager who is
+  choosing a background colour is choosing the ground, and a « Fond » field
+  that repainted everything except the fond would be a lie. What replaces the
+  rule is the contrast check: `paletteContrast` measures every text role
+  against the surface it actually sits on, in both readings, and
+  `venue-settings.tsx` refuses to save below 4.5:1. The guarantee is the same —
+  a carte is read — it is just enforced by measurement instead of by scope.
+
+  Three rules again, in the order the named themes use and for the same reason:
+  `.dark` and `.light` have equal specificity, so the later wins and a forced
+  day preview can exist inside a back office in night mode. They must also stay
+  **after** the theme blocks above, which they meet at equal specificity —
+  `[data-menu-custom]` against `[data-menu-theme='rubis']` is decided by source
+  order alone.
+
+  What is deliberately **not** here:
+
+  - `--bottle` and `--bottle-deep`. The generic rules at the top of this file
+    already read `--theme-bottle-*`, and the inline style overrides those — an
+    inline declaration beats any selector. The accent therefore rides the
+    machinery the named themes use, `--ring` included, and gets no rule of its
+    own.
+  - `--primary-fill`. The house rule stands: the primary action is ink, not
+    colour. Nothing on the carte draws one, and the order bar sits outside this
+    subtree anyway.
+*/
+
+[data-menu-custom] {
+  --ground: var(--theme-ground-day);
+  --surface: var(--theme-ground-day);
+  --board: var(--theme-board-day);
+  --on-board: var(--theme-on-board-day);
+  --ink: var(--theme-ink-day);
+  --ink-soft: var(--theme-ink-soft-day);
+  --bottle-chalk: var(--theme-bottle-chalk-day);
+  --on-bottle: var(--theme-on-bottle-day);
+
+  /*
+    Derived from the six, and derived *here* rather than in JavaScript because
+    every one of them is a hairline or a tinted surface: they carry no text, so
+    none of them has a contrast condition a `color-mix()` could get wrong. The
+    three that do — the accent on the board, the text on an accent fill — are
+    computed and repaired in `menu-colors.ts` and arrive inlined above.
+
+    These four need no day/night pair: each mixes two tokens that already have
+    one, and a custom property is substituted on the element that declares it —
+    the same element, so they follow whichever reading won.
+  */
+  --surface-raised: color-mix(in oklab, var(--ink) 5%, var(--surface));
+  --line: color-mix(in oklab, var(--ink) 14%, var(--surface));
+  --line-soft: color-mix(in oklab, var(--ink) 8%, var(--surface));
+  --on-board-soft: color-mix(in oklab, var(--on-board) 72%, var(--board));
+  --skeleton: color-mix(in oklab, var(--ink) 11%, transparent);
+}
+
+.dark [data-menu-custom] {
+  --ground: var(--theme-ground-night);
+  --surface: var(--theme-ground-night);
+  --board: var(--theme-board-night);
+  --on-board: var(--theme-on-board-night);
+  --ink: var(--theme-ink-night);
+  --ink-soft: var(--theme-ink-soft-night);
+  --bottle-chalk: var(--theme-bottle-chalk-night);
+  --on-bottle: var(--theme-on-bottle-night);
+}
+
+.light [data-menu-custom] {
+  --ground: var(--theme-ground-day);
+  --surface: var(--theme-ground-day);
+  --board: var(--theme-board-day);
+  --on-board: var(--theme-on-board-day);
+  --ink: var(--theme-ink-day);
+  --ink-soft: var(--theme-ink-soft-day);
+  --bottle-chalk: var(--theme-bottle-chalk-day);
+  --on-bottle: var(--theme-on-bottle-day);
+}
+
+/*
+  The ground and the ink have to be *applied*, not only declared.
+
+  `base.css` sets `color` and `background-color` on `body`, so both come down
+  the tree already resolved against the house palette — the same substitution
+  trap that makes `--ring` need restating at the top of this file. Redeclaring
+  `--ink` on a subtree changes nothing about text that inherits its colour from
+  `body`.
+
+  **Inside `@layer base`, and that is load-bearing.** An unlayered rule beats
+  every layered one whatever its specificity, so written outside a layer this
+  `color` would win against `text-ink-soft` and `bg-board` — it would flatten
+  every product description to the carte's main ink and paint the header panel
+  with the page ground. In `base`, Tailwind's utilities take it back.
+*/
+@layer base {
+  [data-menu-custom] {
+    color: var(--ink);
+    background-color: var(--ground);
+  }
 }

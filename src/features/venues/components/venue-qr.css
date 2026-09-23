@@ -12,4 +12,26 @@
     margin: 0 auto !important;
     max-width: 100% !important;
   }
+
+  /*
+    The per-table sheet: three codes a row on A4, whatever the window's width
+    was when « Imprimer » was pressed — a phone printing its two-column grid
+    would otherwise spend twice the paper. About 55mm a code, well above what
+    a phone reads from a table.
+  */
+  .qr-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 6mm !important;
+    padding: 0 !important;
+  }
+
+  /*
+    A card never splits across two pages, and its border turns into a cutting
+    line: each code is meant to be cut out and stuck on its own table.
+  */
+  .qr-card {
+    break-inside: avoid;
+    border: 1px dashed #9ca3af !important;
+    border-radius: 0 !important;
+  }
 }
