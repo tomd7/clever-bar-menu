@@ -172,8 +172,8 @@ categories }` and `MenuEditor` renders `venue.name` in its header, so without th
 
 ### Layout — the preview stays, the save bar floats
 
-Six panels and a bar on one grid (`SETTINGS_GRID`, shared with the skeleton): Identité,
-Thème, Couleurs, Aperçu, Polices, Commandes. The previous layout filed « Enregistrer » under Identité and put the
+Five panels and a bar on one grid (`SETTINGS_GRID`, shared with the skeleton): Identité,
+Thème (custom colours included), Aperçu, Polices, Commandes. The previous layout filed « Enregistrer » under Identité and put the
 preview at the foot of a 24rem column — a manager clicked a swatch 400px from the top and
 its preview started at 1058px.
 
@@ -181,7 +181,7 @@ its preview started at 1058px.
   implicit `auto` track, sized to max-content: the font rails' nowrap chips widened the
   whole phone layout past the screen (each preview board 426px in a 390px viewport).
   `grid-cols-1` is `minmax(0, 1fr)`. Any grid holding a scrolling rail needs it.
-- **The DOM order is the phone's reading order** (identity, theme, colours, preview, fonts,
+- **The DOM order is the phone's reading order** (identity, theme, preview, fonts,
   orders, bar); from `lg` the grid lifts the preview into the right column over the five
   control rows.
   Reordering is safe only because the preview holds no control — the tab order follows the
@@ -264,17 +264,24 @@ each box names its own reading's contrast failures underneath, in the back offic
 ### The colour picker — `menu-colors-field.tsx`
 
 Six roles — fond, bandeau, texte du bandeau, texte de la carte, texte secondaire, accent —
-each a native `<input type="color">` and a hex field, in a panel of its own right under the
-theme it extends. `venue_themes` holds the row; `src/lib/menu-colors.ts` holds the roles,
+each a native `<input type="color">` and a hex field, unfolded inside the « Thème » panel
+when its « Personnalisé » option is picked. `venue_themes` holds the row; `src/lib/menu-colors.ts` holds the roles,
 the colour maths and the contract with `styles/menu-theme.css`, which documents the CSS
 side.
 
-- **It extends the theme picker, it does not replace it.** A custom palette is an edited
-  copy of a named one, which is what gives it a complete day _and_ night reading from the
-  first second, and what makes going back one gesture. Folded into the « Thème » panel it
-  would have doubled that panel's height for the nine venues in ten that never open it.
+- **It is the theme picker's sixth option, not a panel of its own.** « Personnalisé » sits
+  in the same radio group as the named themes: both answer « what colours is my carte? », and
+  one group says so without a sentence of explanation. Picking it seeds an edited copy of
+  the named theme in force (a complete day _and_ night reading from the first second) and
+  unfolds `MenuColorsField` under the grid; picking a named theme folds it and clears the
+  draft — going back is one gesture. The editor stays folded for the nine venues in ten that
+  never pick it, so the panel only grows for those who asked.
+- **A folded draft comes back.** `MenuThemeField` keeps the last custom palette a named-theme
+  click folded away, with the theme it was based on, and « Personnalisé » restores the pair:
+  clicking a swatch to compare must not cost six colours. Restoring the base theme changes
+  nothing visible — the named theme only shows once the palette is gone.
 - **The starting values are read off the DOM**, not from a table of hexes in TypeScript.
-  The field renders a hidden probe — an element wearing the venue's theme inside a `.light`
+  `MenuThemeField` renders a hidden probe — an element wearing the venue's theme inside a `.light`
   wrapper — and `readMenuColors` reads `--surface`, `--board`, `--on-board`, `--ink`,
   `--ink-soft` and `--bottle-deep` off it. `styles/menu-theme.css` stays the one place a
   named palette is written; a copy here would be a **fourth** list to keep in step, and it
@@ -290,9 +297,15 @@ side.
   Nothing to store, so nothing that can be stored out of step — it survives a save, a
   reload, and a row edited from another device. « Recalculer d'après le jour » only exists
   while there is something to undo.
-- **The night fields are behind a disclosure.** Six more fields open by default would double
-  a long form to show values most managers accept as calculated, and the preview shows the
-  result beside them either way.
+- **One reading at a time, picked by a Jour | Soir segmented control.** Both readings have
+  the same six roles: stacking them, or hiding the evening behind a disclosure (the first
+  version), made twelve fields to read where there are six to understand, and left the
+  evening to be found. The control says there are two, which one is being edited, and — a
+  warning icon on its segment — which one is unreadable, so a grey « Enregistrer » is never
+  caused by a reading off screen. A line under it says how the two are tied, from the side
+  being looked at. `VenueSettings` holds the reading so the preview **rings the board being
+  edited**; the ring colour is resolved on the preview section (`--ring-editing`) because
+  each box's `light`/`dark` class redefines every token on itself.
 - **Contrast is shown in place and blocks the save.** Each text role prints its WCAG ratio
   against the surface it sits on (« 8,2:1 sur « fond » »), in red with the minimum named
   when it fails; the preview repeats the failure under the board of the reading that fails;
@@ -307,9 +320,9 @@ side.
 - **The swatch is labelled by its `<label>`, the hex field by `aria-label`.** A label names
   one control; the second one takes its own name rather than a hand-written `htmlFor`, which
   is the rule `TextField` exists to enforce, sidestepped the same way the radios sidestep it.
-- **« Revenir au thème X » is a plain button, not a `DeleteButton`.** Nothing is deleted
-  there: it clears a draft, and the row only goes when « Enregistrer » is pressed — which is
-  the confirmation the no-delete-on-first-click rule asks for.
+- **Leaving custom colours is a radio, not a `DeleteButton`.** Nothing is deleted by
+  clicking a named theme: it clears a draft, and the row only goes when « Enregistrer » is
+  pressed — which is the confirmation the no-delete-on-first-click rule asks for.
 
 ### The font picker — `menu-font-field.tsx`
 

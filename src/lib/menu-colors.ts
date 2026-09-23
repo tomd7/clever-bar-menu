@@ -616,7 +616,7 @@ export function menuPaletteStyle(palette: MenuPalette): CSSProperties {
  * would keep its colours while the picker seeded last year's.
  *
  * The caller provides the probe: an element carrying `data-menu-theme` inside a
- * `.light` or `.dark` wrapper (see `menu-colors-field.tsx`). Returns `null` if
+ * `.light` or `.dark` wrapper (see `menu-theme-field.tsx`). Returns `null` if
  * any token comes back empty or in a form this module cannot read, which is
  * what a browser mid-stylesheet-load does.
  */
