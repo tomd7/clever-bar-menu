@@ -6,7 +6,6 @@ import { CancelButton } from '#/components/buttons/cancel-button'
 import { ErrorNote } from '#/components/error-note'
 import { ImageField, useObjectUrl } from '#/components/form/image-field'
 import { MenuAddress } from '#/components/back-office/menu-address'
-import { MenuColorsField } from '#/features/venues/components/menu-colors-field'
 import { MenuFontField } from '#/features/venues/components/menu-font-field'
 import { MenuThemeField } from '#/features/venues/components/menu-theme-field'
 import { NavLink } from '#/components/nav-link'
@@ -25,7 +24,7 @@ import {
   SkeletonScreen,
 } from '#/components/skeleton'
 import { guessLogoPlate } from '#/features/venues/logo'
-import { MENU_THEMES, parseMenuTheme } from '#/lib/menu-theme'
+import { parseMenuTheme } from '#/lib/menu-theme'
 import {
   menuPaletteStyle,
   paletteContrast,
@@ -40,6 +39,7 @@ import {
 import { venueImageUrl } from '#/lib/venue-images'
 import { venueTablesQueryOptions } from '#/features/venues/tables-api'
 
+import type { MenuColorReading } from '#/features/venues/components/menu-colors-field'
 import type { MenuFonts } from '#/lib/menu-fonts'
 import type { MenuPalette } from '#/lib/menu-colors'
 import type { MenuTheme } from '#/lib/menu-theme'
@@ -77,7 +77,7 @@ const SETTINGS_GRID =
   the rows' height, a sticky box has nowhere to stick.
 */
 const PREVIEW_CELL =
-  'lg:sticky lg:top-10 lg:col-start-2 lg:row-span-5 lg:row-start-1 lg:self-start'
+  'lg:sticky lg:top-10 lg:col-start-2 lg:row-span-4 lg:row-start-1 lg:self-start'
 
 /** Where an order actually goes: a name-mode venue always serves at the counter. */
 function effectiveService(settings: OrderSettings): ServiceMode {
@@ -173,6 +173,12 @@ function VenueSettingsForm({
   const [description, setDescription] = useState(venue.description ?? '')
   const [theme, setTheme] = useState<MenuTheme>(parseMenuTheme(venue.theme))
   const [colors, setColors] = useState<MenuPalette | null>(savedColors)
+  /*
+    The reading the colour editor is on. Held here rather than in the editor
+    because the preview answers it: the board being edited is ringed, so the
+    manager sees which of the two their next colour lands on.
+  */
+  const [reading, setReading] = useState<MenuColorReading>('day')
 
   /* The row's faces, parsed: what the draft starts from and is compared to. */
   const savedFonts = parseMenuFonts(venue)
@@ -489,24 +495,13 @@ function VenueSettingsForm({
         </section>
 
         <section className="panel rounded-2xl p-4 sm:p-6 lg:col-start-1 lg:row-start-2">
-          <MenuThemeField value={theme} onChange={setTheme} />
-        </section>
-
-        {/*
-          Its own panel, right under the theme it copies: the two answer the
-          same question at two depths, and a manager who has just clicked a
-          swatch is exactly the one who may want to move one of its colours.
-          Folded into « Thème » it would have doubled that panel's height for
-          every venue, including the nine in ten that never open it.
-        */}
-        <section className="panel rounded-2xl p-4 sm:p-6 lg:col-start-1 lg:row-start-3">
-          <MenuColorsField
+          <MenuThemeField
             theme={theme}
-            themeLabel={
-              MENU_THEMES.find((entry) => entry.id === theme)?.label ?? 'maison'
-            }
-            value={colors}
-            onChange={setColors}
+            colors={colors}
+            onThemeChange={setTheme}
+            onColorsChange={setColors}
+            reading={reading}
+            onReadingChange={setReading}
           />
         </section>
 
@@ -526,7 +521,10 @@ function VenueSettingsForm({
           between the theme and the fonts, the two panels it answers most.
         */}
         <section
-          className={cn('panel rounded-2xl p-4 sm:p-6 lg:p-4', PREVIEW_CELL)}
+          className={cn(
+            'panel rounded-2xl p-4 [--ring-editing:var(--bottle)] sm:p-6 lg:p-4',
+            PREVIEW_CELL,
+          )}
         >
           <h2 className="text-sm font-semibold">Aperçu</h2>
           <p className="mt-1 text-xs text-ink-soft">
@@ -544,6 +542,7 @@ function VenueSettingsForm({
               colors={colors}
               fonts={fonts}
               mode="light"
+              editing={colors !== null && reading === 'day'}
               name={name || venue.name}
               logoUrl={logoUrl}
               logoPlate={logoPlate}
@@ -553,6 +552,7 @@ function VenueSettingsForm({
               colors={colors}
               fonts={fonts}
               mode="dark"
+              editing={colors !== null && reading === 'night'}
               name={name || venue.name}
               logoUrl={logoUrl}
               logoPlate={logoPlate}
@@ -560,7 +560,7 @@ function VenueSettingsForm({
           </div>
         </section>
 
-        <section className="panel rounded-2xl p-4 sm:p-6 lg:col-start-1 lg:row-start-4">
+        <section className="panel rounded-2xl p-4 sm:p-6 lg:col-start-1 lg:row-start-3">
           <MenuFontField value={fonts} onChange={setFonts} />
         </section>
 
@@ -569,7 +569,7 @@ function VenueSettingsForm({
           back to; how orders work is decided once. The preview holds nothing
           of it, and the confirmation it may need lives in the save bar below.
         */}
-        <section className="panel rounded-2xl p-4 sm:p-6 lg:col-start-1 lg:row-start-5">
+        <section className="panel rounded-2xl p-4 sm:p-6 lg:col-start-1 lg:row-start-4">
           <OrderSettingsField
             value={orderSettings}
             onChange={changeOrderSettings}
@@ -579,7 +579,7 @@ function VenueSettingsForm({
         </section>
 
         {/*
-          The save bar. One « Enregistrer » writes all five panels, so it belongs
+          The save bar. One « Enregistrer » writes all four panels, so it belongs
           to none of them: filed under « Identité » it looked like that panel's
           button, and a manager picking a typeface had to scroll back up — or,
           on the desktop, across — to find it.
@@ -597,7 +597,7 @@ function VenueSettingsForm({
         */}
         <div
           data-visible={isDirty || showSaved}
-          className="sticky bottom-[max(1rem,env(safe-area-inset-bottom))] z-10 rounded-2xl border border-line bg-surface p-3 shadow-[var(--shadow-2)] transition-[opacity,translate,visibility] duration-200 ease-out data-[visible=false]:invisible data-[visible=false]:translate-y-2 data-[visible=false]:opacity-0 data-[visible=false]:duration-150 sm:px-4 lg:col-span-2 lg:row-start-6"
+          className="sticky bottom-[max(1rem,env(safe-area-inset-bottom))] z-10 rounded-2xl border border-line bg-surface p-3 shadow-[var(--shadow-2)] transition-[opacity,translate,visibility] duration-200 ease-out data-[visible=false]:invisible data-[visible=false]:translate-y-2 data-[visible=false]:opacity-0 data-[visible=false]:duration-150 sm:px-4 lg:col-span-2 lg:row-start-5"
         >
           {update.isError ? (
             <ErrorNote className="mt-0 mb-3">{update.error.message}</ErrorNote>
@@ -728,6 +728,7 @@ function ThemePreview({
   colors,
   fonts,
   mode,
+  editing,
   name,
   logoUrl,
   logoPlate,
@@ -737,6 +738,8 @@ function ThemePreview({
   colors: MenuPalette | null
   fonts: MenuFonts
   mode: 'light' | 'dark'
+  /** The colour editor is on this reading: ring the box. */
+  editing: boolean
   name: string
   logoUrl: string | null
   logoPlate: boolean
@@ -764,8 +767,15 @@ function ThemePreview({
 
   return (
     <div
+      /*
+        The ring is drawn in the back office's own accent, not the box's: the
+        `light`/`dark` class redefines every token on this element, so it is
+        passed as a value resolved outside it (`--ring-editing`, set on the
+        preview section). The offset keeps it off the customer's ground.
+      */
       className={cn(
-        'overflow-hidden rounded-xl border border-line bg-ground p-2',
+        'overflow-hidden rounded-xl border border-line bg-ground p-2 outline-2 outline-offset-2 outline-transparent transition-[outline-color] duration-150 ease-out',
+        editing && 'outline-(--ring-editing)',
         mode,
       )}
     >
@@ -915,12 +925,6 @@ function VenueSettingsSkeleton() {
         </div>
 
         <div className="panel rounded-2xl p-4 sm:p-6 lg:col-start-1 lg:row-start-3">
-          <Skeleton className="h-4 w-24 rounded-full" delay={360} />
-          <Skeleton className="mt-2 h-3 w-52 rounded-full" delay={370} />
-          <Skeleton className="mt-4 h-11 w-56" delay={380} />
-        </div>
-
-        <div className="panel rounded-2xl p-4 sm:p-6 lg:col-start-1 lg:row-start-4">
           <Skeleton className="h-4 w-40 rounded-full" delay={400} />
           <Skeleton className="mt-4 h-3 w-48 rounded-full" delay={420} />
           <Skeleton className="mt-2 h-11 w-full" delay={440} />
@@ -928,7 +932,7 @@ function VenueSettingsSkeleton() {
           <Skeleton className="mt-2 h-11 w-full" delay={480} />
         </div>
 
-        <div className="panel rounded-2xl p-4 sm:p-6 lg:col-start-1 lg:row-start-5">
+        <div className="panel rounded-2xl p-4 sm:p-6 lg:col-start-1 lg:row-start-4">
           <Skeleton className="h-4 w-28 rounded-full" delay={500} />
           <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
             <Skeleton className="h-14 w-full" delay={520} />

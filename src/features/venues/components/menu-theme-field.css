@@ -43,8 +43,30 @@
   background: var(--on-board);
 }
 
+/*
+  The colour editor, unfolding under the grid when « Personnalisé » is picked.
+  Occasional, and a direct answer to a click: a short fade and a 4px settle
+  say « this came from the option you just pressed » without making the manager
+  wait. No exit — clicking a named theme folds it at once, which is the snappy
+  half of an asymmetric pair.
+*/
+.custom-colors {
+  transition:
+    opacity 200ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 200ms cubic-bezier(0.23, 1, 0.32, 1);
+
+  @starting-style {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .theme-option {
     transition-duration: 0.01ms;
+  }
+
+  .custom-colors {
+    transition-property: opacity;
   }
 }
